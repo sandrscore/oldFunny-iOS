@@ -1,38 +1,26 @@
 # Native iOS port status
 
-Target: iPhone 16 / iOS 27.0.1. Bundle ID: `mobi.oldfunny.ios`.
+Target: iPhone 16 / user-reported iOS 27.0.1. Bundle: `mobi.oldfunny.ios`.
+**Full behavioral parity is incomplete.** [ANDROID_PARITY.md](ANDROID_PARITY.md)
+is the detailed contract, evidence map and gap ledger.
 
-Version 0.2.0 (build 6) is the first classic interface pass. Release compilation,
-18 Mac core tests, local packaging checks and three offline simulator renders
-passed. The feed, sidebar and comments were visually inspected on iPhone 16 /
-iOS 18.5. The user previously confirmed Featured and password/CAPTCHA sign-in
-in 0.1.2 on their target phone. This UI pass preserves those auth source files.
-The new version's target-phone UI and saved-session behavior remain untested;
-complete Android feature parity is unfinished.
+| Evidence level | Current state |
+| --- | --- |
+| Source | 0.3.0/build 8 candidate: retained vertical panels, comment attachment picker/draft protection/actions, Collective, unsmile/republish/Photos; header context/X/test-gate corrections |
+| Portable checks | 22 Swift contract tests and 6 Python packaging/test-verification checks pass locally |
+| Mac compilation | Build 7 source `618c148e596d8f8a3bd199c1bbdaa58a70922071` compiled successfully; build 8 pending |
+| IPA inspection | Downloaded build 7: ARM64, cryptid=0, unsigned, no preview markers/test bundles; SHA-256 `e1a4c6693c6af8116a3706b00ee6c945629c7a6679df356b264277a481ae00f6` |
+| UIKit gestures | Build 7: 3 executed, 1 passed, 2 failed (header context and keyboard-dismissal routing); build 8 tests pending |
+| Server | Earlier anonymous Featured read succeeded. No new live social writes or personal session used for agent validation |
+| Target iPhone | User confirmed 0.1.2 sign-in/CAPTCHA and earlier feed loading; 0.3.0 candidate gestures/media/Photos/session relaunch untested |
 
-| Area | Source implemented | Validation and remaining work |
-| --- | --- | --- |
-| App-client requests | HTTPS, documented iOS Basic protocol, installation cookie, refused API redirects | Modern iOS protocol profile: anonymous Featured and app/features return 200; Swift decodes 5 posts; authenticated classification unknown |
-| Password sign-in | Native form, bootstrap/OAuth/account lookup, manual in-app CAPTCHA and origin/frame-checked callback | Offline protocol tests; User confirmed 0.1.2 CAPTCHA completion and successful password sign-in; 0.2.0 preserves this code |
-| Session storage/refresh | Device-only Keychain; shared refresh; old-account response fencing; local removal | 0.1.2 sign-in/session creation user-confirmed; refresh/relaunch persistence still needs device checks |
-| Featured / Subscriptions | Endpoint routing, paging, duplicate/cursor-loop handling, horizontal viewer, refresh | Featured previously phone-confirmed; 0.2.0 simulator layout reviewed; Subscriptions and persistent feed cache need work |
-| Profile | Author and own-account timelines | Basic timeline only; no profile editing, advanced search, pins or featured grid yet |
-| Media | Still-image zoom, WebP via ImageIO, bounded small GIF preview, native AVPlayer controls, text-video title/body | Device/codec checks pending; long-image fidelity, GIF frame timing, video zoom/trim/scrub parity pending |
-| Comments | Paginated thread/replies, text sending, opening attached posts | Inline attached-post previews, avatars and author profile links added; offline request tests; mentions, attachment picker and deletion pending |
-| Reactions/share | Explicit smile toggle and public-link share sheet | No live social writes; device checks pending; unsmile/repub features pending |
-| Read tracking | Bounded read-acknowledgement API method | Exposure timers, durable per-account read queues/filtering and subscription badges not connected yet |
-| Classic appearance | Flat charcoal author bar, dark sidebar, full-width viewer, small counters, classic comment rows, reviewed original icons | Three simulator screens reviewed; exact original layouts and target-phone UI remain unverified; comments header refresh polish pending |
-| Build/signing | Generated Xcode project, Mac build script, unsigned IPA packaging/inspection, public-repo CI | 0.2.0 build 6 Mac compilation and 18 core tests passed; IPA hashes/ARM64/cryptid=0 verified; simulator launch/layout checked; Zeus phone update pending |
-| Studio/publishing | Not implemented yet | Caption/comics/GIF/video editing, drafts, uploads/task polling and publishing need native implementations |
-| Chats/groups | Not implemented yet | REST/WAMP state machine, attachments, groups/discovery/drafts/read receipts pending |
-| Notifications | Not implemented yet | APNs requires independent signing/entitlement/server registration; sockets do not establish background push parity |
-| Other sign-in | Not implemented yet | Google/Apple/web OAuth require client IDs/callbacks and separate validation |
-| Search/settings/saves | Not implemented yet | Advanced search, privacy/settings, Photos exports, pinning and other Android additions remain on the parity checklist |
+Video/GIF controls still use AVPlayer; precise Android zoom/tap/seeking/mute
+rules, GIF conversion, comments mentions/bulk deletion, complete profiles/search/
+pins, read queues/badges, Explore/Activity/preferences, Chats/groups and Studio/
+publishing remain gaps. APNs and alternate OAuth require separate iOS setup and
+validation. Details and acceptance gates are maintained in the parity ledger.
 
-No user credentials or existing sessions are embedded in source or export. The
-app does not modify or sign out the existing iFunny app. Android implementation
-changes are excluded from this port.
-
-Next required milestone: target-phone Zeus signing and updating to 0.2.0, then
-classic UI/navigation/media/comments checks and saved-session regression. Resolve those failures before claiming an Android replacement or testing
-live publishing/chat writes.
+Authentication flow and the reviewed 16 artwork files are preserved. Feature
+endpoints changed APIClient; sign-in/shared-refresh/request authentication logic
+was not changed. Android/protected files still match the saved baseline.
+No credentials, sessions or original binaries are included in public source.

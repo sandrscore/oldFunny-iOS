@@ -18,6 +18,7 @@ final class CommentsController: ClassicScreenController, UITableViewDataSource, 
     private var comments: [Comment] = [], nextCursor: String?, usedCursors = Set<String>()
     private var task: Task<Void, Never>?, loading = false
     private var generation = UUID()
+    private var dismissingKeyboardTap = false
     init(app: AppContext, postID: String, parentID: String? = nil, count: Int? = nil, postAuthorID: String? = nil) {
         self.app = app; self.postID = postID; self.parentID = parentID; self.count = count; self.postAuthorID = postAuthorID
         super.init(nibName: nil, bundle: nil)
@@ -36,7 +37,8 @@ final class CommentsController: ClassicScreenController, UITableViewDataSource, 
         table.rowHeight = UITableView.automaticDimension; table.estimatedRowHeight = 90
         table.keyboardDismissMode = .interactive
         let finishEditing = UITapGestureRecognizer(target: self, action: #selector(dismissKeyboard))
-        finishEditing.delegate = self; table.addGestureRecognizer(finishEditing)
+        finishEditing.delegate = self; finishEditing.cancelsTouchesInView = true
+        finishEditing.delaysTouchesBegan = true; table.addGestureRecognizer(finishEditing)
         // In the post's comments panel a downward fling at the top returns to
         // media. Keep refresh on the header rather than competing for that swipe.
         if !isEmbeddedPanel {
@@ -57,6 +59,13 @@ final class CommentsController: ClassicScreenController, UITableViewDataSource, 
         attachment.widthAnchor.constraint(equalToConstant: 38).isActive = true; attachment.heightAnchor.constraint(equalToConstant: 38).isActive = true
         attachment.imageView?.contentMode = .scaleAspectFill; attachment.clipsToBounds = true; attachment.isHidden = true
         attachment.accessibilityLabel = "Remove attachment; keeps your text"; attachment.addTarget(self, action: #selector(removeAttachment), for: .touchUpInside)
+        attachment.accessibilityIdentifier = "remove-comment-attachment"
+        let removeMark = UILabel(); removeMark.text = "×"; removeMark.textAlignment = .center
+        removeMark.font = ClassicTheme.font(18, bold: true); removeMark.textColor = .white
+        removeMark.backgroundColor = UIColor.black.withAlphaComponent(0.8); removeMark.layer.cornerRadius = 9; removeMark.clipsToBounds = true
+        removeMark.isUserInteractionEnabled = false; removeMark.isAccessibilityElement = false
+        removeMark.translatesAutoresizingMaskIntoConstraints = false; attachment.addSubview(removeMark)
+        NSLayoutConstraint.activate([removeMark.topAnchor.constraint(equalTo: attachment.topAnchor), removeMark.trailingAnchor.constraint(equalTo: attachment.trailingAnchor), removeMark.widthAnchor.constraint(equalToConstant: 18), removeMark.heightAnchor.constraint(equalToConstant: 18)])
         let composer = UIStackView(arrangedSubviews: [attachment, text, attach, send]); composer.spacing = 5; composer.alignment = .center
         composer.backgroundColor = ClassicTheme.bar; composer.layoutMargins = UIEdgeInsets(top: 8, left: 10, bottom: 8, right: 3); composer.isLayoutMarginsRelativeArrangement = true
         composer.translatesAutoresizingMaskIntoConstraints = false; table.translatesAutoresizingMaskIntoConstraints = false
@@ -74,7 +83,16 @@ final class CommentsController: ClassicScreenController, UITableViewDataSource, 
     }
     @objc private func draftChanged() { draft.edit(text.text ?? "") }
     @objc private func dismissKeyboard() { view.endEditing(true) }
-    func gestureRecognizerShouldBegin(_ gestureRecognizer: UIGestureRecognizer) -> Bool { text.isFirstResponder }
+    func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldReceive touch: UITouch) -> Bool {
+        // Decide at touch-down: UIKit may move focus before shouldBegin runs.
+        // The first tap on an author/attachment/row must only dismiss editing.
+        dismissingKeyboardTap = text.isFirstResponder
+        return dismissingKeyboardTap
+    }
+    func gestureRecognizerShouldBegin(_ gestureRecognizer: UIGestureRecognizer) -> Bool { dismissingKeyboardTap }
+    private func consumeEditingTap() -> Bool {
+        guard text.isFirstResponder else { return false }; view.endEditing(true); return true
+    }
     @objc private func removeAttachment() { draft.attach(nil); renderAttachment() }
     private func renderAttachment() {
         attachmentTask?.cancel(); attachment.setImage(nil, for: .normal); attachment.isHidden = draft.attachment == nil
@@ -134,11 +152,11 @@ final class CommentsController: ClassicScreenController, UITableViewDataSource, 
         let cell = table.dequeueReusableCell(withIdentifier: "comment", for: indexPath) as! ClassicCommentCell
         cell.bind(comment, loader: app.media)
         cell.onAttachment = { [weak self] in
-            guard let self, let post = comment.attachments.first else { return }
+            guard let self, !consumeEditingTap(), let post = comment.attachments.first else { return }
             navigationController?.pushViewController(PostController(app: app, post: post, index: 0, source: "prof"), animated: true)
         }
         cell.onAuthor = { [weak self] in
-            guard let self, let id = comment.authorID else { return }
+            guard let self, !consumeEditingTap(), let id = comment.authorID else { return }
             navigationController?.pushViewController(FeedController(app: app, feed: .featured, timelineID: id, profileName: comment.author), animated: true)
         }
         return cell
@@ -148,6 +166,7 @@ final class CommentsController: ClassicScreenController, UITableViewDataSource, 
     }
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         table.deselectRow(at: indexPath, animated: true)
+        guard !consumeEditingTap() else { return }
         let comment = comments[indexPath.row]
         if parentID == nil {
             navigationController?.pushViewController(CommentsController(app: app, postID: postID, parentID: comment.id, count: comment.replies, postAuthorID: postAuthorID), animated: true)

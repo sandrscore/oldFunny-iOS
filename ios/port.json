@@ -4,7 +4,7 @@
   "product": "oldFunny",
   "bundle_identifier": "mobi.oldfunny.ios",
   "version": "0.3.0",
-  "build": "7",
+  "build": "8",
   "minimum_ios": "16.0",
   "target": {
     "device": "iPhone 16",
@@ -39,21 +39,39 @@
     "captcha_handoff": true,
     "session_survives_relaunch": "unverified"
   },
-  "ui_phase": "Android behavioral port: retained vertical panels, comment attachments/actions, Collective and post actions; build in progress",
+  "ui_phase": "Build 8 candidate: retained vertical panels, correct feed header, attachment removal X and mandatory UIKit test gate",
   "simulator_previews": "Offline fixtures compiled only with CLASSIC_UI_PREVIEW; absent from Release",
   "simulator_ui": {
     "device": "iPhone 16",
     "ios": "18.5",
     "offline_fixtures": true,
-    "screens_reviewed": [
-      "feed",
-      "sidebar",
-      "comments"
-    ],
-    "target_phone_tested": false
+    "screens_reviewed": [],
+    "target_phone_tested": false,
+    "ui_gesture_tests_passed": false
   },
   "known_ui_polish": [
-    "Optional comments header refresh icon; pull-to-refresh remains available"
+    "Attachment X and feed context corrected in build 8 source; simulator validation pending"
   ],
-  "parity_audit": "ANDROID_PARITY.md"
+  "parity_audit": "ANDROID_PARITY.md",
+  "compiled_candidate_build7": {
+    "source_commit": "618c148e596d8f8a3bd199c1bbdaa58a70922071",
+    "run_url": "https://github.com/sandrscore/oldFunny-iOS/actions/runs/39493347021",
+    "sha256": "e1a4c6693c6af8116a3706b00ee6c945629c7a6679df356b264277a481ae00f6",
+    "version": "0.3.0",
+    "build": "7",
+    "independent_inspection": true,
+    "contains_arm64": true,
+    "main_executable_cryptid": 0,
+    "fixture_code_absent": true,
+    "ui_gesture_tests": {
+      "executed": 3,
+      "passed": 1,
+      "failed": 2,
+      "failures": [
+        "header context",
+        "first outside tap opened underlying author profile"
+      ]
+    },
+    "phone_tested": false
+  }
 }

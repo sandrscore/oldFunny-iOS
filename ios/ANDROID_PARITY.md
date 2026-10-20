@@ -98,7 +98,7 @@ post panels. Process-death restoration and every gesture edge case remain checks
 | Comment selection | Pencil/hold multi-selection, permitted rows, immediate partial-success counts; `CommentDelete` | Missing bulk mode; single delete added |
 | Comment delete ack | Empty successful bulk results mean success only with explicit outer status | Missing bulk mode; do not invent equivalent receipts for malformed responses |
 | Attachment plus | Full-screen 3-column own posts/reposts, cursor paging, retained draft on Back; `CommentPostFeed`, `NativePostGrid` | Source added; picker needs simulator/account fixture and device checks |
-| Attachment choice | One thumbnail+X, replace/remove independently of text | Source, draft revision tests; layout/device checks pending |
+| Attachment choice | One thumbnail+X, replace/remove independently of text | Source: visible X added in build 8; draft revision tests pass; offline picker/Back/refresh/removal UI test added, execution and phone checks pending |
 | Attachment send | `text` + one `content` ID to comment/reply endpoint; no separate upload | Source now connected; no live comments submitted by agent |
 | Draft success/failure | Clear exact submitted revision only; retain newer edits/uncertain writes | Source and tests; lifecycle/process restoration pending |
 | Send retries | Never replay an uncertain social write; `comment-send-01`, `CommentComposer` | Existing single-attempt API retained; refresh-only GET retry preserved |
@@ -156,3 +156,20 @@ post panels. Process-death restoration and every gesture edge case remain checks
 Apple references for native implementation: [gesture admission](https://developer.apple.com/documentation/uikit/uigesturerecognizerdelegate/gesturerecognizershouldbegin(_:)),
 [UI automation](https://developer.apple.com/documentation/xcuiautomation/xcuiapplication),
 [Photos add-only authorization](https://developer.apple.com/documentation/photos/phphotolibrary/requestauthorization(for:handler:)).
+
+## Checkpoint audit (2026-10-20)
+
+Build 7 (`618c148e…`) compiled on the public Mac runner. Its downloaded IPA was
+independently inspected: version 0.3.0/build 7, ARM64, cryptid=0, no preview marker
+or test bundle. SHA-256: `e1a4c6693c6af8116a3706b00ee6c945629c7a6679df356b264277a481ae00f6`.
+Its actual UIKit run executed three tests: one passed, two failed (header context
+and a keyboard-dismissal tap opening the underlying profile). It is not a
+verified gesture checkpoint.
+
+Build 8 source corrects per-post header context, adds the visible attachment X, corrects keyboard-dismissal routing,
+and extends offline UIKit coverage to attachment selection, picker Back, refresh
+and removal without losing text. The workflow retains diagnostics before a
+mandatory gate requiring every gesture test to execute and pass. These source
+changes have not yet been compiled. Local verification: 22 Swift contract tests
+and 6 packaging/test-gate checks pass. Android/protected-file hashes still match
+the preserved baseline. No live service write or iPhone test was performed.

@@ -178,6 +178,7 @@ def export_source(output: Path, include_assets: bool):
     paths += sorted((IOS / "OldFunnyCore/Tests").rglob("*.swift"))
     paths += sorted((IOS / "UITests").glob("*.swift"))
     paths += [ROOT / "tools/ios_native_project.py", ROOT / "tools/build_ios_native.py", ROOT / "tools/preview_ios_native.py", ROOT / "tools/render_ios_icon.swift", ROOT / "tools/inspect_ipa.py", ROOT / "tools/audit_android_ios_parity.py", ROOT / ".github/workflows/ios-native.yml"]
+    paths += [ROOT / "tests/test_ios_native.py"]
     if include_assets:
         paths += sorted((IOS / "OldFunny/Resources/Classic").glob("*.png"))
         paths += sorted((IOS / "OldFunny/Resources/Branding").glob("*.png"))

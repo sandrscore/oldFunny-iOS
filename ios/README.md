@@ -1,50 +1,39 @@
-> 0.3.0 build 7 is being compiled and checked against the Android behavior inventory in [ANDROID_PARITY.md](ANDROID_PARITY.md). The 0.2.0 artifact below is the previous build.
-
 # oldFunny iOS
 
-**0.2.0 (build 6): first classic interface pass.**
+**0.3.0 build 8 candidate: Android behavior port in progress.**
 
-A new Swift/UIKit client with a charcoal author/avatar bar, dark sidebar,
-full-width black media viewer, compact smile/comment/share controls, and classic
-comment rows with blue names, circular avatars, dates and attached-post previews.
-The sidebar opens Featured, Subscriptions, Profile and Account. Existing image
-zoom, native video controls, text-video titles/body and explicit actions remain.
+Retained media/comments/information panels now reproduce the Android vertical
+navigation arrangement. Comments keep text and one attached post while switching
+panels and using the own-post picker. Single-attempt comment actions, unsmile,
+republish, Collective and explicit Photos saving are implemented in source.
+Full Android parity remains incomplete; see [the behavioral ledger](ANDROID_PARITY.md).
+Video still uses AVPlayer controls, and profiles/search, read tracking,
+Explore/Activity/settings, Chats/groups and Studio/publishing still need work.
 
-[Download the unsigned IPA artifact ZIP](https://github.com/sandrscore/oldFunny-iOS/actions/runs/39488614457/artifacts/12293774317)
-— extract the IPA and sign/update through Zeus. Artifact expires October 27, 2026.
-A verified local copy remains in the original workspace's ignored .ios-work.
+Build 7 from commit `618c148e596d8f8a3bd199c1bbdaa58a70922071` passed Mac Release
+compilation and 22 core tests. Its downloaded IPA independently verifies as
+version 0.3.0/build 7, bundle `mobi.oldfunny.ios`, ARM64, cryptid=0, unsigned, with
+no preview fixture marker or UI-test bundle. SHA-256:
+`e1a4c6693c6af8116a3706b00ee6c945629c7a6679df356b264277a481ae00f6`.
+[Build and artifacts](https://github.com/sandrscore/oldFunny-iOS/actions/runs/39493347021).
+Its UIKit run executed three tests: one passed and two failed (header context and
+keyboard-dismissal touch routing). These are being corrected in build 8.
 
-IPA SHA-256: `91abe2d26c5fb00cae5311145f71696fa901570da6942dac021564da2cc9a3b5`.
-Bundle: `mobi.oldfunny.ios`. Minimum iOS: 16.0. Executable: ARM64, cryptid=0,
-unsigned, built from this source. This is not an APK binary conversion or a
-modification of iFunny's encrypted executable.
+Build 8 source fixes the per-post feed header, adds a visible attachment X, corrects first-outside-tap keyboard routing,
+extends the offline picker/draft UI tests and makes gesture success a mandatory
+CI gate after diagnostics are retained. It is not yet compiled or phone-tested.
+Six local Python packaging/test-gate checks and 22 Swift contract tests pass.
 
-## Verification and device check
+The user confirmed password sign-in and in-app CAPTCHA in 0.1.2 on their iPhone
+16 / reported iOS 27.0.1. That flow is preserved. The current gesture candidate
+has not been signed or tested on that phone; session relaunch, gestures, codecs
+and Photos behavior require device checks. Agent validation uses offline fixture
+transports and performs no live social writes. APIClient gained feature endpoints;
+its sign-in, shared refresh and request authentication algorithms remain unchanged.
 
-[Successful Mac build](https://github.com/sandrscore/oldFunny-iOS/actions/runs/39488614457)
-from source commit `5f58a60fa4c428e5eb9f5870d774efc24cbd2f03` passed all 18
-portable Swift tests and compiled both the iPhone Release app and simulator
-preview. Five local Python build/export tests passed. The downloaded artifact
-and IPA hashes were independently verified; no embedded architecture blockers,
-FairPlay resources or offline preview fixture marker were found in the release.
-
-[Simulator screenshots](https://github.com/sandrscore/oldFunny-iOS/actions/runs/39488614457/artifacts/12295550123)
-show the actual feed, open sidebar and comments on an iPhone 16 / iOS 18.5
-simulator. These were visually inspected with offline generated sample content.
-They establish layout only, not real server/account behavior or iOS 27 support.
-
-The user confirmed Featured loading, and successful password sign-in with CAPTCHA
-in 0.1.2 on their iPhone 16 / reported iOS 27.0.1. Six authentication/session
-source files are byte-for-byte unchanged by this UI pass. The new build has not
-been signed, installed or tested on that phone. Update via Zeus, then check saved
-sign-in, feed swiping, sidebar routes, image/video viewing and comments. Pull down
-to refresh comments; the optional trailing header refresh icon needs follow-up
-visual polish. No posting/chat action is required for these initial checks.
-
-Complete Android feature parity remains unfinished. Collective, Explore/search,
-Chats, Studio/publishing, push, Google/Apple sign-in, advanced profile/settings,
-read queues/badges, Photos exports and other additions still require native work.
-See [feature status](PORT_STATUS.md) and [protocol provenance](PROTOCOL_PROVENANCE.md).
+The previous 0.2.0/build 6 IPA remains preserved locally with SHA-256
+`91abe2d26c5fb00cae5311145f71696fa901570da6942dac021564da2cc9a3b5`.
+Minimum iOS: 16.0. Zeus signing/installation are separate user device steps.
 
 ## Build and test
 
@@ -54,7 +43,7 @@ On a Mac with Xcode and an iOS SDK:
 python3 tools/build_ios_native.py
 ```
 
-The output is .ios-work/ios-port/dist/oldFunny-ios-0.2.0-unsigned.ipa, with a
+The output is .ios-work/ios-port/dist/oldFunny-ios-0.3.0-unsigned.ipa, with a
 .sha256 file and .inspection.json report. Choose an unused --output path for
 repeat builds. No Apple account, signing certificate or original iFunny binary
 is used. Zeus signing and installation are separate device steps.
@@ -82,7 +71,7 @@ python3 tools/preview_ios_native.py
 ```
 
 The tool compiles a separate CLASSIC_UI_PREVIEW configuration, creates its own
-disposable simulator, renders feed/sidebar/comments, saves PNGs and preview.json
+disposable simulator, renders feed/sidebar/comments/information and runs UIKit gesture tests, saves PNGs and preview.json
 under .ios-work/ios-port/ui-previews, then removes that simulator. It uses no real
 account, Keychain session or API request. The preview marker is checked before
 launch, including Xcode's separate Debug library. Release packaging refuses it.

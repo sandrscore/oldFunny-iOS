@@ -17,6 +17,8 @@ final class ViewerTests: XCTestCase {
         app.tables.firstMatch.coordinate(withNormalizedOffset: CGVector(dx: 0.8, dy: 0.03)).tap()
         XCTAssertEqual(app.keyboards.count, 0)
         let comments = app.otherElements["comments-screen"]
+        XCTAssertTrue(comments.exists, "The keyboard-dismissal tap must not open the underlying author or reply")
+        XCTAssertEqual(draft.value as? String, "Keep this draft")
         let start = comments.coordinate(withNormalizedOffset: CGVector(dx: 0.50, dy: 0.03))
         let end = comments.coordinate(withNormalizedOffset: CGVector(dx: 0.50, dy: 0.60))
         start.press(forDuration: 0.05, thenDragTo: end, withVelocity: .fast, thenHoldForDuration: 0)
@@ -56,5 +58,24 @@ final class ViewerTests: XCTestCase {
         XCTAssertFalse(app.staticTexts["3 comments"].exists)
         XCTAssertTrue(app.buttons["128 smiles, smile"].exists)
         capture("zoom-keeps-media-panel", app: app)
+    }
+    func testAttachmentPickerBackAndRemovalPreserveDraft() {
+        let app = XCUIApplication(); app.launchArguments = ["--ui-tests", "--ui-tests-account"]; app.launch()
+        XCTAssertTrue(app.buttons["3 comments"].waitForExistence(timeout: 10)); app.buttons["3 comments"].tap()
+        let draft = app.textFields["comment-draft"]; XCTAssertTrue(draft.waitForExistence(timeout: 5))
+        draft.tap(); draft.typeText("Keep text and attachment")
+        app.buttons["Attach one of your posts"].tap()
+        let choice = app.collectionViews.cells.firstMatch
+        XCTAssertTrue(choice.waitForExistence(timeout: 5)); choice.tap()
+        let remove = app.buttons["remove-comment-attachment"]
+        XCTAssertTrue(remove.waitForExistence(timeout: 5)); XCTAssertEqual(draft.value as? String, "Keep text and attachment")
+        app.buttons["Attach one of your posts"].tap()
+        XCTAssertTrue(choice.waitForExistence(timeout: 5)); app.buttons["Back"].tap()
+        XCTAssertTrue(remove.waitForExistence(timeout: 5)); XCTAssertEqual(draft.value as? String, "Keep text and attachment")
+        app.buttons["Refresh"].tap()
+        XCTAssertTrue(remove.exists); XCTAssertEqual(draft.value as? String, "Keep text and attachment")
+        capture("attachment-x-and-retained-draft", app: app)
+        remove.tap()
+        XCTAssertFalse(remove.exists); XCTAssertEqual(draft.value as? String, "Keep text and attachment")
     }
 }

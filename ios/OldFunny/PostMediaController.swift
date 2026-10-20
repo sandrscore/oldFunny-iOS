@@ -7,6 +7,7 @@ final class PostMediaController: UIViewController, UIScrollViewDelegate, UIGestu
     private let app: AppContext
     private let post: Post
     private let source: String
+    private let section: String
     private let embedded: Bool
     private let outer = UIScrollView(), zoom = UIScrollView(), image = UIImageView()
     private let media = UIView(), titlePanel = UIView(), bodyPanel = UIView()
@@ -20,8 +21,9 @@ final class PostMediaController: UIViewController, UIScrollViewDelegate, UIGestu
     private var smiled: Bool
     private var unsmiled: Bool, republished: Bool, changingReaction = false, changingRepublish = false
     private var obscured = false
-    init(app: AppContext, post: Post, index: Int, source: String, embedded: Bool = false) {
+    init(app: AppContext, post: Post, index: Int, source: String, section: String = "Post", embedded: Bool = false) {
         self.app = app; self.post = post; self.index = index; self.source = source; self.embedded = embedded; smiled = post.isSmiled
+        self.section = section
         unsmiled = post.isUnsmiled; republished = post.isRepublished
         super.init(nibName: nil, bundle: nil)
     }
@@ -37,7 +39,7 @@ final class PostMediaController: UIViewController, UIScrollViewDelegate, UIGestu
         if !embedded {
             view.backgroundColor = ClassicTheme.bar
             let bar = ClassicBar(); bar.translatesAutoresizingMaskIntoConstraints = false; view.addSubview(bar)
-            let header = AuthorHeader(); header.update(post: post, section: "Post", loader: app.media)
+            let header = AuthorHeader(); header.update(post: post, section: section, loader: app.media)
             header.action = { [weak self] in self?.profile() }; bar.setCenter(header)
             bar.onLeading = { [weak self] in
                 guard let self else { return }; if let onLeading { onLeading() } else { navigationController?.popViewController(animated: true) }

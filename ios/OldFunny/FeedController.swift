@@ -162,7 +162,7 @@ final class FeedController: ClassicScreenController, UIPageViewControllerDataSou
     private func controller(at index: Int) -> PostController {
         let post = pages.posts[index]
         if let cached = retained[post.id] { return cached }
-        let controller = PostController(app: app, post: post, index: index, source: timelineID == nil ? feed.source : "prof", embedded: true)
+        let controller = PostController(app: app, post: post, index: index, source: timelineID == nil ? feed.source : "prof", section: profileName ?? feed.title)
         if timelineID == nil { controller.onMenu = { [weak self] in self?.toggleMenu() } }
         controller.onRefresh = { [weak self] in self?.refresh() }
         retained[post.id] = controller

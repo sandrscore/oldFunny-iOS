@@ -18,9 +18,9 @@ final class PostController: UIViewController, UIGestureRecognizerDelegate {
     var onRefresh: (() -> Void)? { didSet { media.onRefresh = onRefresh } }
     var onPanelChange: ((ViewerPanel) -> Void)?
 
-    init(app: AppContext, post: Post, index: Int, source: String, embedded: Bool = false) {
+    init(app: AppContext, post: Post, index: Int, source: String, section: String = "Post") {
         self.app = app; self.post = post; self.index = index; self.source = source
-        media = PostMediaController(app: app, post: post, index: index, source: source)
+        media = PostMediaController(app: app, post: post, index: index, source: source, section: section)
         current = media
         super.init(nibName: nil, bundle: nil)
         media.onComments = { [weak self] in self?.showPanel(.comments) }

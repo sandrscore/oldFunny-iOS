@@ -30,6 +30,8 @@ jobs:
       - uses: actions/checkout@v7
         with:
           persist-credentials: false
+      - name: Check packaging and test verification boundaries
+        run: python3 -m unittest discover -s tests -p test_ios_native.py
       - name: Build and inspect unsigned ARM64 IPA
         run: python3 tools/build_ios_native.py
       - name: Retain IPA and inspection report
@@ -59,3 +61,12 @@ jobs:
           if-no-files-found: warn
           retention-days: 7
           include-hidden-files: true
+      - name: Require verified UIKit gesture tests
+        if: always()
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          report = json.loads(Path('.ios-work/ios-port/ui-previews/preview.json').read_text())
+          assert report.get('success') and report.get('ui_gesture_tests_passed') and report.get('ui_gesture_tests'), report
+          PY

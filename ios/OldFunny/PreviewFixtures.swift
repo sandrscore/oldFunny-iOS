@@ -4,13 +4,19 @@
 import UIKit
 
 private struct PreviewStore: CredentialStore {
-    func read() throws -> Credential? { nil }
+    func read() throws -> Credential? {
+        guard ProcessInfo.processInfo.arguments.contains("--ui-tests-account") else { return nil }
+        // Fabricated fixture identity; never Keychain data or a usable session.
+        return try Credential(accessToken: "offline-fixture-not-a-session", refreshToken: nil, accountID: "PreviewUser", nickname: "ClassicFan")
+    }
     func write(_ credential: Credential) throws { throw ClientError.invalidInput }
     func erase() throws {}
 }
 
 private struct PreviewTransport: HTTPTransport {
     func send(_ request: URLRequest) async throws -> HTTPResult {
+        // A fixture action must never masquerade as a confirmed social write.
+        guard request.httpMethod == "GET" || (request.httpMethod == "POST" && request.url?.path == "/v4/feeds/collective") else { throw ClientError.invalidInput }
         let value: String
         if request.url?.path.contains("comments") == true { value = PreviewFixtures.comments }
         else if request.url?.path.contains("feeds") == true || request.url?.path.contains("timelines") == true { value = PreviewFixtures.feed }
