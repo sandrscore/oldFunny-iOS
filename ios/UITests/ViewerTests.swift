@@ -5,6 +5,33 @@ final class ViewerTests: XCTestCase {
     private func capture(_ name: String, app: XCUIApplication) {
         let picture = XCTAttachment(screenshot: app.screenshot()); picture.name = name; picture.lifetime = .keepAlways; add(picture)
     }
+    func testConfirmedReplyAndRootDeletionUpdatePostCountWithoutChangingReplyCountTwice() {
+        let app = XCUIApplication(); app.launchArguments = ["--ui-tests", "--ui-tests-account", "--ui-tests-accepted-comments"]; app.launch()
+        XCTAssertTrue(app.buttons["5 comments"].waitForExistence(timeout: 10)); app.buttons["5 comments"].tap()
+        let replies = app.staticTexts["2 replies"].firstMatch
+        XCTAssertTrue(replies.waitForExistence(timeout: 5)); replies.tap()
+        let root = app.staticTexts["The classic look is coming back."]
+        XCTAssertTrue(root.waitForExistence(timeout: 5))
+        let draft = app.textFields["comment-draft"]; draft.tap(); draft.typeText("Confirmed offline reply")
+        app.buttons["Send comment"].tap()
+        XCTAssertTrue(app.staticTexts["Confirmed offline reply"].waitForExistence(timeout: 5))
+        app.buttons["Refresh"].tap()
+        XCTAssertTrue(app.staticTexts["3 replies"].firstMatch.waitForExistence(timeout: 5))
+        app.buttons["Back"].tap()
+        XCTAssertTrue(app.staticTexts["6 comments"].waitForExistence(timeout: 5))
+        app.staticTexts["3 replies"].firstMatch.tap()
+        XCTAssertTrue(root.waitForExistence(timeout: 5)); root.press(forDuration: 1)
+        app.buttons["Delete"].tap()
+        XCTAssertTrue(app.alerts["Delete this comment?"].waitForExistence(timeout: 5)); app.alerts.buttons["Delete"].tap()
+        XCTAssertTrue(app.staticTexts["Comment deleted."].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["3 replies"].firstMatch.exists)
+        capture("root-deleted-replies-retained", app: app)
+        app.buttons["Back"].tap()
+        XCTAssertTrue(app.staticTexts["5 comments"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["3 replies"].exists)
+        app.buttons["Back"].tap()
+        XCTAssertTrue(app.buttons["5 comments"].waitForExistence(timeout: 5))
+    }
     func testUnconfirmedInlineReactionKeepsThreadAndDraft() {
         let app = XCUIApplication(); app.launchArguments = ["--ui-tests", "--ui-tests-account"]; app.launch()
         XCTAssertTrue(app.buttons["3 comments"].waitForExistence(timeout: 10)); app.buttons["3 comments"].tap()

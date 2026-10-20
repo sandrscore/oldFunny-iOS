@@ -4,7 +4,7 @@
   "product": "oldFunny",
   "bundle_identifier": "mobi.oldfunny.ios",
   "version": "0.3.0",
-  "build": "10",
+  "build": "11",
   "minimum_ios": "16.0",
   "target": {
     "device": "iPhone 16",
@@ -13,8 +13,8 @@
   "android_reference": "oldfunny-4.6.7-optional-google-01.apk",
   "ui_reference": "iFunny iOS 4.6.8 build 4121 resources",
   "feature_parity_complete": false,
-  "ios_compiled": true,
-  "ipa_produced": true,
+  "ios_compiled": false,
+  "ipa_produced": false,
   "runtime_tested": false,
   "cloud_source_published": true,
   "signed": false,
@@ -39,7 +39,7 @@
     "captcha_handoff": true,
     "session_survives_relaunch": "unverified"
   },
-  "ui_phase": "Verified offline UIKit gesture checkpoint; full Android parity remains incomplete",
+  "ui_phase": "Build 11 candidate: separate read/account generations, reply/post counts, root deletion placeholder and refresh symbol initialization",
   "simulator_previews": "Offline fixtures compiled only with CLASSIC_UI_PREVIEW; absent from Release",
   "simulator_ui": {
     "device": "iPhone 16",
@@ -62,10 +62,11 @@
       "testReplyThreadRetainsRootRecipientAndDraftThroughBack",
       "testUnconfirmedInlineReactionKeepsThreadAndDraft",
       "testVerticalPanelsRetainPostAndDraftWithoutPushingComments"
-    ]
+    ],
+    "current_candidate_verified": false
   },
   "known_ui_polish": [
-    "Comments refresh glyph is invisible in initial simulator render although the control is tappable; follow-up required"
+    "Refresh symbol recreated in viewDidLoad; screenshot verification pending"
   ],
   "parity_audit": "ANDROID_PARITY.md",
   "compiled_candidate_build7": {
@@ -148,5 +149,14 @@
   "verified_build_source_commit": "5cca16ac45ac9c208269c6737ef1e36ef582b2a6",
   "verified_build_url": "https://github.com/sandrscore/oldFunny-iOS/actions/runs/39499100759",
   "ipa_sha256": "fe571fee9fe8403d3990acbff354706a9cd3c294299ab1f300c915ffdcb6c334",
-  "target_phone_tested": false
+  "target_phone_tested": false,
+  "previous_verified_build10": {
+    "verified_build_source_commit": "5cca16ac45ac9c208269c6737ef1e36ef582b2a6",
+    "verified_build_url": "https://github.com/sandrscore/oldFunny-iOS/actions/runs/39499100759",
+    "ipa_sha256": "fe571fee9fe8403d3990acbff354706a9cd3c294299ab1f300c915ffdcb6c334",
+    "version": "0.3.0",
+    "build": "10",
+    "ui_gesture_tests_passed": true,
+    "phone_tested": false
+  }
 }

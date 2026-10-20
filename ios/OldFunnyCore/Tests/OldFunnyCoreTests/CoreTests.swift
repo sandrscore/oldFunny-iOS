@@ -34,6 +34,16 @@ private func token(_ name: String = "fixtureAccess", refresh: String? = "fixture
 }
 
 final class CoreTests: XCTestCase {
+    func testDeletedCommentStateKeepsIdentityAndThreadContext() throws {
+        var comment = try Comment(JSON.decode(Data(#"{"id":"C1","text":"old text","root_comm_id":"Root1","parent_comm_id":"C0","state":"normal","num":{"replies":3}}"#.utf8)))
+        XCTAssertFalse(comment.isDeleted); comment.markDeleted()
+        XCTAssertTrue(comment.isDeleted); XCTAssertEqual(comment.id, "C1"); XCTAssertEqual(comment.replies, 3)
+        XCTAssertEqual(comment.rootCommentID, "Root1"); XCTAssertEqual(comment.parentCommentID, "C0")
+        let deleted = try Comment(JSON.decode(Data(#"{"id":"C2","state":"deleted"}"#.utf8)))
+        XCTAssertTrue(deleted.isDeleted)
+        let top = try Comment(JSON.decode(Data(#"{"id":"C3","state":"top"}"#.utf8)))
+        XCTAssertFalse(top.isDeleted)
+    }
     func testStaleComposerAndReactionSessionCannotSendAfterAccountChange() async throws {
         let transport = ScriptedTransport([])
         let api = try APIClient(installation: installation, userAgent: "fixture", store: MemoryStore(try token()), transport: transport)

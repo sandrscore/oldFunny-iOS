@@ -120,6 +120,10 @@ class ClassicScreenController: UIViewController {
     override var preferredStatusBarStyle: UIStatusBarStyle { .lightContent }
     override func viewDidLoad() {
         super.viewDidLoad(); view.backgroundColor = ClassicTheme.bar
+        // Create the default symbol after this controller has its UIKit view
+        // context, as the media/info headers already do for their symbols.
+        classicBar.trailing.setImage(ClassicGlyph.refresh.image, for: .normal)
+        classicBar.trailing.tintColor = .white
         contentView.backgroundColor = ClassicTheme.background
         for item in [classicBar, contentView] { item.translatesAutoresizingMaskIntoConstraints = false; view.addSubview(item) }
         barHeight = classicBar.heightAnchor.constraint(equalToConstant: 52)

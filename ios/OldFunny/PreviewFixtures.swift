@@ -13,14 +13,60 @@ private struct PreviewStore: CredentialStore {
     func erase() throws {}
 }
 
-private struct PreviewTransport: HTTPTransport {
+private actor PreviewTransport: HTTPTransport {
+    private var sentReplies = [[String: Any]](), deleted = Set<String>()
+    private var replyCount: Int { 2 + sentReplies.count - deleted.filter { $0.hasPrefix("PreviewReply") || $0.hasPrefix("FixtureSentReply") }.count }
     func send(_ request: URLRequest) async throws -> HTTPResult {
-        // A fixture action must never masquerade as a confirmed social write.
-        guard request.httpMethod == "GET" || (request.httpMethod == "POST" && request.url?.path == "/v4/feeds/collective") else { throw ClientError.invalidInput }
+        let path = request.url?.path ?? "", method = request.httpMethod ?? "GET"
+        // Explicit, per-launch offline acknowledgements for the count/state UI
+        // test. No URLSession or real service is available in this transport.
+        if ProcessInfo.processInfo.arguments.contains("--ui-tests-accepted-comments") {
+            if method == "POST", path.hasSuffix("/replies") {
+                let parent = request.url!.deletingLastPathComponent().lastPathComponent
+                let parents = ["PreviewComment1", "PreviewReply1", "PreviewReply2"] + sentReplies.compactMap { $0["id"] as? String }
+                guard path.hasPrefix("/v4/content/PreviewPost/comments/"), parents.contains(parent), !deleted.contains(parent) else { throw ClientError.invalidInput }
+                let fields = String(decoding: request.httpBody ?? Data(), as: UTF8.self).split(separator: "&").reduce(into: [String: String]()) { result, pair in
+                    let parts = pair.split(separator: "=", maxSplits: 1, omittingEmptySubsequences: false)
+                    if parts.count == 2 { result[String(parts[0])] = String(parts[1]).replacingOccurrences(of: "+", with: " ").removingPercentEncoding }
+                }
+                sentReplies.append(["id": "FixtureSentReply\(sentReplies.count + 1)", "text": fields["text"] ?? "", "user": ["id": "PreviewUser", "nick": "ClassicFan"], "root_comm_id": "PreviewComment1", "parent_comm_id": request.url!.deletingLastPathComponent().lastPathComponent, "depth": 1])
+                return HTTPResult(status: 204, body: Data())
+            }
+            if method == "DELETE", path.contains("/comments/") {
+                let id = request.url!.lastPathComponent
+                let known = ["PreviewComment1", "PreviewComment2", "PreviewComment3", "PreviewReply1", "PreviewReply2"] + sentReplies.compactMap { $0["id"] as? String }
+                guard path.hasPrefix("/v4/content/PreviewPost/comments/"), known.contains(id), !deleted.contains(id) else { throw ClientError.invalidInput }
+                deleted.insert(id); return HTTPResult(status: 204, body: Data())
+            }
+        }
+        guard method == "GET" || (method == "POST" && path == "/v4/feeds/collective") else { throw ClientError.invalidInput }
         let value: String
-        if request.url?.path.contains("/replies") == true { value = PreviewFixtures.replies }
-        else if request.url?.path.contains("comments") == true { value = PreviewFixtures.comments }
-        else if request.url?.path.contains("feeds") == true || request.url?.path.contains("timelines") == true { value = PreviewFixtures.feed }
+        if path.contains("/replies") {
+            var root = try JSONSerialization.jsonObject(with: Data(PreviewFixtures.replies.utf8)) as! [String: Any]
+            var data = root["data"] as! [String: Any], replies = data["replies"] as! [String: Any]
+            let rows = (replies["items"] as! [[String: Any]]) + sentReplies
+            replies["items"] = rows.map { row -> [String: Any] in var row = row; if deleted.contains(row["id"] as! String) { row["state"] = "deleted_self" }; return row }
+            data["replies"] = replies; data["comment"] = ["replies_count": replyCount]; root["data"] = data
+            return HTTPResult(status: 200, body: try JSONSerialization.data(withJSONObject: root))
+        }
+        else if path.contains("comments") {
+            var root = try JSONSerialization.jsonObject(with: Data(PreviewFixtures.comments.utf8)) as! [String: Any]
+            var data = root["data"] as! [String: Any], comments = data["comments"] as! [String: Any]
+            comments["items"] = (comments["items"] as! [[String: Any]]).map { row -> [String: Any] in
+                var row = row
+                if row["id"] as? String == "PreviewComment1" { row["num"] = ["replies": replyCount] }
+                if deleted.contains(row["id"] as! String) { row["state"] = "deleted_self" }
+                return row
+            }
+            data["comments"] = comments; root["data"] = data
+            return HTTPResult(status: 200, body: try JSONSerialization.data(withJSONObject: root))
+        }
+        else if request.url?.path.contains("feeds") == true || request.url?.path.contains("timelines") == true {
+            // This fixture has three roots and two replies. The normal visual
+            // fixture keeps its historical count; mutation tests use the total.
+            value = ProcessInfo.processInfo.arguments.contains("--ui-tests-accepted-comments")
+                ? PreviewFixtures.feed.replacingOccurrences(of: "\"comments\":3", with: "\"comments\":\(5 + sentReplies.count - deleted.count)") : PreviewFixtures.feed
+        }
         else { throw ClientError.invalidInput }
         return HTTPResult(status: 200, body: Data(value.utf8))
     }

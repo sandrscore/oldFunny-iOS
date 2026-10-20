@@ -1,3 +1,5 @@
+> Build 11 source is a candidate for comment count/read-generation/deleted-root and Refresh fixes. The verified build 10 IPA below remains the phone checkpoint. Build 11 Mac/UIKit checks are pending.
+
 # oldFunny iOS
 
 **0.3.0 build 10: verified offline viewer/gesture checkpoint.**

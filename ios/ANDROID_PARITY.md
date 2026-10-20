@@ -195,3 +195,21 @@ profiles/search/pins, reads, Explore/Activity/settings, Chats/groups and Studio
 remain required. Authentication files and signIn/refresh/call algorithms are
 unchanged; social endpoint wrappers add pre-write captured-session checks.
 Android/protected hashes match baseline. **Full parity is not complete.**
+
+### Next candidate: build 11 (source only)
+
+Read generations are separate from account generations, so a successful mutation
+refresh no longer invalidates an open picker or another draft edit. Reads pause
+while a write is unresolved; requested/account refresh resumes when it finishes.
+Confirmed reply insert/delete deltas propagate to post totals, with subsequent
+reply metadata reconciliation avoiding a second delta. Root deletion retains a
+deleted placeholder and leaves reply count unchanged; retained child roots update
+when their parent is deleted. Full hidden/abused/top/depth rules remain gaps.
+The default Refresh symbol is recreated after view loading to address the missing
+initial icon. These changes require Mac/UI verification; build 10 stays preserved.
+
+An explicit per-launch offline transport mode supplies reply/delete acknowledgments
+for a new UI test checking post totals, refresh, deleted root context and retained
+replies. It has no network transport and is absent from Release. Existing rejected
+write tests remain. 27 portable Swift tests and 6 Python checks pass locally; all
+7 UIKit tests are pending for build 11. No real social action was performed.

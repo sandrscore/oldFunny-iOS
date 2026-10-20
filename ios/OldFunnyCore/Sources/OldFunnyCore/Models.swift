@@ -85,6 +85,9 @@ public struct Comment: Sendable {
     public let smiles: Int, unsmiles: Int, isSmiled: Bool, isUnsmiled: Bool
     public var displayedScore: Int? { smiles > unsmiles ? smiles - unsmiles : (isSmiled ? 1 : nil) }
     public let rootCommentID: String?, parentCommentID: String?, depth: Int
+    public private(set) var state: String
+    public var isDeleted: Bool { state == "deleted" || state == "deleted_self" }
+    public mutating func markDeleted() { state = "deleted_self" }
     public init(_ value: JSON) throws {
         id = try Wire.requireID(value["id"].string ?? "")
         text = value["text"].string ?? ""
@@ -103,6 +106,7 @@ public struct Comment: Sendable {
         rootCommentID = value["root_comm_id"].string.flatMap { Wire.validID($0) ? $0 : nil }
         parentCommentID = value["parent_comm_id"].string.flatMap { Wire.validID($0) ? $0 : nil }
         depth = max(0, value["depth"].integer ?? 0)
+        state = value["state"].string ?? "normal"
     }
 }
 

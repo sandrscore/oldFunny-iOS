@@ -4,10 +4,11 @@ final class CommentsController: ClassicScreenController, UITableViewDataSource, 
     private let app: AppContext
     private let postID: String
     private let parentID: String?
-    private let rootComment: Comment?
+    private var rootComment: Comment?
     private let postAuthorID: String?
     var onClose: (() -> Void)?
     var onCountChange: ((Int) -> Void)?
+    private var onPostCountDelta: ((Int) -> Void)?, onRootDeleted: (() -> Void)?
     var isEmbeddedPanel = false
     private let table = UITableView(frame: .zero, style: .plain)
     private let text = ClassicTextField(), send = ClassicTheme.button(.send, label: "Send comment")
@@ -21,6 +22,7 @@ final class CommentsController: ClassicScreenController, UITableViewDataSource, 
     private var comments: [Comment] = [], nextCursor: String?, usedCursors = Set<String>()
     private var task: Task<Void, Never>?, loading = false
     private var generation = UUID()
+    private var readGeneration = UUID(), hasLoadedReplies = false, refreshWhenIdle = false
     private var dismissingKeyboardTap = false
     init(app: AppContext, postID: String, parentID: String? = nil, count: Int? = nil, postAuthorID: String? = nil, rootComment: Comment? = nil) {
         self.app = app; self.postID = postID; self.parentID = parentID; self.count = count; self.postAuthorID = postAuthorID
@@ -140,36 +142,43 @@ final class CommentsController: ClassicScreenController, UITableViewDataSource, 
             navigationController?.pushViewController(picker, animated: true)
         }
     }
-    @objc private func refresh() { load(replacing: true) }
+    @objc private func refresh() {
+        if writing || !send.isEnabled { refreshWhenIdle = true }
+        else { load(replacing: true) }
+    }
     @objc private func accountChanged() {
-        task?.cancel(); generation = UUID(); loading = false
+        task?.cancel(); generation = UUID(); readGeneration = UUID(); loading = false; hasLoadedReplies = false
         comments = []; nextCursor = nil; usedCursors = []; text.text = nil
         draft = CommentDraft(); renderAttachment(); renderRecipient(); replyThreads = [:]; replyCounts = [:]; accountID = nil
         Task { [weak self] in guard let self else { return }; accountID = await app.api.account()?.accountID }
-        table.reloadData(); load(replacing: true)
+        table.reloadData(); refresh()
     }
     private func load(replacing: Bool) {
-        guard !loading, replacing || nextCursor != nil else { return }
-        loading = true; spinner.startAnimating(); let owner = generation
+        guard !writing, send.isEnabled, !loading, replacing || nextCursor != nil else { return }
+        loading = true; spinner.startAnimating(); let owner = readGeneration
         let cursor = replacing ? nil : nextCursor
         task = Task { [weak self] in
             guard let self else { return }
             defer {
-                if owner == generation { loading = false; spinner.stopAnimating(); table.refreshControl?.endRefreshing(); task = nil }
+                if owner == readGeneration { loading = false; spinner.stopAnimating(); table.refreshControl?.endRefreshing(); task = nil }
             }
             do {
                 let page = try await app.api.comments(postID: postID, parentID: parentID, next: cursor)
-                try Task.checkCancellation(); guard owner == generation else { return }
+                try Task.checkCancellation(); guard owner == readGeneration else { return }
                 if replacing { comments = []; usedCursors = [] }
                 var ids = Set(comments.map(\.id)); comments += page.comments.filter { ids.insert($0.id).inserted }
-                if let replyCount = page.replyCount { count = replyCount; updateCount() }
+                if parentID == nil { for comment in comments where comment.isDeleted { replyThreads[comment.id]?.markRootDeleted() } }
+                if let replyCount = page.replyCount {
+                    if hasLoadedReplies, let count, replyCount != count { onPostCountDelta?(replyCount - count) }
+                    count = replyCount; hasLoadedReplies = true; updateCount()
+                }
                 if let candidate = page.paging.next, usedCursors.insert(candidate).inserted { nextCursor = candidate } else { nextCursor = nil }
                 table.reloadData()
                 if comments.isEmpty {
                     let empty = UILabel(); empty.text = parentID == nil ? "No comments yet." : "No replies yet."; empty.textColor = .lightGray; empty.textAlignment = .center
                     table.backgroundView = empty
                 } else { table.backgroundView = nil }
-            } catch { if owner == generation { showError(error) } }
+            } catch { if owner == readGeneration { showError(error) } }
         }
     }
     private var showsRoot: Bool { parentID != nil && rootComment != nil }
@@ -179,7 +188,7 @@ final class CommentsController: ClassicScreenController, UITableViewDataSource, 
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         let comment = comment(at: indexPath)
         let cell = table.dequeueReusableCell(withIdentifier: "comment", for: indexPath) as! ClassicCommentCell
-        cell.bind(comment, loader: app.media, replyCount: replyCounts[comment.id])
+        cell.bind(comment, loader: app.media, replyCount: showsRoot && indexPath.section == 0 ? count : replyCounts[comment.id])
         cell.setActionsEnabled(!writing && send.isEnabled)
         cell.onSmile = { [weak self] in
             guard let self, !consumeEditingTap() else { return }; commentAction(comment, kind: "smile")
@@ -207,18 +216,28 @@ final class CommentsController: ClassicScreenController, UITableViewDataSource, 
         reply(to: comment(at: indexPath))
     }
     private func reply(to comment: Comment) {
-        if parentID != nil { selectRecipient(comment); return }
+        if parentID != nil { if !comment.isDeleted { selectRecipient(comment) }; return }
         let child: CommentsController
         if let cached = replyThreads[comment.id] { child = cached }
         else {
             child = CommentsController(app: app, postID: postID, parentID: comment.id, count: replyCounts[comment.id] ?? comment.replies, postAuthorID: postAuthorID, rootComment: comment)
             child.onCountChange = { [weak self] count in self?.replyCounts[comment.id] = count; self?.table.reloadData() }
+            child.onPostCountDelta = { [weak self] delta in self?.applyPostCountDelta(delta) }
+            child.onRootDeleted = { [weak self] in
+                guard let self else { return }
+                if let index = comments.firstIndex(where: { $0.id == comment.id }) { comments[index].markDeleted() }
+                applyPostCountDelta(-1); table.reloadData()
+            }
             replyThreads[comment.id] = child
         }
         navigationController?.pushViewController(child, animated: true)
     }
+    private func markRootDeleted() {
+        rootComment?.markDeleted(); if isViewLoaded { table.reloadData() }
+    }
     func tableView(_ tableView: UITableView, contextMenuConfigurationForRowAt indexPath: IndexPath, point: CGPoint) -> UIContextMenuConfiguration? {
         let comment = comment(at: indexPath)
+        guard !comment.isDeleted else { return nil }
         return UIContextMenuConfiguration(identifier: nil, previewProvider: nil) { [weak self] _ in
             guard let self else { return nil }
             var actions = [UIAction(title: "Copy text", image: UIImage(systemName: "doc.on.doc")) { _ in UIPasteboard.general.string = comment.text }]
@@ -243,9 +262,10 @@ final class CommentsController: ClassicScreenController, UITableViewDataSource, 
         present(alert, animated: true)
     }
     private func commentAction(_ comment: Comment, kind: String) {
-        guard !writing, send.isEnabled else { return }; writing = true; setRowActionsEnabled(false); let owner = generation
+        guard !comment.isDeleted, !writing, send.isEnabled else { return }; writing = true; pauseReads(); setRowActionsEnabled(false); let owner = generation
         Task { [weak self] in
-            guard let self else { return }; defer { writing = false; setRowActionsEnabled(send.isEnabled) }
+            guard let self else { return }; var refresh = false
+            defer { writing = false; setRowActionsEnabled(send.isEnabled); if refresh || refreshWhenIdle { refreshWhenIdle = false; refreshAfterMutation() } }
             let session = await app.api.sessionEpoch()
             guard await app.api.account() != nil else { app.signIn(from: self); return }
             guard owner == generation else { return }
@@ -259,15 +279,33 @@ final class CommentsController: ClassicScreenController, UITableViewDataSource, 
                 }
                 guard owner == generation else { return }
                 if kind == "delete" {
-                    comments.removeAll { $0.id == comment.id }; table.reloadData()
-                    if let count { self.count = max(0, count - 1); updateCount() }
+                    if comment.id == parentID {
+                        markRootDeleted(); onRootDeleted?()
+                    } else {
+                        if parentID != nil || comment.replies > 0 {
+                            if let index = comments.firstIndex(where: { $0.id == comment.id }) { comments[index].markDeleted() }
+                        } else { comments.removeAll { $0.id == comment.id } }
+                        if let count { self.count = max(0, count - 1); updateCount() }
+                        if parentID != nil { onPostCountDelta?(-1) }
+                        else { replyThreads[comment.id]?.markRootDeleted() }
+                    }
+                    table.reloadData()
                 }
-                refreshAfterMutation()
+                refresh = true
             } catch { if owner == generation { showError(error) } }
         }
     }
     private func refreshAfterMutation() {
-        task?.cancel(); generation = UUID(); loading = false; load(replacing: true)
+        pauseReads(); load(replacing: true)
+    }
+    private func pauseReads() {
+        task?.cancel(); readGeneration = UUID(); loading = false
+        spinner.stopAnimating(); table.refreshControl?.endRefreshing()
+    }
+    private func applyPostCountDelta(_ delta: Int) {
+        if parentID == nil {
+            if let count { self.count = max(0, count + delta); updateCount() }
+        } else { onPostCountDelta?(delta) }
     }
     private func updateCount() {
         let kind = parentID == nil ? "comments" : "replies"
@@ -279,10 +317,11 @@ final class CommentsController: ClassicScreenController, UITableViewDataSource, 
         guard send.isEnabled, !writing else { return }
         draft.edit(text.text ?? ""); let snapshot = draft, owner = generation
         guard snapshot.canSend else { showError(ClientError.invalidInput); return }
-        send.isEnabled = false; setRowActionsEnabled(false)
+        send.isEnabled = false; pauseReads(); setRowActionsEnabled(false)
         Task { [weak self] in
             guard let self else { return }
-            defer { send.isEnabled = true; setRowActionsEnabled(!writing) }
+            var refresh = false
+            defer { send.isEnabled = true; setRowActionsEnabled(!writing); if refresh || refreshWhenIdle { refreshWhenIdle = false; refreshAfterMutation() } }
             let session = await app.api.sessionEpoch()
             guard await app.api.account() != nil else { app.signIn(from: self); return }
             guard owner == generation else { return }
@@ -291,8 +330,9 @@ final class CommentsController: ClassicScreenController, UITableViewDataSource, 
                 guard owner == generation else { return }
                 draft.clear(ifRevision: snapshot.revision); text.text = draft.text; renderAttachment(); renderRecipient()
                 if let count { self.count = count + 1; updateCount() }
+                if parentID != nil { onPostCountDelta?(1) }
                 view.endEditing(true)
-                refreshAfterMutation()
+                refresh = true
             } catch {
                 guard owner == generation else { return }
                 // A network failure may follow server acceptance. Keep the draft

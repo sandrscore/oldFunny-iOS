@@ -1,3 +1,5 @@
+> Build 11 source adds count/read-generation/deleted-root and Refresh corrections; uncompiled. The verified checkpoint described below is build 10.
+
 # Native iOS port status
 
 Target: iPhone 16 / user-reported iOS 27.0.1. Bundle: `mobi.oldfunny.ios`.
