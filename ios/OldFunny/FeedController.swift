@@ -74,8 +74,8 @@ final class FeedController: UIViewController, UIPageViewControllerDataSource, UI
             menu.addAction(UIAlertAction(title: "Remove account from oldFunny", style: .destructive) { [weak self] _ in
                 guard let self else { return }
                 Task {
-                    do { try await app.api.forgetSession(); resetAndLoad() }
-                    catch { showError(error) }
+                    do { try await self.app.api.forgetSession(); self.resetAndLoad() }
+                    catch { self.showError(error) }
                 }
             })
             menu.addAction(UIAlertAction(title: "Cancel", style: .cancel))

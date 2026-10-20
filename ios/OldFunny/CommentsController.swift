@@ -7,7 +7,7 @@ final class CommentsController: UIViewController, UITableViewDataSource, UITable
     private let table = UITableView(frame: .zero, style: .plain)
     private let text = UITextField(), send = UIButton(type: .system)
     private let spinner = UIActivityIndicatorView(style: .medium)
-    private var comments: [Comment] = [], next: String?, usedCursors = Set<String>()
+    private var comments: [Comment] = [], nextCursor: String?, usedCursors = Set<String>()
     private var task: Task<Void, Never>?, loading = false
     private var generation = UUID()
     init(app: AppContext, postID: String, parentID: String? = nil) {
@@ -45,13 +45,13 @@ final class CommentsController: UIViewController, UITableViewDataSource, UITable
     @objc private func refresh() { load(replacing: true) }
     @objc private func accountChanged() {
         task?.cancel(); generation = UUID(); loading = false
-        comments = []; next = nil; usedCursors = []; text.text = nil
+        comments = []; nextCursor = nil; usedCursors = []; text.text = nil
         table.reloadData(); load(replacing: true)
     }
     private func load(replacing: Bool) {
-        guard !loading, replacing || next != nil else { return }
+        guard !loading, replacing || nextCursor != nil else { return }
         loading = true; spinner.startAnimating(); let owner = generation
-        let cursor = replacing ? nil : next
+        let cursor = replacing ? nil : nextCursor
         task = Task { [weak self] in
             guard let self else { return }
             defer {
@@ -62,7 +62,7 @@ final class CommentsController: UIViewController, UITableViewDataSource, UITable
                 try Task.checkCancellation(); guard owner == generation else { return }
                 if replacing { comments = []; usedCursors = [] }
                 var ids = Set(comments.map(\.id)); comments += page.comments.filter { ids.insert($0.id).inserted }
-                if let candidate = page.paging.next, usedCursors.insert(candidate).inserted { next = candidate } else { next = nil }
+                if let candidate = page.paging.next, usedCursors.insert(candidate).inserted { nextCursor = candidate } else { nextCursor = nil }
                 table.reloadData()
                 if comments.isEmpty {
                     let empty = UILabel(); empty.text = "No comments yet."; empty.textColor = .lightGray; empty.textAlignment = .center
