@@ -4,7 +4,20 @@ New Swift/UIKit implementation of oldFunny, targeting ARM64 and iOS 16 or later.
 The intended test device is iPhone 16 / iOS 27.0.1. This is a source port, not
 a converted APK or a modification of iFunny's encrypted executable.
 
-**0.1.2 (build 3) CAPTCHA handoff fix prepared; phone verification pending.**
+**0.1.2 (build 3) CAPTCHA handoff fix built; phone verification pending.**
+
+[Download the 0.1.2 IPA artifact ZIP](https://github.com/sandrscore/oldFunny-iOS/actions/runs/39482055586/artifacts/12291623017)
+(extract the IPA, then sign/update through Zeus; expires October 27, 2026).
+[The Mac build](https://github.com/sandrscore/oldFunny-iOS/actions/runs/39482055586)
+compiled successfully with all 17 core tests passing. Downloaded ZIP and IPA
+hashes matched CI; independent inspection confirmed ARM64 and `cryptid=0`.
+IPA SHA-256: `ffcb8e706e927e15cba3310fbe7d0c3753f5cbffe8cb20cd63acf31405b6ac8b`.
+
+On the phone: enter credentials in oldFunny, complete the CAPTCHA in its new
+verification view, and let its completion return to sign-in. The app resumes
+once; repeated verification or failure stops for a fresh sign-in attempt.
+No real CAPTCHA completion or authenticated session issuance has been tested
+by the agent. Source tests do not establish that live behavior.
 
 The user confirmed Featured loads in 0.1.1, but completing its browser CAPTCHA
 opens the official iFunny app. The new flow uses an isolated in-app WebKit view,
