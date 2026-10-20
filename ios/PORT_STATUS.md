@@ -22,7 +22,7 @@ installation, sign-in and features still need validation.
 | Reactions/share | Explicit smile toggle and public-link share sheet | No live social writes; device checks pending; unsmile/repub features pending |
 | Read tracking | Bounded read-acknowledgement API method | Exposure timers, durable per-account read queues/filtering and subscription badges not connected yet |
 | Classic appearance | Dark/yellow chrome, staged original icons and approved Android launcher | Partial styling; original full screen layouts not recreated or visually verified |
-| Build/signing | Generated Xcode project, Mac build script, unsigned IPA packaging/inspection, public-repo CI | Local script tests; Xcode 16.4 build and 13 Mac core tests passed; downloaded IPA hashes and ARM64/cryptid=0 verified; Zeus install pending |
+| Build/signing | Generated Xcode project, Mac build script, unsigned IPA packaging/inspection, public-repo CI | Local script tests; 0.1.1 Mac build and 15 core tests passed; downloaded IPA hashes and ARM64/cryptid=0 verified; Zeus update test pending |
 | Studio/publishing | Not implemented yet | Caption/comics/GIF/video editing, drafts, uploads/task polling and publishing need native implementations |
 | Chats/groups | Not implemented yet | REST/WAMP state machine, attachments, groups/discovery/drafts/read receipts pending |
 | Notifications | Not implemented yet | APNs requires independent signing/entitlement/server registration; sockets do not establish background push parity |

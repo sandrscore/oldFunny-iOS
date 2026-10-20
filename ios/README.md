@@ -4,7 +4,17 @@ New Swift/UIKit implementation of oldFunny, targeting ARM64 and iOS 16 or later.
 The intended test device is iPhone 16 / iOS 27.0.1. This is a source port, not
 a converted APK or a modification of iFunny's encrypted executable.
 
-**0.1.1 connection fix prepared; updated iPhone testing pending.**
+**0.1.1 (build 2) connection fix built; updated iPhone testing pending.**
+
+[Download the corrected 0.1.1 artifact ZIP](https://github.com/sandrscore/oldFunny-iOS/actions/runs/39480215788/artifacts/12291750634)
+(extract its IPA and sign/update through Zeus; expires October 27, 2026).
+
+[The Mac build](https://github.com/sandrscore/oldFunny-iOS/actions/runs/39480215788)
+passed all 15 core tests and compiled the ARM64 app. Downloaded ZIP and IPA
+hashes were independently verified. IPA SHA-256:
+`edcba53064e941590e4d724f86dbe3c41828a8a8cc8051efb147a5c5b269c0e3`.
+The executable reports `cryptid=0`.
+
 Version 0.1.0 installed and launched on the target phone, but all server requests
 failed. Controlled checks reproduced server disconnects for its legacy User-Agent.
 The modern iOS request profile returned HTTP 200 for Featured and app/features;
