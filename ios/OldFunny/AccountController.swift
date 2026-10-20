@@ -7,7 +7,7 @@ final class AccountController: ClassicScreenController {
     init(app: AppContext, account: Credential?) { self.app = app; self.account = account; super.init(nibName: nil, bundle: nil) }
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
     override func viewDidLoad() {
-        super.viewDidLoad(); classicBar.setTitle("Account"); classicBar.trailing.isHidden = true
+        super.viewDidLoad(); classicBar.setTitle("Account"); classicBar.trailing.alpha = 0; classicBar.trailing.isEnabled = false
         name.font = ClassicTheme.font(23); name.textColor = .white; name.numberOfLines = 0
         action.titleLabel?.font = ClassicTheme.font(17); action.setTitleColor(ClassicTheme.yellow, for: .normal)
         action.contentHorizontalAlignment = .leading; action.addTarget(self, action: #selector(tapped), for: .touchUpInside)

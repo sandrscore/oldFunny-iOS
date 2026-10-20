@@ -29,6 +29,9 @@ def main():
                    "SWIFT_ACTIVE_COMPILATION_CONDITIONS=DEBUG CLASSIC_UI_PREVIEW", "build"]
         with (output / "build.log").open("w") as log:
             subprocess.run(command, stdout=log, stderr=subprocess.STDOUT, check=True, timeout=600)
+        app = work / "Build/Products/Debug-iphonesimulator/OldFunny.app"
+        if b"preview.invalid" not in (app / "OldFunny").read_bytes():
+            raise RuntimeError("Refusing to launch a simulator preview without its offline fixture configuration")
         runtimes = json.loads(run("xcrun", "simctl", "list", "runtimes", "--json"))["runtimes"]
         sdk = tuple(int(n) for n in run("xcrun", "--sdk", "iphonesimulator", "--show-sdk-version").strip().split("."))
         choices = [r for r in runtimes if r.get("isAvailable") and ".iOS-" in r["identifier"]
@@ -42,7 +45,6 @@ def main():
         run("xcrun", "simctl", "boot", device)
         run("xcrun", "simctl", "bootstatus", device, "-b", timeout=300)
         run("xcrun", "simctl", "status_bar", device, "override", "--time", "9:41", "--dataNetwork", "wifi", "--wifiMode", "active", "--wifiBars", "3", "--batteryState", "charged", "--batteryLevel", "100")
-        app = work / "Build/Products/Debug-iphonesimulator/OldFunny.app"
         run("xcrun", "simctl", "install", device, str(app))
         report.update(simulator_device=kind["name"], simulator_ios=runtime["version"])
         for name, args in [("feed", []), ("sidebar", ["--preview-sidebar"]), ("comments", ["--preview-comments"])]:

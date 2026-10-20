@@ -24,13 +24,21 @@ enum ClassicTheme {
         UIBarButtonItem.appearance().tintColor = .white
     }
     static func image(_ name: String, fallback: String) -> UIImage? {
-        UIImage(named: name)?.withRenderingMode(.alwaysTemplate) ?? UIImage(systemName: fallback)
+        // These recovered catalog renditions are fully transparent placeholders.
+        // Use native vector equivalents while preserving the reviewed PNGs.
+        switch name {
+        case "smile": return ClassicGlyph.smile.image
+        case "comments": return ClassicGlyph.comment.image
+        case "subscribe": return ClassicGlyph.subscription.image
+        default: break
+        }
+        return UIImage(named: name)?.withRenderingMode(.alwaysTemplate) ?? UIImage(systemName: fallback)
     }
     static func button(_ glyph: ClassicGlyph, label: String) -> UIButton {
         let button = UIButton(type: .custom)
         button.setImage(glyph.image, for: .normal); button.tintColor = .white
         button.accessibilityLabel = label
-        let width = button.widthAnchor.constraint(equalToConstant: 44); width.priority = .defaultHigh; width.isActive = true
+        button.widthAnchor.constraint(equalToConstant: 44).isActive = true
         button.heightAnchor.constraint(equalToConstant: 44).isActive = true
         return button
     }

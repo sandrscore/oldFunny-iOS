@@ -28,7 +28,8 @@ final class CommentsController: ClassicScreenController, UITableViewDataSource, 
         table.keyboardDismissMode = .interactive
         let refreshControl = UIRefreshControl(); refreshControl.addTarget(self, action: #selector(refresh), for: .valueChanged); table.refreshControl = refreshControl
         spinner.hidesWhenStopped = true; table.tableFooterView = spinner
-        text.placeholder = "Say something funny…"; text.borderStyle = .none; text.textColor = UIColor(white: 0.25, alpha: 1)
+        text.attributedPlaceholder = NSAttributedString(string: "Say something funny…", attributes: [.foregroundColor: UIColor(white: 0.58, alpha: 1)])
+        text.borderStyle = .none; text.textColor = UIColor(white: 0.25, alpha: 1)
         text.font = ClassicTheme.font(15); text.layer.cornerRadius = 5
         text.backgroundColor = UIColor(white: 0.90, alpha: 1); text.delegate = self; text.returnKeyType = .send
         send.tintColor = ClassicTheme.muted

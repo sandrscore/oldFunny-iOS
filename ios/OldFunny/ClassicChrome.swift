@@ -4,9 +4,9 @@ import UIKit
 /// current iOS button style. Only the already-reviewed recovered icons are used.
 @MainActor
 enum ClassicGlyph {
-    case menu, back, refresh, share, profile, account, send, chevron
+    case menu, back, refresh, share, profile, account, send, chevron, smile, comment, subscription
     var image: UIImage {
-        UIGraphicsImageRenderer(size: CGSize(width: 24, height: 24)).image { _ in
+        UIGraphicsImageRenderer(size: CGSize(width: 24, height: 24)).image { context in
             UIColor.white.setStroke(); UIColor.white.setFill()
             let path = UIBezierPath(); path.lineWidth = 2; path.lineCapStyle = .round; path.lineJoinStyle = .round
             func line(_ a: CGPoint, _ b: CGPoint) { path.move(to: a); path.addLine(to: b) }
@@ -35,6 +35,26 @@ enum ClassicGlyph {
                 line(CGPoint(x: 14, y: 5), CGPoint(x: 21, y: 12)); path.addLine(to: CGPoint(x: 14, y: 19))
             case .chevron:
                 path.move(to: CGPoint(x: 8, y: 5)); path.addLine(to: CGPoint(x: 15, y: 12)); path.addLine(to: CGPoint(x: 8, y: 19))
+            case .smile:
+                UIBezierPath(ovalIn: CGRect(x: 2, y: 2, width: 20, height: 20)).fill()
+                context.cgContext.saveGState(); context.cgContext.setBlendMode(.clear)
+                for x in [8, 15] { UIBezierPath(ovalIn: CGRect(x: CGFloat(x) - 1, y: 7, width: 2, height: 3)).fill() }
+                let mouth = UIBezierPath(); mouth.lineWidth = 1.5
+                mouth.addArc(withCenter: CGPoint(x: 12, y: 12), radius: 5, startAngle: 0.2, endAngle: .pi - 0.2, clockwise: true); mouth.stroke()
+                context.cgContext.restoreGState()
+            case .comment:
+                UIBezierPath(roundedRect: CGRect(x: 2, y: 3, width: 20, height: 16), cornerRadius: 7).fill()
+                let tail = UIBezierPath(); tail.move(to: CGPoint(x: 6, y: 16)); tail.addLine(to: CGPoint(x: 4, y: 23)); tail.addLine(to: CGPoint(x: 13, y: 17)); tail.close(); tail.fill()
+                context.cgContext.saveGState(); context.cgContext.setBlendMode(.clear)
+                let marks = UIBezierPath(); marks.lineWidth = 1.3
+                marks.move(to: CGPoint(x: 7, y: 9)); marks.addLine(to: CGPoint(x: 17, y: 9)); marks.move(to: CGPoint(x: 7, y: 13)); marks.addLine(to: CGPoint(x: 13, y: 13)); marks.stroke()
+                context.cgContext.restoreGState()
+            case .subscription:
+                UIBezierPath(roundedRect: CGRect(x: 2, y: 3, width: 20, height: 18), cornerRadius: 5).fill()
+                context.cgContext.saveGState(); context.cgContext.setBlendMode(.clear)
+                let check = UIBezierPath(); check.lineWidth = 2.2; check.lineCapStyle = .round; check.lineJoinStyle = .round
+                check.move(to: CGPoint(x: 7, y: 12)); check.addLine(to: CGPoint(x: 11, y: 16)); check.addLine(to: CGPoint(x: 17, y: 8)); check.stroke()
+                context.cgContext.restoreGState()
             }
             path.stroke()
         }.withRenderingMode(.alwaysTemplate)
@@ -115,6 +135,7 @@ final class RemoteAvatarView: UIImageView {
 
 final class AuthorHeader: UIControl {
     private let avatar = RemoteAvatarView()
+    private var avatarWidth: NSLayoutConstraint!
     private let name = UILabel(), detail = UILabel()
     var action: (() -> Void)?
     override init(frame: CGRect = .zero) {
@@ -124,7 +145,7 @@ final class AuthorHeader: UIControl {
         let names = UIStackView(arrangedSubviews: [name, detail]); names.axis = .vertical; names.spacing = 1
         let row = UIStackView(arrangedSubviews: [avatar, names]); row.spacing = 8; row.alignment = .center
         row.isUserInteractionEnabled = false; row.translatesAutoresizingMaskIntoConstraints = false; addSubview(row)
-        let avatarWidth = avatar.widthAnchor.constraint(equalToConstant: 30); avatarWidth.priority = .defaultHigh
+        avatarWidth = avatar.widthAnchor.constraint(equalToConstant: 30)
         NSLayoutConstraint.activate([
             row.leadingAnchor.constraint(equalTo: leadingAnchor), row.trailingAnchor.constraint(equalTo: trailingAnchor),
             row.topAnchor.constraint(equalTo: topAnchor), row.bottomAnchor.constraint(equalTo: bottomAnchor),
@@ -136,6 +157,7 @@ final class AuthorHeader: UIControl {
     @objc private func tapped() { action?() }
     func update(post: Post?, section: String, loader: MediaLoader) {
         name.text = post?.author ?? section; detail.text = section; detail.isHidden = post == nil
+        avatarWidth.constant = post == nil ? 0 : 30
         avatar.isHidden = post == nil; avatar.set(post?.authorAvatarURL, loader: loader)
         isEnabled = post?.authorID != nil; accessibilityLabel = post.map { "\($0.author), \(section), open profile" } ?? section
     }

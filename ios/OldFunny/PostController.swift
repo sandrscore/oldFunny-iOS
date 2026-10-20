@@ -59,7 +59,7 @@ final class PostController: UIViewController, UIScrollViewDelegate {
         ])
         zoom.delegate = self; zoom.minimumZoomScale = 1; zoom.maximumZoomScale = 6
         zoom.backgroundColor = .black; zoom.showsVerticalScrollIndicator = false; zoom.showsHorizontalScrollIndicator = false
-        image.contentMode = .scaleAspectFit; zoom.addSubview(image)
+        image.contentMode = .scaleAspectFit; image.autoresizingMask = [.flexibleWidth, .flexibleHeight]; zoom.addSubview(image)
         media.addSubview(zoom); zoom.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([zoom.topAnchor.constraint(equalTo: media.topAnchor), zoom.bottomAnchor.constraint(equalTo: media.bottomAnchor), zoom.leadingAnchor.constraint(equalTo: media.leadingAnchor), zoom.trailingAnchor.constraint(equalTo: media.trailingAnchor)])
         smile.icon = ClassicTheme.image("smile", fallback: "face.smiling")
