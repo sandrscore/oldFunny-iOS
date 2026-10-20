@@ -67,11 +67,13 @@ final class AppContext {
     #endif
     deinit { soundObservers.forEach { NotificationCenter.default.removeObserver($0) } }
     private func observeSoundLifecycle() {
-        soundObservers.append(NotificationCenter.default.addObserver(forName: UIApplication.didEnterBackgroundNotification, object: nil, queue: .main) { [weak self] _ in self?.inactiveSince = Date() })
+        soundObservers.append(NotificationCenter.default.addObserver(forName: UIApplication.didEnterBackgroundNotification, object: nil, queue: .main) { [weak self] _ in Task { @MainActor [weak self] in self?.inactiveSince = Date() } })
         soundObservers.append(NotificationCenter.default.addObserver(forName: UIApplication.willEnterForegroundNotification, object: nil, queue: .main) { [weak self] _ in
-            guard let self else { return }
-            if let inactiveSince, Date().timeIntervalSince(inactiveSince) > 600 { videoSoundOn = false }
-            inactiveSince = nil
+            Task { @MainActor [weak self] in
+                guard let self else { return }
+                if let inactiveSince = self.inactiveSince, Date().timeIntervalSince(inactiveSince) > 600 { self.videoSoundOn = false }
+                self.inactiveSince = nil
+            }
         })
     }
     func signIn(from controller: UIViewController, completion: (() -> Void)? = nil) {

@@ -1,4 +1,4 @@
-> Build 12 is a media candidate under verification. The verified build 11 below remains the fallback; its evidence does not cover the new player.
+> Build 13 is a media candidate under verification. The verified build 11 below remains the fallback; its evidence does not cover the new player.
 
 # oldFunny iOS
 

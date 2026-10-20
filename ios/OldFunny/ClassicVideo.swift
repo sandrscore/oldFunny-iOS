@@ -48,22 +48,24 @@ final class ClassicVideo: NSObject {
         scrubber.move = { [weak self] fraction in self?.requestSeek(fraction) }
         scrubber.release = { [weak self] in self?.releaseSeek() }
         timeObserver = player.addPeriodicTimeObserver(forInterval: CMTime(value: 1, timescale: 10), queue: .main) { [weak self] _ in
-            self?.refresh()
+            Task { @MainActor [weak self] in self?.refresh() }
         }
         endObserver = NotificationCenter.default.addObserver(forName: .AVPlayerItemDidPlayToEndTime, object: item, queue: .main) { [weak self] _ in
-            guard let self else { return }
-            execute(seeks.restart(current: current, ready: ready, manuallyPaused: manuallyPaused))
+            Task { @MainActor [weak self] in
+                guard let self else { return }
+                self.execute(self.seeks.restart(current: self.current, ready: self.ready, manuallyPaused: self.manuallyPaused))
+            }
         }
         for name in [UIApplication.willResignActiveNotification, UIApplication.didEnterBackgroundNotification] {
-            lifecycleObservers.append(NotificationCenter.default.addObserver(forName: name, object: nil, queue: .main) { [weak self] _ in self?.suspend() })
+            lifecycleObservers.append(NotificationCenter.default.addObserver(forName: name, object: nil, queue: .main) { [weak self] _ in Task { @MainActor [weak self] in self?.suspend() } })
         }
-        lifecycleObservers.append(NotificationCenter.default.addObserver(forName: UIApplication.didBecomeActiveNotification, object: nil, queue: .main) { [weak self] _ in self?.refresh() })
+        lifecycleObservers.append(NotificationCenter.default.addObserver(forName: UIApplication.didBecomeActiveNotification, object: nil, queue: .main) { [weak self] _ in Task { @MainActor [weak self] in self?.refresh() } })
         audioTask = Task { [weak self, item] in
             let tracks = try? await item.asset.loadTracks(withMediaType: .audio)
             guard !Task.isCancelled, let self else { return }
             hasAudio = tracks?.isEmpty == false; refresh()
         }
-        timer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [weak self] _ in self?.refresh() }
+        timer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [weak self] _ in Task { @MainActor [weak self] in self?.refresh() } }
     }
     deinit {
         timer?.invalidate(); audioTask?.cancel(); player.pause()
@@ -134,10 +136,10 @@ final class ClassicVideo: NSObject {
             case .play: if current && ready && !manuallyPaused && !seeks.blocksStart { player.play() }
             case .seek(let request):
                 player.seek(to: CMTime(value: request.milliseconds, timescale: 1000), toleranceBefore: .zero, toleranceAfter: .zero) { [weak self] finished in
-                    DispatchQueue.main.async {
+                    Task { @MainActor [weak self] in
                         guard let self else { return }
-                        execute(seeks.completed(request.id, finished: finished, current: current, ready: ready, manuallyPaused: manuallyPaused))
-                        refreshControls()
+                        self.execute(self.seeks.completed(request.id, finished: finished, current: self.current, ready: self.ready, manuallyPaused: self.manuallyPaused))
+                        self.refreshControls()
                     }
                 }
             }

@@ -4,7 +4,7 @@
   "product": "oldFunny",
   "bundle_identifier": "mobi.oldfunny.ios",
   "version": "0.3.0",
-  "build": "12",
+  "build": "13",
   "minimum_ios": "16.0",
   "target": {
     "device": "iPhone 16",
@@ -39,7 +39,7 @@
     "captcha_handoff": true,
     "session_survives_relaunch": "unverified"
   },
-  "ui_phase": "Candidate 12: inherited custom video player, seek queue, zoom/play/mute and Android downvote context; not yet Mac/UI verified",
+  "ui_phase": "Candidate 13: inherited custom video player, seek queue, zoom/play/mute and Android downvote context; not yet Mac/UI verified",
   "simulator_previews": "Offline fixtures compiled only with CLASSIC_UI_PREVIEW; absent from Release",
   "simulator_ui": {
     "device": "iPhone 16",
