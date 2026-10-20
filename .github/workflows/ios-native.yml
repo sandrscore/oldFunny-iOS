@@ -7,6 +7,7 @@ on:
       - 'ios/**'
       - 'tools/ios_native_project.py'
       - 'tools/build_ios_native.py'
+      - 'tools/preview_ios_native.py'
       - 'tools/render_ios_icon.swift'
       - 'tools/inspect_ipa.py'
       - '.github/workflows/ios-native.yml'
@@ -40,5 +41,20 @@ jobs:
             .ios-work/ios-port/dist/*.inspection.json
             .ios-work/ios-port/dist/*.sha256
           if-no-files-found: error
+          retention-days: 7
+          include-hidden-files: true
+      - name: Render classic UIKit previews with offline fixtures
+        continue-on-error: true
+        run: python3 tools/preview_ios_native.py
+      - name: Retain simulator previews
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: oldFunny-ios-ui-previews
+          path: |
+            .ios-work/ios-port/ui-previews/*.png
+            .ios-work/ios-port/ui-previews/*.json
+            .ios-work/ios-port/ui-previews/*.log
+          if-no-files-found: warn
           retention-days: 7
           include-hidden-files: true

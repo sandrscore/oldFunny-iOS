@@ -146,6 +146,15 @@ final class CoreTests: XCTestCase {
         XCTAssertNotNil(comment.attachments[0].posterURL)
         XCTAssertEqual(comment.author, "Fixture")
     }
+    func testClassicHeadersAndCommentsDecodeBothAvatarSchemasSafely() throws {
+        let post = try Post(JSON.decode(Data(#"{"id":"Post1","creator":{"id":"Author1","avatar":{"s":"http://unsafe.invalid/a","m":"https://media.invalid/avatar"}}}"#.utf8)))
+        XCTAssertEqual(post.authorAvatarURL?.absoluteString, "https://media.invalid/avatar")
+        let comment = try Comment(JSON.decode(Data(#"{"id":"Comment1","date":1792418400,"user":{"id":"User1","nick":"Fixture","photo":{"thumb":{"small_url":"https://media.invalid/small"}}}}"#.utf8)))
+        XCTAssertEqual(comment.authorID, "User1"); XCTAssertEqual(comment.authorAvatarURL?.absoluteString, "https://media.invalid/small")
+        XCTAssertEqual(comment.date?.timeIntervalSince1970, 1792418400)
+        let invalid = try Comment(JSON.decode(Data(#"{"id":"Comment2","date":-10,"user":{"id":"../account","avatar":{"url":"file:///private/fixture"}}}"#.utf8)))
+        XCTAssertNil(invalid.authorID); XCTAssertNil(invalid.authorAvatarURL); XCTAssertNil(invalid.date)
+    }
     func testSignInCommitsOnlyAfterAccountLookupAndDoesNotStorePassword() async throws {
         let transport = ScriptedTransport([
             reply(#"{"status":200,"data":{}}"#),

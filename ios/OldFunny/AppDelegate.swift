@@ -20,8 +20,19 @@ final class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         guard let scene = scene as? UIWindowScene else { return }
         let window = UIWindow(windowScene: scene)
         do {
+            #if CLASSIC_UI_PREVIEW
+            let app = try PreviewFixtures.makeApp()
+            #else
             let app = try AppContext()
-            window.rootViewController = UINavigationController(rootViewController: FeedController(app: app, feed: .featured))
+            #endif
+            let feed = FeedController(app: app, feed: .featured)
+            let navigation = ClassicNavigationController(rootViewController: feed)
+            #if CLASSIC_UI_PREVIEW
+            if ProcessInfo.processInfo.arguments.contains("--preview-comments") {
+                navigation.setViewControllers([feed, CommentsController(app: app, postID: "PreviewPost", count: 3)], animated: false)
+            }
+            #endif
+            window.rootViewController = navigation
         } catch {
             let controller = UIViewController()
             controller.view.backgroundColor = .systemBackground
@@ -51,6 +62,9 @@ final class AppContext {
             userAgent: Wire.apiUserAgent(systemVersion: UIDevice.current.systemVersion, model: UIDevice.current.model),
             store: KeychainStore())
     }
+    #if CLASSIC_UI_PREVIEW
+    init(previewAPI: APIClient) { api = previewAPI }
+    #endif
     func signIn(from controller: UIViewController, completion: (() -> Void)? = nil) {
         let login = LoginController(app: self) { [weak self] in
             self?.onAccountChange?()

@@ -4,7 +4,22 @@ New Swift/UIKit implementation of oldFunny, targeting ARM64 and iOS 16 or later.
 The intended test device is iPhone 16 / iOS 27.0.1. This is a source port, not
 a converted APK or a modification of iFunny's encrypted executable.
 
-**0.1.2 (build 3) CAPTCHA handoff fix built; phone verification pending.**
+**0.2.0 (build 4): classic interface pass in progress.**
+
+The user confirmed successful native password sign-in and CAPTCHA completion in
+0.1.2 on the target iPhone. This pass preserves that authentication implementation
+and replaces the prototype's main screens with a flat charcoal author bar, a dark
+sidebar, full-width media and compact classic controls. Comments gain blue author
+names, avatars, dates and inline attachment previews. The sidebar exposes working
+Featured, Subscriptions, Profile and Account destinations. Collective, Explore,
+Chats, Studio and other parity work are still pending.
+
+The workflow also compiles a separate simulator preview using offline sample
+content. Its fixture code is behind CLASSIC_UI_PREVIEW and excluded from the
+Release IPA. Simulator screenshots are visual checks, not target-phone or live
+API verification.
+
+**Previous build: 0.1.2, sign-in and CAPTCHA confirmed by the user.**
 
 [Download the 0.1.2 IPA artifact ZIP](https://github.com/sandrscore/oldFunny-iOS/actions/runs/39482055586/artifacts/12291623017)
 (extract the IPA, then sign/update through Zeus; expires October 27, 2026).
@@ -68,9 +83,9 @@ python3 tools/build_ios_native.py
 Output after a successful build:
 
 ```text
-.ios-work/ios-port/dist/oldFunny-ios-0.1.2-unsigned.ipa
-.ios-work/ios-port/dist/oldFunny-ios-0.1.2-unsigned.inspection.json
-.ios-work/ios-port/dist/oldFunny-ios-0.1.2-unsigned.sha256
+.ios-work/ios-port/dist/oldFunny-ios-0.2.0-unsigned.ipa
+.ios-work/ios-port/dist/oldFunny-ios-0.2.0-unsigned.inspection.json
+.ios-work/ios-port/dist/oldFunny-ios-0.2.0-unsigned.sha256
 ```
 
 The build uses no Apple account, signing certificate, provisioning profile,

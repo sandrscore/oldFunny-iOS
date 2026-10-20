@@ -38,6 +38,7 @@ def package(app: Path, output: Path):
     with (app / "Info.plist").open("rb") as stream: info = plistlib.load(stream)
     executable = app / info["CFBundleExecutable"]
     if not executable.is_file(): raise ValueError("Built executable missing")
+    if b"preview.invalid" in executable.read_bytes(): raise ValueError("Offline preview fixtures must not be packaged in the Release IPA")
     if (app / "embedded.mobileprovision").exists(): raise ValueError("Expected unsigned app without account provisioning")
     output.parent.mkdir(parents=True, exist_ok=True)
     with zipfile.ZipFile(output, "w", compression=zipfile.ZIP_DEFLATED) as archive:
@@ -60,7 +61,8 @@ def package(app: Path, output: Path):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--output", type=Path, default=ROOT / ".ios-work/ios-port/dist/oldFunny-ios-0.1.2-unsigned.ipa")
+    version = plistlib.loads((IOS / "OldFunny/Info.plist").read_bytes())["CFBundleShortVersionString"]
+    parser.add_argument("--output", type=Path, default=ROOT / f".ios-work/ios-port/dist/oldFunny-ios-{version}-unsigned.ipa")
     parser.add_argument("--work", type=Path, default=ROOT / ".ios-work/ios-port/xcode")
     parser.add_argument("--bundle-id", default="mobi.oldfunny.ios")
     args = parser.parse_args()

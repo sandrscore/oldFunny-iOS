@@ -4,6 +4,7 @@ public struct Post: Equatable, Sendable {
     public let id: String
     public let type: String
     public let authorID: String?
+    public let authorAvatarURL: URL?
     public let author: String
     public let title: String
     public let body: String
@@ -23,6 +24,7 @@ public struct Post: Equatable, Sendable {
         type = value["type"].string ?? "unknown"
         let user = value["creator"]
         authorID = user["id"].string.flatMap { Wire.validID($0) ? $0 : nil }
+        authorAvatarURL = ProfileMedia.avatar(user)
         author = user["nick"].string ?? "iFunny"
         title = value["title"].string ?? ""
         body = value["description"].string ?? value["text"].string ?? ""
@@ -63,14 +65,31 @@ public struct PostPage: Sendable {
 
 public struct Comment: Sendable {
     public let id: String, text: String, author: String
+    public let authorID: String?, authorAvatarURL: URL?, date: Date?
     public let attachments: [Post]
     public let replies: Int
     public init(_ value: JSON) throws {
         id = try Wire.requireID(value["id"].string ?? "")
         text = value["text"].string ?? ""
         author = value["user"]["nick"].string ?? value["creator"]["nick"].string ?? "iFunny"
+        let user = value["user"] == .null ? value["creator"] : value["user"]
+        authorID = user["id"].string.flatMap { Wire.validID($0) ? $0 : nil }
+        authorAvatarURL = ProfileMedia.avatar(user)
+        let timestamp = value["date"].number
+        date = timestamp.flatMap { $0.isFinite && $0 > 0 && $0 < 32_503_680_000 ? Date(timeIntervalSince1970: $0) : nil }
         attachments = value["attachments"]["content"].items.compactMap { try? Post($0) }
         replies = max(0, value["num"]["replies"].integer ?? 0)
+    }
+}
+
+private enum ProfileMedia {
+    static func avatar(_ user: JSON) -> URL? {
+        Wire.https(user["avatar"]["s"].string)
+            ?? Wire.https(user["photo"]["thumb"]["small_url"].string)
+            ?? Wire.https(user["avatar"]["m"].string)
+            ?? Wire.https(user["photo"]["thumb"]["medium_url"].string)
+            ?? Wire.https(user["avatar"]["url"].string)
+            ?? Wire.https(user["photo"]["url"].string)
     }
 }
 

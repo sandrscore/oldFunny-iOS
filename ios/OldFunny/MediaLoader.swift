@@ -5,14 +5,20 @@ import ImageIO
 /// installation cookies, or durable media cache.
 actor MediaLoader {
     private let session: URLSession
+    private let cache = NSCache<NSURL, UIImage>()
     init() {
+        cache.countLimit = 48; cache.totalCostLimit = 32 * 1024 * 1024
         let config = URLSessionConfiguration.ephemeral
         config.httpShouldSetCookies = false; config.httpCookieStorage = nil; config.urlCache = nil
         config.timeoutIntervalForResource = 60
         session = URLSession(configuration: config)
     }
     func image(_ url: URL) async throws -> UIImage {
+        #if CLASSIC_UI_PREVIEW
+        if url.host == "preview.invalid" { return await PreviewFixtures.image(url) }
+        #endif
         guard url.scheme == "https" else { throw ClientError.unsupportedMedia }
+        if let image = cache.object(forKey: url as NSURL) { return image }
         let (data, response) = try await session.data(from: url)
         try Task.checkCancellation()
         guard (response as? HTTPURLResponse)?.statusCode == 200, data.count <= 30 * 1024 * 1024,
@@ -40,6 +46,8 @@ actor MediaLoader {
             }
             if !frames.isEmpty, let animated = UIImage.animatedImage(with: frames, duration: duration) { return animated }
         }
-        guard let image = frame(0) else { throw ClientError.unsupportedMedia }; return image
+        guard let image = frame(0) else { throw ClientError.unsupportedMedia }
+        cache.setObject(image, forKey: url as NSURL, cost: Int(image.size.width * image.size.height * image.scale * image.scale * 4))
+        return image
     }
 }

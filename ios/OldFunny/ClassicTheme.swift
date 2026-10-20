@@ -1,20 +1,38 @@
 import UIKit
 
+@MainActor
 enum ClassicTheme {
-    static let yellow = UIColor(red: 1, green: 0.82, blue: 0.02, alpha: 1)
-    static let background = UIColor(white: 0.12, alpha: 1)
+    static let yellow = UIColor(red: 1, green: 0.76, blue: 0.24, alpha: 1)
+    static let background = UIColor(red: 0.098, green: 0.098, blue: 0.106, alpha: 1)
+    static let bar = UIColor(red: 0.14, green: 0.14, blue: 0.15, alpha: 1)
+    static let drawer = UIColor(red: 0.20, green: 0.20, blue: 0.21, alpha: 1)
+    static let muted = UIColor(white: 0.49, alpha: 1)
+    static let text = UIColor(white: 0.86, alpha: 1)
+    static let blue = UIColor(red: 0.30, green: 0.61, blue: 0.77, alpha: 1)
+    static func font(_ size: CGFloat, bold: Bool = false) -> UIFont {
+        let face = UIFont(name: bold ? "HelveticaNeue-Medium" : "HelveticaNeue", size: size) ?? .systemFont(ofSize: size)
+        return UIFontMetrics.default.scaledFont(for: face, maximumPointSize: size * 1.35)
+    }
     static func install() {
         let appearance = UINavigationBarAppearance()
         appearance.configureWithOpaqueBackground()
-        appearance.backgroundColor = UIColor(white: 0.17, alpha: 1)
+        appearance.backgroundColor = bar
         appearance.titleTextAttributes = [.foregroundColor: UIColor.white, .font: UIFont.boldSystemFont(ofSize: 19)]
         UINavigationBar.appearance().standardAppearance = appearance
         UINavigationBar.appearance().scrollEdgeAppearance = appearance
-        UINavigationBar.appearance().tintColor = yellow
-        UIBarButtonItem.appearance().tintColor = yellow
+        UINavigationBar.appearance().tintColor = .white
+        UIBarButtonItem.appearance().tintColor = .white
     }
     static func image(_ name: String, fallback: String) -> UIImage? {
         UIImage(named: name)?.withRenderingMode(.alwaysTemplate) ?? UIImage(systemName: fallback)
+    }
+    static func button(_ glyph: ClassicGlyph, label: String) -> UIButton {
+        let button = UIButton(type: .custom)
+        button.setImage(glyph.image, for: .normal); button.tintColor = .white
+        button.accessibilityLabel = label
+        let width = button.widthAnchor.constraint(equalToConstant: 44); width.priority = .defaultHigh; width.isActive = true
+        button.heightAnchor.constraint(equalToConstant: 44).isActive = true
+        return button
     }
 }
 
