@@ -30,7 +30,10 @@ def main():
         with (output / "build.log").open("w") as log:
             subprocess.run(command, stdout=log, stderr=subprocess.STDOUT, check=True, timeout=600)
         app = work / "Build/Products/Debug-iphonesimulator/OldFunny.app"
-        if b"preview.invalid" not in (app / "OldFunny").read_bytes():
+        # Xcode 16 can place Debug app code in OldFunny.debug.dylib while its
+        # executable is a small launcher. Inspect both layouts before launch.
+        preview_binaries = [app / "OldFunny", *app.rglob("*.dylib")]
+        if not any(b"preview.invalid" in path.read_bytes() for path in preview_binaries):
             raise RuntimeError("Refusing to launch a simulator preview without its offline fixture configuration")
         runtimes = json.loads(run("xcrun", "simctl", "list", "runtimes", "--json"))["runtimes"]
         sdk = tuple(int(n) for n in run("xcrun", "--sdk", "iphonesimulator", "--show-sdk-version").strip().split("."))

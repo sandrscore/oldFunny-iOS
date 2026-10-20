@@ -38,7 +38,8 @@ def package(app: Path, output: Path):
     with (app / "Info.plist").open("rb") as stream: info = plistlib.load(stream)
     executable = app / info["CFBundleExecutable"]
     if not executable.is_file(): raise ValueError("Built executable missing")
-    if b"preview.invalid" in executable.read_bytes(): raise ValueError("Offline preview fixtures must not be packaged in the Release IPA")
+    if any(b"preview.invalid" in path.read_bytes() for path in [executable, *app.rglob("*.dylib")]):
+        raise ValueError("Offline preview fixtures must not be packaged in the Release IPA")
     if (app / "embedded.mobileprovision").exists(): raise ValueError("Expected unsigned app without account provisioning")
     output.parent.mkdir(parents=True, exist_ok=True)
     with zipfile.ZipFile(output, "w", compression=zipfile.ZIP_DEFLATED) as archive:
