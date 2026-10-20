@@ -4,7 +4,7 @@ New Swift/UIKit implementation of oldFunny, targeting ARM64 and iOS 16 or later.
 The intended test device is iPhone 16 / iOS 27.0.1. This is a source port, not
 a converted APK or a modification of iFunny's encrypted executable.
 
-**0.2.0 (build 5): classic interface pass in progress.**
+**0.2.0 (build 6): classic interface pass in progress.**
 
 The user confirmed successful native password sign-in and CAPTCHA completion in
 0.1.2 on the target iPhone. This pass preserves that authentication implementation

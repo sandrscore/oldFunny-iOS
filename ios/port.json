@@ -4,7 +4,7 @@
   "product": "oldFunny",
   "bundle_identifier": "mobi.oldfunny.ios",
   "version": "0.2.0",
-  "build": "5",
+  "build": "6",
   "minimum_ios": "16.0",
   "target": {
     "device": "iPhone 16",

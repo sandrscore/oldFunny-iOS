@@ -34,8 +34,8 @@ enum ClassicTheme {
         }
         return UIImage(named: name)?.withRenderingMode(.alwaysTemplate) ?? UIImage(systemName: fallback)
     }
-    static func button(_ glyph: ClassicGlyph, label: String) -> UIButton {
-        let button = UIButton(type: .custom)
+    static func button(_ glyph: ClassicGlyph, label: String) -> ClassicIconButton {
+        let button = ClassicIconButton()
         button.setImage(glyph.image, for: .normal); button.tintColor = .white
         button.accessibilityLabel = label
         button.widthAnchor.constraint(equalToConstant: 44).isActive = true
