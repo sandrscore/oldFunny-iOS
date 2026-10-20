@@ -1,0 +1,117 @@
+# oldFunny iOS
+
+New Swift/UIKit implementation of oldFunny, targeting ARM64 and iOS 16 or later.
+The intended test device is iPhone 16 / iOS 27.0.1. This is a source port, not
+a converted APK or a modification of iFunny's encrypted executable.
+
+**First native implementation prepared; no iOS build or device run yet.**
+See [feature status](PORT_STATUS.md) before treating this as a replacement.
+The Android implementation, original archives and existing accounts are preserved.
+The new app uses its own `mobi.oldfunny.ios` bundle and Keychain data.
+
+## Structure
+
+- `OldFunny/`: UIKit app, sign-in form, Keychain store, horizontal feeds, media
+  viewing, comments/replies, basic account timelines and explicit smile toggles.
+- `OldFunnyCore/`: portable Foundation networking/models and offline Swift tests.
+- [Protocol provenance](PROTOCOL_PROVENANCE.md): endpoints and public client ID.
+- `../tools/ios_native_project.py`: assets, Xcode project, scoped source export.
+- `../tools/build_ios_native.py`: tests, Mac compilation, unsigned IPA packaging,
+  SHA-256 and static architecture/encryption inspection.
+
+## Build an unsigned IPA
+
+On a Mac with Xcode and its iOS SDK installed:
+
+```sh
+python3 tools/build_ios_native.py
+```
+
+Output after a successful build:
+
+```text
+.ios-work/ios-port/dist/oldFunny-ios-0.1.0-unsigned.ipa
+.ios-work/ios-port/dist/oldFunny-ios-0.1.0-unsigned.inspection.json
+.ios-work/ios-port/dist/oldFunny-ios-0.1.0-unsigned.sha256
+```
+
+The build uses no Apple account, signing certificate, provisioning profile,
+downloaded iFunny executable or decryption service. The unsigned IPA is intended
+for Zeus to sign on the user's phone. Signing, installation and launch remain
+untested; packaging and ARM64 alone do not prove them.
+
+For the Steam Deck without Xcode, `.github/workflows/ios-native.yml` uses a
+**standard GitHub-hosted Mac runner in a public repository**. GitHub documents
+these runners as free for public repositories:
+https://docs.github.com/en/actions/reference/runners/github-hosted-runners
+The workflow refuses private repositories to avoid potentially paid minutes.
+It keeps artifacts seven days, needs no Apple secrets, and does not publish a
+GitHub release or install anything on a device.
+
+1. Publish only the exported native source bundle to an approved public repo.
+   No source upload has been made by preparing this workflow.
+2. Open Actions → Build oldFunny iOS → Run workflow (or push native sources).
+3. After the job passes, download `oldFunny-ios-unsigned` from its artifacts.
+4. Extract and sign/install the IPA through Zeus, preserving the existing
+   iFunny app. Record launch, fresh sign-in and feed results separately.
+
+## Test on Linux
+
+With Swift 5.9 or newer and its Linux runtime dependencies:
+
+```sh
+swift test --package-path ios/OldFunnyCore --scratch-path .ios-work/ios-port/core-build
+```
+
+Offline tests cover request encoding, public Basic-auth vectors, CAPTCHA origins,
+modern text-video/attached-comment parsing, cursor loops, refresh and concurrent
+refresh sharing, session changes, and avoiding social-write retries. These tests
+do not type-check UIKit or validate an iOS install.
+
+An explicitly enabled read-only probe makes one anonymous feed GET with a new
+diagnostic installation and reports counts only:
+
+```sh
+swift run --package-path ios/OldFunnyCore OldFunnyProbe --anonymous-read-only
+```
+
+It performs no login, account lookup, social action, read acknowledgement,
+upload, preference change or existing-session transfer.
+
+## Classic resources and export
+
+The original recovery remains under ignored `.ios-work/restoration/4.6.8/`:
+116 selected resources, 575 decoded image variants, 12 parsed layout archives,
+English/Portuguese strings and a searchable `ui-audit/index.html` gallery.
+`baseline.json` retains the original 4.6.8 identity; that executable stays encrypted.
+
+Stage a hash-verified icon subset and the existing Android eyepatch artwork:
+
+```sh
+python3 tools/ios_native_project.py stage-assets --android-apk dist/oldfunny-4.6.7-optional-google-01.apk
+python3 tools/ios_native_project.py generate
+```
+
+The staged resources are ignored and have a provenance manifest. Builds without
+these files use system symbols and a simple original oldFunny monogram.
+
+Export only the new source, build tools and optional selected icons:
+
+```sh
+python3 tools/ios_native_project.py export-source --include-assets --output .ios-work/ios-port/oldFunny-ios-source.zip
+```
+
+Use an unused output filename. The allowlisted export excludes original app
+binaries, Apple account metadata, DRM, provisioning, sessions and the Android
+workspace. Inspect it before public upload.
+
+## Compatibility limits
+
+Fresh sign-in must be verified on the target phone. Prior Android tests showed
+that successful OAuth using the public iOS client does not alone guarantee full
+content/attachment visibility. This port does not promise to change the server's
+installation classification.
+
+Google/Apple sign-in, push/background delivery, Chats, Studio/publishing and many
+Android additions are not implemented. App identity changes affect OAuth, Keychain
+and APNs. Complete feature parity is not established by this source or its tests.

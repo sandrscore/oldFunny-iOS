@@ -1,0 +1,82 @@
+[
+  {
+    "name": "unsmile.png",
+    "sha256": "90161bd35da26b33b1869bdc513575081ce0f2765694b0209e51001a66331463",
+    "origin": "iFunny iOS 4.6.8 resource"
+  },
+  {
+    "name": "subscribe.png",
+    "sha256": "d08bc427fd99af2ed5a35949fb251d3bcea59222b060875e7de900c9150ccbdb",
+    "origin": "iFunny iOS 4.6.8 resource"
+  },
+  {
+    "name": "featured.png",
+    "sha256": "9a5cd1747ef7e4bf4acfd983f7affbe11565e52ea4d7bd1e1f2ae8d34f4f0725",
+    "origin": "iFunny iOS 4.6.8 resource"
+  },
+  {
+    "name": "comments.png",
+    "sha256": "0421f8ea53a002e8e36dc48293f9f6932db2f8639f2d5a68a2939da638ef543f",
+    "origin": "iFunny iOS 4.6.8 resource"
+  },
+  {
+    "name": "smile.png",
+    "sha256": "e1e1517d3bf848cbcfee9d6f1e35992ef7472e534e6a3b36a007cdfd5ab0d1a6",
+    "origin": "iFunny iOS 4.6.8 resource"
+  },
+  {
+    "name": "unsmile@2x.png",
+    "sha256": "fee8698619c067c0c0a82938d3a2978eb9cd2d1973aa8a2b87b418c6f8b0030d",
+    "origin": "iFunny iOS 4.6.8 resource"
+  },
+  {
+    "name": "subscribe@2x.png",
+    "sha256": "4511dc058249c4a8c7f9d1b093c11a4ca960e6284aa1541a018afa5b1d2572a4",
+    "origin": "iFunny iOS 4.6.8 resource"
+  },
+  {
+    "name": "featured@2x.png",
+    "sha256": "ca8d645c3a9d5ca04fe96709e8156a9e880b818829aa93166965663d1c33320d",
+    "origin": "iFunny iOS 4.6.8 resource"
+  },
+  {
+    "name": "comments@2x.png",
+    "sha256": "4511dc058249c4a8c7f9d1b093c11a4ca960e6284aa1541a018afa5b1d2572a4",
+    "origin": "iFunny iOS 4.6.8 resource"
+  },
+  {
+    "name": "smile@2x.png",
+    "sha256": "a8e3f81295a795321cfd689506b6c06062c603c9fa511b5a3cb3af646f837d4a",
+    "origin": "iFunny iOS 4.6.8 resource"
+  },
+  {
+    "name": "unsmile@3x.png",
+    "sha256": "55add88938132a23d02bad7ac53301f013d3aa9c6db35298e81e300c9dbf3a0b",
+    "origin": "iFunny iOS 4.6.8 resource"
+  },
+  {
+    "name": "subscribe@3x.png",
+    "sha256": "730ab2d700e5b3f78605895b428f2285666762a38791ecf6eea07d2c65e9dfdb",
+    "origin": "iFunny iOS 4.6.8 resource"
+  },
+  {
+    "name": "featured@3x.png",
+    "sha256": "d9e0f17a52c49ef020954327a847b213e7743155383b356dc154f748f9bcaba5",
+    "origin": "iFunny iOS 4.6.8 resource"
+  },
+  {
+    "name": "comments@3x.png",
+    "sha256": "730ab2d700e5b3f78605895b428f2285666762a38791ecf6eea07d2c65e9dfdb",
+    "origin": "iFunny iOS 4.6.8 resource"
+  },
+  {
+    "name": "smile@3x.png",
+    "sha256": "55add88938132a23d02bad7ac53301f013d3aa9c6db35298e81e300c9dbf3a0b",
+    "origin": "iFunny iOS 4.6.8 resource"
+  },
+  {
+    "name": "launcher.png",
+    "sha256": "50b172782a0d1db20825d9e6f3a9046d61258103d440eab6286c3bef2997ca67",
+    "origin": "existing oldFunny Android launcher"
+  }
+]

@@ -1,0 +1,14 @@
+*.ipa
+*.apk
+*.mobileprovision
+*.p12
+*.p8
+.ios-work/
+.local/
+.build/
+.swiftpm/
+DerivedData/
+*.xcuserstate
+xcuserdata/
+ios/OldFunny.xcodeproj/
+ios/OldFunny/Resources/Assets.xcassets/

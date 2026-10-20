@@ -1,0 +1,44 @@
+name: Build oldFunny iOS
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'ios/**'
+      - 'tools/ios_native_project.py'
+      - 'tools/build_ios_native.py'
+      - 'tools/render_ios_icon.swift'
+      - 'tools/inspect_ipa.py'
+      - '.github/workflows/ios-native.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: oldfunny-ios-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  unsigned-ipa:
+    # User requires an entirely free workflow. Standard public-repository Mac
+    # runners are free; do not silently consume paid private-repository minutes.
+    if: github.event.repository.private == false
+    runs-on: macos-15
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Build and inspect unsigned ARM64 IPA
+        run: python3 tools/build_ios_native.py
+      - name: Retain IPA and inspection report
+        uses: actions/upload-artifact@v7
+        with:
+          name: oldFunny-ios-unsigned
+          path: |
+            .ios-work/ios-port/dist/*.ipa
+            .ios-work/ios-port/dist/*.inspection.json
+            .ios-work/ios-port/dist/*.sha256
+          if-no-files-found: error
+          retention-days: 7
+          include-hidden-files: true
