@@ -57,7 +57,12 @@ final class ViewerTests: XCTestCase {
         XCTAssertEqual(draft.value as? String, "Keep this draft")
         let start = comments.coordinate(withNormalizedOffset: CGVector(dx: 0.50, dy: 0.03))
         let end = comments.coordinate(withNormalizedOffset: CGVector(dx: 0.50, dy: 0.60))
-        start.press(forDuration: 0.05, thenDragTo: end, withVelocity: .fast, thenHoldForDuration: 0)
+        // XCTest's nominal 750pt/s coordinate drag ended at 412pt/s on this
+        // simulator: correctly below Android's 1500 physical px/s threshold.
+        // Verify rejection, then synthesize an actual above-threshold fling.
+        start.press(forDuration: 0.05, thenDragTo: end, withVelocity: .slow, thenHoldForDuration: 0)
+        XCTAssertTrue(comments.exists); XCTAssertEqual(draft.value as? String, "Keep this draft")
+        start.press(forDuration: 0.05, thenDragTo: end, withVelocity: XCUIGestureVelocity(rawValue: 1500), thenHoldForDuration: 0)
         XCTAssertTrue(app.buttons["128 smiles, smile"].waitForExistence(timeout: 5), "Gesture trace: \(String(describing: app.otherElements["post-scene"].firstMatch.value))")
         media.swipeUp(velocity: .fast)
         XCTAssertTrue(draft.waitForExistence(timeout: 5)); XCTAssertEqual(draft.value as? String, "Keep this draft")

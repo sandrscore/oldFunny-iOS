@@ -159,28 +159,27 @@ Apple references for native implementation: [gesture admission](https://develope
 
 ## Checkpoint audit (2026-10-20)
 
-Build 8 (`81709ce6…`, [CI](https://github.com/sandrscore/oldFunny-iOS/actions/runs/39495282820))
-compiled and passed 22 Mac contract tests plus 6 packaging/test-verification checks.
-The downloaded IPA independently verifies as 0.3.0/build 8, ARM64, cryptid=0,
-unsigned, with no preview marker/test bundle. SHA-256:
-`824edafacbc964a54c057226ef5a9072770204206bb1a20920c124e387583d82`.
-Actual UIKit: **4 executed, 3 passed, 1 failed**. Button/swipe shared draft,
-horizontal paging/zoom rejection and attachment picker/Back/refresh/removal pass.
-The first-outside-tap regression is fixed. Downward header fling still fails.
-The mandatory gate correctly makes the run fail. This is not a verified gesture
-checkpoint. Build 7 and the previous verified 0.2.0 IPA remain preserved locally.
+Build 9 (`c031918b…`, [CI](https://github.com/sandrscore/oldFunny-iOS/actions/runs/39497337990))
+compiled and passed 26 Mac contract tests plus 6 packaging/test-verification checks.
+Downloaded IPA: 0.3.0/build 9, ARM64, cryptid=0, unsigned, no preview/test code.
+SHA-256: `d9bbd4d6d0b63f9c51af94b88df0b976deb25babdd3381acaf561b6916945cd9`.
+Actual UIKit: **6 executed, 4 passed, 2 failed**. Attachment picker/draft,
+button/swipe draft, reply root/recipient/Back retention, and unconfirmed inline
+reaction tests pass. Geometry fails because media remains 300pt high. The downward
+coordinate drag ends at 412pt/s = 1236 physical px/s, correctly rejected by the
+Android >1500px/s rule. Build 8 separately passed horizontal paging/zoom; build 9's
+geometry assertion failed before those steps. No target iPhone validation.
 
-Build 9 source retains the original gesture touch target for child/control
-arbitration (a fast pan can move onto a row before UIKit asks shouldBegin), with
-fixture-only diagnostic values. It also adds root/recipient routing and retained
-reply controllers, inline serialized reactions/net scores, reply metadata counts,
-captured-session guards before social writes, and viewport-driven image fitting
-that preserves zoom. 26 Linux contract tests and 6 Python checks pass; six UIKit
-tests are prepared but not executed for this candidate. Mac compilation pending.
+Build 10 source sizes media from the actual scroll-view layout callback, then fits
+the image in the resolved media viewport without resetting zoom. The vertical UI
+test checks slow-drag rejection and uses a nominal 1500pt/s fling to exceed the
+unchanged physical threshold. All assertions remain, including geometry and the
+return gesture; no Android threshold was lowered. Mac/UIKit verification pending.
 
-Root deleted/hidden states, recent-count policy, depth eligibility, mentions,
-bulk selection and process persistence remain gaps. New reply notification and
-reaction behavior is unverified on the real server/phone. No live social write
-or iPhone test was performed. Authentication flow/refresh/call algorithms and the
-five dedicated auth/session files remain unchanged; new endpoint wrappers add
-an explicit pre-write session check. Android/protected hashes match baseline.
+Reply-to-post total-count propagation and root deletion bookkeeping are still
+incomplete. Root deleted/hidden states, recent-count policy, depth eligibility,
+mentions, bulk selection and process persistence remain gaps. Video/GIF controls,
+profiles/search/pins, reads, Explore/Activity/preferences, Chats/groups and Studio
+are still required. No live social write or iPhone test was performed. Dedicated
+auth files and signIn/refresh/call algorithms are unchanged; endpoint wrappers
+add pre-write captured-session checks. Android/protected hashes match baseline.

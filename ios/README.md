@@ -1,37 +1,37 @@
 # oldFunny iOS
 
-**0.3.0 build 9 candidate: Android behavior port in progress.**
+**0.3.0 build 10 candidate: Android behavior port in progress.**
 
-Retained media/comments/information panels reproduce the Android vertical
-arrangement. Comments keep text and one attached post across panels/picker Back.
-The next source slice adds retained reply threads with root context and a selected
-recipient chip, root-read/recipient-write routing, inline reactions/net score,
-pre-write session fencing and viewport-based image sizing. Full parity remains
-incomplete; see [the behavioral ledger](ANDROID_PARITY.md).
+The native viewer retains media/comments/information panels and comment drafts.
+Attachments keep one own post through picker Back/refresh/removal. Replies retain
+their root, selected recipient and draft across Back; inline reactions use one
+attempt and a captured-session guard. Full parity remains incomplete; see the
+[behavioral ledger](ANDROID_PARITY.md) for all gaps and acceptance gates.
 
-Build 8 (`81709ce66c7568f25ed2d60f0a2f1d620f5ec897`) compiled and passed 22 Mac
-contract tests and 6 Python checks. Its downloaded IPA independently verifies as
-0.3.0/build 8, ARM64, cryptid=0, unsigned, no preview/test code. SHA-256:
-`824edafacbc964a54c057226ef5a9072770204206bb1a20920c124e387583d82`.
-[CI and diagnostics](https://github.com/sandrscore/oldFunny-iOS/actions/runs/39495282820).
-UIKit executed four tests: three passed, one failed. Header context, attachment
-picker/draft retention, paging/zoom and keyboard dismissal pass; downward header
-fling still fails. The mandatory CI gate reports failure. It is not a verified
-gesture release. Build 9 fixes gesture admission using the original touch target;
-it is not yet compiled. Its 26 local Swift tests and 6 Python checks pass.
+Build 9 (`c031918b4e8adc8274092e7a0e3ac74eaeaf2a75`) compiled with 26 Mac contract
+tests and 6 Python checks. Downloaded IPA: 0.3.0/build 9, ARM64, cryptid=0,
+unsigned, no preview/test code. SHA-256:
+`d9bbd4d6d0b63f9c51af94b88df0b976deb25babdd3381acaf561b6916945cd9`.
+[CI diagnostics](https://github.com/sandrscore/oldFunny-iOS/actions/runs/39497337990).
+UIKit: 6 executed, 4 passed, 2 failed. Attachments, shared draft, reply retention
+and rejected reaction pass. Media remains 300pt high; a synthetic downward drag
+ends below Android's 1500 physical px/s threshold and correctly stays in comments.
+Build 10 moves sizing to the resolved viewport and tests both slow rejection and
+an above-threshold fling. Mac/UIKit verification is pending. It is not a verified
+gesture release; no new candidate has been tested on the target phone.
 
-Video still uses AVPlayer controls. Comments mentions/bulk deletion/depth/state
-rules, profiles/search/pins, read queues, Explore/Activity/settings, Chats/groups
-and Studio/publishing remain incomplete. Source, portable tests, UIKit automation,
-server behavior and actual iPhone testing are tracked separately.
+Video/GIF custom controls, reply/post count propagation and deletion states,
+mentions/bulk deletion, complete profiles/search/pins, reads, Explore/Activity/
+settings, Chats/groups and Studio/publishing remain unfinished. Source, automated
+checks, server behavior and actual iPhone tests are tracked separately.
 
-The user confirmed password sign-in and in-app CAPTCHA in 0.1.2 on iPhone 16 /
-reported iOS 27.0.1. That flow is preserved; sign-in, refresh and authenticated-call
-algorithms are unchanged. Current agent validation uses offline fixtures only.
-Saved-session relaunch, gestures, codecs and Photos still need phone checks.
-The previous 0.2.0/build 6 IPA remains preserved locally with SHA-256
+The user confirmed 0.1.2 password sign-in/CAPTCHA on iPhone 16 / reported iOS
+27.0.1. Sign-in, refresh and request-authentication algorithms remain unchanged.
+Agent validation uses offline fixtures and no live social writes. Saved-session
+relaunch, gestures, codecs and Photos still require phone checks. The previous
+0.2.0/build 6 IPA remains preserved with SHA-256
 `91abe2d26c5fb00cae5311145f71696fa901570da6942dac021564da2cc9a3b5`.
-Bundle: `mobi.oldfunny.ios`. Minimum iOS: 16.0. Zeus signing is a separate device step.
+Bundle: `mobi.oldfunny.ios`. Minimum iOS: 16.0. Zeus signing is a separate step.
 
 ## Build and test
 

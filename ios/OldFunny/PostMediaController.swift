@@ -9,7 +9,7 @@ final class PostMediaController: UIViewController, UIScrollViewDelegate, UIGestu
     private let source: String
     private let section: String
     private let embedded: Bool
-    private let outer = UIScrollView(), zoom = FittedMediaScrollView(), image = UIImageView()
+    private let outer = MediaViewportScrollView(), zoom = FittedMediaScrollView(), image = UIImageView()
     private let media = UIView(), titlePanel = UIView(), bodyPanel = UIView()
     private let smile = ClassicCounterButton(), comments = ClassicCounterButton()
     private let unsmile = ClassicTheme.button(.unsmile, label: "Unsmile")
@@ -61,6 +61,7 @@ final class PostMediaController: UIViewController, UIScrollViewDelegate, UIGestu
         outer.translatesAutoresizingMaskIntoConstraints = false; holder.addSubview(outer)
         let preferredHeight = container.heightAnchor.constraint(equalTo: stack.heightAnchor); preferredHeight.priority = .defaultHigh
         mediaHeight = media.heightAnchor.constraint(equalToConstant: 300)
+        outer.onLayout = { [weak self] size in self?.layoutMedia(in: size) }
         NSLayoutConstraint.activate([
             container.topAnchor.constraint(equalTo: outer.contentLayoutGuide.topAnchor), container.bottomAnchor.constraint(equalTo: outer.contentLayoutGuide.bottomAnchor),
             container.leadingAnchor.constraint(equalTo: outer.contentLayoutGuide.leadingAnchor), container.trailingAnchor.constraint(equalTo: outer.contentLayoutGuide.trailingAnchor),
@@ -114,12 +115,11 @@ final class PostMediaController: UIViewController, UIScrollViewDelegate, UIGestu
         label.translatesAutoresizingMaskIntoConstraints = false; panel.addSubview(label)
         NSLayoutConstraint.activate([label.leadingAnchor.constraint(equalTo: panel.leadingAnchor, constant: 12), label.trailingAnchor.constraint(equalTo: panel.trailingAnchor, constant: -12), label.topAnchor.constraint(equalTo: panel.topAnchor, constant: 8), label.bottomAnchor.constraint(equalTo: panel.bottomAnchor, constant: -8)])
     }
-    override func viewDidLayoutSubviews() {
-        super.viewDidLayoutSubviews()
-        if outer.bounds.width > 0 && outer.bounds.height > 0 {
-            let target = CGSize(width: outer.bounds.width, height: 0)
+    private func layoutMedia(in viewport: CGSize) {
+        if viewport.width > 0 && viewport.height > 0 {
+            let target = CGSize(width: viewport.width, height: 0)
             let textHeight = [titlePanel, bodyPanel].filter { !$0.isHidden }.reduce(CGFloat(0)) { $0 + $1.systemLayoutSizeFitting(target, withHorizontalFittingPriority: .required, verticalFittingPriority: .fittingSizeLevel).height }
-            let height = max(100, min(outer.bounds.width * CGFloat(post.height / post.width), max(100, outer.bounds.height - textHeight)))
+            let height = max(100, min(viewport.width * CGFloat(post.height / post.width), max(100, viewport.height - textHeight)))
             if abs(mediaHeight.constant - height) > 0.5 { mediaHeight.constant = height }
         }
     }
@@ -229,6 +229,11 @@ final class PostMediaController: UIViewController, UIScrollViewDelegate, UIGestu
         let controller = UIActivityViewController(activityItems: [url], applicationActivities: nil)
         controller.popoverPresentationController?.sourceView = share; present(controller, animated: true)
     }
+}
+
+private final class MediaViewportScrollView: UIScrollView {
+    var onLayout: ((CGSize) -> Void)?
+    override func layoutSubviews() { super.layoutSubviews(); onLayout?(bounds.size) }
 }
 
 /// The inner scroll view can resize after the post controller's layout callback

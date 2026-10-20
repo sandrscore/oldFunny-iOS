@@ -4,7 +4,7 @@
   "product": "oldFunny",
   "bundle_identifier": "mobi.oldfunny.ios",
   "version": "0.3.0",
-  "build": "9",
+  "build": "10",
   "minimum_ios": "16.0",
   "target": {
     "device": "iPhone 16",
@@ -39,7 +39,7 @@
     "captcha_handoff": true,
     "session_survives_relaunch": "unverified"
   },
-  "ui_phase": "Build 9 candidate: original-touch gesture arbitration, reply root/recipient/draft retention, inline reactions, fitted media sizing, stale-session write guards",
+  "ui_phase": "Build 10 candidate: resolved viewport sizing and slow-rejection/fast-fling UIKit checks; original Android threshold unchanged",
   "simulator_previews": "Offline fixtures compiled only with CLASSIC_UI_PREVIEW; absent from Release",
   "simulator_ui": {
     "device": "iPhone 16",
@@ -94,6 +94,27 @@
       "passed": 3,
       "failed": 1,
       "remaining_failure": "downward header fling did not return to media"
+    },
+    "phone_tested": false
+  },
+  "compiled_candidate_build9": {
+    "source_commit": "c031918b4e8adc8274092e7a0e3ac74eaeaf2a75",
+    "run_url": "https://github.com/sandrscore/oldFunny-iOS/actions/runs/39497337990",
+    "sha256": "d9bbd4d6d0b63f9c51af94b88df0b976deb25babdd3381acaf561b6916945cd9",
+    "version": "0.3.0",
+    "build": "9",
+    "independent_inspection": true,
+    "contains_arm64": true,
+    "main_executable_cryptid": 0,
+    "fixture_code_absent": true,
+    "ui_gesture_tests": {
+      "executed": 6,
+      "passed": 4,
+      "failed": 2,
+      "failures": [
+        "media height remained 300 points",
+        "synthetic drag ended at 412 pt/s: correctly below Android threshold"
+      ]
     },
     "phone_tested": false
   }
