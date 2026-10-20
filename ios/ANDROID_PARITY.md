@@ -78,7 +78,7 @@ post panels. Process-death restoration and every gesture edge case remain checks
 | Image fit | Native fit/centering, tall images and title/body alignment; `ContentBehavior`, `ModernPostText` | Partial: width/fit/scroll/pinch; full-resolution tall-image fidelity pending |
 | Pinch/pan bounds | Image-style scale/pan with pager handoff at bounds; `ContentBehavior` | Partial: still-image zoom, no full edge handoff parity |
 | Double tap | Native smile toggle; `GalleryFragment.b(View)` | Source added; no live reaction used during checks |
-| Triple tap | Preserve original unsmile gesture; native content listener | Missing; footer unsmile available, exact gesture still to trace |
+| Triple tap | Content a$3.c(MotionEvent) → GalleryFragment.c(View); resumed, not-abused, signed-in and r() eligibility | Missing. All GalleryFragment descendants were checked: CollectiveFragment and TagGalleryFragment override r() to true; base/Featured/Profile remain false. Native footer currently exposes unsmile too broadly and needs the same context gate |
 | Smile/unsmile | Toggle mutually exclusive state, counts and signed-out route; original Retrofit methods | Source; request tests, live/device checks pending |
 | Video/GIF zoom | Same transformed content as images; `VideoControls` and native behavior | Missing: video still uses AVPlayer controls |
 | Tap playback | Pause/resume only in video; margins hide chrome; paused triangle scales with video | Partial: native AVPlayer controls, Android tap/chrome rules missing |
@@ -157,29 +157,41 @@ Apple references for native implementation: [gesture admission](https://develope
 [UI automation](https://developer.apple.com/documentation/xcuiautomation/xcuiapplication),
 [Photos add-only authorization](https://developer.apple.com/documentation/photos/phphotolibrary/requestauthorization(for:handler:)).
 
-## Checkpoint audit (2026-10-20)
+## Verified checkpoint (2026-10-20)
 
-Build 9 (`c031918b…`, [CI](https://github.com/sandrscore/oldFunny-iOS/actions/runs/39497337990))
-compiled and passed 26 Mac contract tests plus 6 packaging/test-verification checks.
-Downloaded IPA: 0.3.0/build 9, ARM64, cryptid=0, unsigned, no preview/test code.
-SHA-256: `d9bbd4d6d0b63f9c51af94b88df0b976deb25babdd3381acaf561b6916945cd9`.
-Actual UIKit: **6 executed, 4 passed, 2 failed**. Attachment picker/draft,
-button/swipe draft, reply root/recipient/Back retention, and unconfirmed inline
-reaction tests pass. Geometry fails because media remains 300pt high. The downward
-coordinate drag ends at 412pt/s = 1236 physical px/s, correctly rejected by the
-Android >1500px/s rule. Build 8 separately passed horizontal paging/zoom; build 9's
-geometry assertion failed before those steps. No target iPhone validation.
+**0.3.0 build 10**, source `5cca16ac45ac9c208269c6737ef1e36ef582b2a6`,
+[Mac CI](https://github.com/sandrscore/oldFunny-iOS/actions/runs/39499100759).
+26 Mac Swift contract tests, 6 Python checks and **all 6 actual UIKit tests pass**
+with zero failures. The downloaded preview.json and ui-tests.log were independently
+checked; each expected test executed. Actual screenshots of feed/sidebar/comments/
+information were reviewed on iPhone 16 / iOS 18.5 with offline fixtures.
 
-Build 10 source sizes media from the actual scroll-view layout callback, then fits
-the image in the resolved media viewport without resetting zoom. The vertical UI
-test checks slow-drag rejection and uses a nominal 1500pt/s fling to exceed the
-unchanged physical threshold. All assertions remain, including geometry and the
-return gesture; no Android threshold was lowered. Mac/UIKit verification pending.
+UIKit establishes the tested fixture flows: up into comments; slow downward drag
+rejected; above-threshold downward fling back to media; information down/up;
+keyboard outside tap without underlying navigation; retained drafts through panel
+and reply Back; attachment choice/picker Back/refresh/removal; horizontal pages,
+zoom priority and resolved media geometry; unconfirmed inline reaction retaining
+the draft. These tests do not cover every scroll boundary, long thread, format,
+permission, server action, account or process-lifecycle edge case.
 
-Reply-to-post total-count propagation and root deletion bookkeeping are still
-incomplete. Root deleted/hidden states, recent-count policy, depth eligibility,
-mentions, bulk selection and process persistence remain gaps. Video/GIF controls,
-profiles/search/pins, reads, Explore/Activity/preferences, Chats/groups and Studio
-are still required. No live social write or iPhone test was performed. Dedicated
-auth files and signIn/refresh/call algorithms are unchanged; endpoint wrappers
-add pre-write captured-session checks. Android/protected hashes match baseline.
+Downloaded IPA independently verifies as build 10, ARM64, cryptid=0, unsigned,
+with no fixture marker or UI-test bundle. SHA-256:
+`fe571fee9fe8403d3990acbff354706a9cd3c294299ab1f300c915ffdcb6c334`.
+No current build has been tested on the target iPhone / user-reported iOS 27.0.1.
+No live social write was used. The existing password/CAPTCHA confirmation remains
+from the user's 0.1.2 installation; saved-session/new-build regression is pending.
+
+The nominal 750pt/s coordinate drag in build 9 actually ended at 412pt/s = 1236
+physical px/s. Its rejection was correct. Build 10 tests slow rejection and an
+above-threshold synthetic fling; the Android >1500px/s threshold is unchanged.
+Viewport-driven sizing fixes the previously measured 300pt media placeholder.
+Previous failing candidates and their logs/IPAs are preserved locally.
+
+Known remaining issues include the invisible initial comments Refresh glyph
+(the control is tappable), unsmile context eligibility, reply/post total-count
+propagation, root deletion bookkeeping, deleted/hidden states, recent-count/depth
+rules, mentions, bulk deletion and process persistence. Custom video/GIF controls,
+profiles/search/pins, reads, Explore/Activity/settings, Chats/groups and Studio
+remain required. Authentication files and signIn/refresh/call algorithms are
+unchanged; social endpoint wrappers add pre-write captured-session checks.
+Android/protected hashes match baseline. **Full parity is not complete.**
