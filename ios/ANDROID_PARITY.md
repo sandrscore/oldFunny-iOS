@@ -187,16 +187,14 @@ above-threshold synthetic fling; the Android >1500px/s threshold is unchanged.
 Viewport-driven sizing fixes the previously measured 300pt media placeholder.
 Previous failing candidates and their logs/IPAs are preserved locally.
 
-Known remaining issues include the invisible initial comments Refresh glyph
-(the control is tappable), unsmile context eligibility, reply/post total-count
-propagation, root deletion bookkeeping, deleted/hidden states, recent-count/depth
-rules, mentions, bulk deletion and process persistence. Custom video/GIF controls,
-profiles/search/pins, reads, Explore/Activity/settings, Chats/groups and Studio
-remain required. Authentication files and signIn/refresh/call algorithms are
-unchanged; social endpoint wrappers add pre-write captured-session checks.
-Android/protected hashes match baseline. **Full parity is not complete.**
+Known remaining issues include unsmile context eligibility, full deleted/hidden
+states, recent-count/depth rules, mentions, bulk deletion and process persistence.
+Custom video/GIF controls, profiles/search/pins, reads, Explore/Activity/settings,
+Chats/groups and Studio remain required. Authentication files and signIn/refresh/
+call algorithms are unchanged; social endpoint wrappers add captured-session
+checks. Android/protected hashes match baseline. **Full parity is not complete.**
 
-### Next candidate: build 11 (source only)
+### Verified follow-up: build 11
 
 Read generations are separate from account generations, so a successful mutation
 refresh no longer invalidates an open picker or another draft edit. Reads pause
@@ -206,10 +204,15 @@ reply metadata reconciliation avoiding a second delta. Root deletion retains a
 deleted placeholder and leaves reply count unchanged; retained child roots update
 when their parent is deleted. Full hidden/abused/top/depth rules remain gaps.
 The default Refresh symbol is recreated after view loading to address the missing
-initial icon. These changes require Mac/UI verification; build 10 stays preserved.
+initial icon; its visibility was confirmed from the downloaded simulator screenshot.
 
 An explicit per-launch offline transport mode supplies reply/delete acknowledgments
 for a new UI test checking post totals, refresh, deleted root context and retained
 replies. It has no network transport and is absent from Release. Existing rejected
-write tests remain. 27 portable Swift tests and 6 Python checks pass locally; all
-7 UIKit tests are pending for build 11. No real social action was performed.
+write tests remain. [Mac CI](https://github.com/sandrscore/oldFunny-iOS/actions/runs/39502078271)
+for source `9dd9ac22bfc72b1bd0b329d4f8236bd91e2b2cda` passed 27 Swift tests,
+6 Python checks and all 7 UIKit tests with zero failures. Downloaded reports and
+logs were checked. Independently inspected build 11 is ARM64, cryptid=0, unsigned,
+with fixtures absent. IPA SHA-256:
+`3c211f82d370d522f2f55f8762bb700ccfb12c81dfc4ef543b85b5dd68b5912c`.
+No real social action or new target-phone check was performed.

@@ -1,19 +1,17 @@
-> Build 11 source is a candidate for comment count/read-generation/deleted-root and Refresh fixes. The verified build 10 IPA below remains the phone checkpoint. Build 11 Mac/UIKit checks are pending.
-
 # oldFunny iOS
 
-**0.3.0 build 10: verified offline viewer/gesture checkpoint.**
+**0.3.0 build 11: verified offline viewer/gesture checkpoint.**
 
-[Download the unsigned IPA artifact ZIP](https://github.com/sandrscore/oldFunny-iOS/actions/runs/39499100759/artifacts/12297949206),
+[Download the unsigned IPA artifact ZIP](https://github.com/sandrscore/oldFunny-iOS/actions/runs/39502078271/artifacts/12301621612),
 extract the IPA and sign/update through Zeus. SHA-256:
-`fe571fee9fe8403d3990acbff354706a9cd3c294299ab1f300c915ffdcb6c334`.
+`3c211f82d370d522f2f55f8762bb700ccfb12c81dfc4ef543b85b5dd68b5912c`.
 Bundle: `mobi.oldfunny.ios`; minimum iOS 16.0; ARM64, cryptid=0, unsigned.
 Artifact expires October 27, 2026; a local verified copy is preserved in the
 original workspace. Original binaries, credentials and sessions are excluded.
 
-[Successful Mac CI](https://github.com/sandrscore/oldFunny-iOS/actions/runs/39499100759)
-for source `5cca16ac45ac9c208269c6737ef1e36ef582b2a6` passed 26 core tests,
-6 packaging/test-verification checks and all 6 actual UIKit tests. The downloaded
+[Successful Mac CI](https://github.com/sandrscore/oldFunny-iOS/actions/runs/39502078271)
+for source `9dd9ac22bfc72b1bd0b329d4f8236bd91e2b2cda` passed 27 core tests,
+6 packaging/test-verification checks and all 7 actual UIKit tests. The downloaded
 IPA, preview report and test logs were independently checked. Four simulator
 screens were reviewed on iPhone 16 / iOS 18.5 using offline fixtures only.
 
@@ -24,11 +22,11 @@ inline reactions preserving drafts. Production gesture thresholds remain the
 Android values. This verifies those fixture interactions, not full Android parity
 or iOS 27 compatibility. See [the behavioral ledger](ANDROID_PARITY.md).
 
-The current comments Refresh control is tappable but its initial glyph is
-invisible in simulator renders; a follow-up is required. Unsmile eligibility,
-reply/post count propagation, deletion states/depth, mentions/bulk deletion,
-custom video/GIF controls, complete profiles/search/pins, read tracking,
-Explore/Activity/settings, Chats/groups and Studio/publishing remain unfinished.
+Refresh is visible in the simulator. The new offline reply/delete test verifies
+post count propagation and retained replies after deleting a root. Full deleted/
+hidden/depth rules, unsmile eligibility, mentions/bulk deletion, custom video/GIF
+controls, complete profiles/search/pins, reads, Explore/Activity/settings, Chats/
+groups and Studio/publishing remain unfinished.
 
 The user confirmed 0.1.2 password sign-in/CAPTCHA on iPhone 16 / reported iOS
 27.0.1. Its sign-in, refresh and request-authentication algorithms are preserved;

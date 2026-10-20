@@ -13,8 +13,8 @@
   "android_reference": "oldfunny-4.6.7-optional-google-01.apk",
   "ui_reference": "iFunny iOS 4.6.8 build 4121 resources",
   "feature_parity_complete": false,
-  "ios_compiled": false,
-  "ipa_produced": false,
+  "ios_compiled": true,
+  "ipa_produced": true,
   "runtime_tested": false,
   "cloud_source_published": true,
   "signed": false,
@@ -39,7 +39,7 @@
     "captcha_handoff": true,
     "session_survives_relaunch": "unverified"
   },
-  "ui_phase": "Build 11 candidate: separate read/account generations, reply/post counts, root deletion placeholder and refresh symbol initialization",
+  "ui_phase": "Build 11 verified offline: retained viewer, replies/counts/deleted-root and visible Refresh; full parity incomplete",
   "simulator_previews": "Offline fixtures compiled only with CLASSIC_UI_PREVIEW; absent from Release",
   "simulator_ui": {
     "device": "iPhone 16",
@@ -54,20 +54,19 @@
     "target_phone_tested": false,
     "ui_gesture_tests_passed": true,
     "version": "0.3.0",
-    "build": "10",
+    "build": "11",
     "ui_gesture_tests": [
       "testAttachmentPickerBackAndRemovalPreserveDraft",
       "testCommentTapAndSwipeShareOnePanelAndDoNotLoseKeyboardDraft",
+      "testConfirmedReplyAndRootDeletionUpdatePostCountWithoutChangingReplyCountTwice",
       "testHorizontalPagingAndZoomTakePriorityOverPanelNavigation",
       "testReplyThreadRetainsRootRecipientAndDraftThroughBack",
       "testUnconfirmedInlineReactionKeepsThreadAndDraft",
       "testVerticalPanelsRetainPostAndDraftWithoutPushingComments"
     ],
-    "current_candidate_verified": false
+    "current_candidate_verified": true
   },
-  "known_ui_polish": [
-    "Refresh symbol recreated in viewDidLoad; screenshot verification pending"
-  ],
+  "known_ui_polish": [],
   "parity_audit": "ANDROID_PARITY.md",
   "compiled_candidate_build7": {
     "source_commit": "618c148e596d8f8a3bd199c1bbdaa58a70922071",
@@ -146,9 +145,9 @@
     },
     "phone_tested": false
   },
-  "verified_build_source_commit": "5cca16ac45ac9c208269c6737ef1e36ef582b2a6",
-  "verified_build_url": "https://github.com/sandrscore/oldFunny-iOS/actions/runs/39499100759",
-  "ipa_sha256": "fe571fee9fe8403d3990acbff354706a9cd3c294299ab1f300c915ffdcb6c334",
+  "verified_build_source_commit": "9dd9ac22bfc72b1bd0b329d4f8236bd91e2b2cda",
+  "verified_build_url": "https://github.com/sandrscore/oldFunny-iOS/actions/runs/39502078271",
+  "ipa_sha256": "3c211f82d370d522f2f55f8762bb700ccfb12c81dfc4ef543b85b5dd68b5912c",
   "target_phone_tested": false,
   "previous_verified_build10": {
     "verified_build_source_commit": "5cca16ac45ac9c208269c6737ef1e36ef582b2a6",
@@ -157,6 +156,23 @@
     "version": "0.3.0",
     "build": "10",
     "ui_gesture_tests_passed": true,
+    "phone_tested": false
+  },
+  "compiled_candidate_build11": {
+    "source_commit": "9dd9ac22bfc72b1bd0b329d4f8236bd91e2b2cda",
+    "run_url": "https://github.com/sandrscore/oldFunny-iOS/actions/runs/39502078271",
+    "sha256": "3c211f82d370d522f2f55f8762bb700ccfb12c81dfc4ef543b85b5dd68b5912c",
+    "version": "0.3.0",
+    "build": "11",
+    "independent_inspection": true,
+    "contains_arm64": true,
+    "main_executable_cryptid": 0,
+    "fixture_code_absent": true,
+    "ui_gesture_tests": {
+      "executed": 7,
+      "passed": 7,
+      "failed": 0
+    },
     "phone_tested": false
   }
 }
