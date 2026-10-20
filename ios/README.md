@@ -1,195 +1,109 @@
 # oldFunny iOS
 
-New Swift/UIKit implementation of oldFunny, targeting ARM64 and iOS 16 or later.
-The intended test device is iPhone 16 / iOS 27.0.1. This is a source port, not
-a converted APK or a modification of iFunny's encrypted executable.
+**0.2.0 (build 6): first classic interface pass.**
 
-**0.2.0 (build 6): classic interface pass in progress.**
+A new Swift/UIKit client with a charcoal author/avatar bar, dark sidebar,
+full-width black media viewer, compact smile/comment/share controls, and classic
+comment rows with blue names, circular avatars, dates and attached-post previews.
+The sidebar opens Featured, Subscriptions, Profile and Account. Existing image
+zoom, native video controls, text-video titles/body and explicit actions remain.
 
-The user confirmed successful native password sign-in and CAPTCHA completion in
-0.1.2 on the target iPhone. This pass preserves that authentication implementation
-and replaces the prototype's main screens with a flat charcoal author bar, a dark
-sidebar, full-width media and compact classic controls. Comments gain blue author
-names, avatars, dates and inline attachment previews. The sidebar exposes working
-Featured, Subscriptions, Profile and Account destinations. Collective, Explore,
-Chats, Studio and other parity work are still pending.
+[Download the unsigned IPA artifact ZIP](https://github.com/sandrscore/oldFunny-iOS/actions/runs/39488614457/artifacts/12293774317)
+— extract the IPA and sign/update through Zeus. Artifact expires October 27, 2026.
+A verified local copy remains in the original workspace's ignored .ios-work.
 
-The workflow also compiles a separate simulator preview using offline sample
-content. Its fixture code is behind CLASSIC_UI_PREVIEW and excluded from the
-Release IPA. Simulator screenshots are visual checks, not target-phone or live
-API verification.
+IPA SHA-256: `91abe2d26c5fb00cae5311145f71696fa901570da6942dac021564da2cc9a3b5`.
+Bundle: `mobi.oldfunny.ios`. Minimum iOS: 16.0. Executable: ARM64, cryptid=0,
+unsigned, built from this source. This is not an APK binary conversion or a
+modification of iFunny's encrypted executable.
 
-**Previous build: 0.1.2, sign-in and CAPTCHA confirmed by the user.**
+## Verification and device check
 
-[Download the 0.1.2 IPA artifact ZIP](https://github.com/sandrscore/oldFunny-iOS/actions/runs/39482055586/artifacts/12291623017)
-(extract the IPA, then sign/update through Zeus; expires October 27, 2026).
-[The Mac build](https://github.com/sandrscore/oldFunny-iOS/actions/runs/39482055586)
-compiled successfully with all 17 core tests passing. Downloaded ZIP and IPA
-hashes matched CI; independent inspection confirmed ARM64 and `cryptid=0`.
-IPA SHA-256: `ffcb8e706e927e15cba3310fbe7d0c3753f5cbffe8cb20cd63acf31405b6ac8b`.
+[Successful Mac build](https://github.com/sandrscore/oldFunny-iOS/actions/runs/39488614457)
+from source commit `5f58a60fa4c428e5eb9f5870d774efc24cbd2f03` passed all 18
+portable Swift tests and compiled both the iPhone Release app and simulator
+preview. Five local Python build/export tests passed. The downloaded artifact
+and IPA hashes were independently verified; no embedded architecture blockers,
+FairPlay resources or offline preview fixture marker were found in the release.
 
-On the phone: enter credentials in oldFunny, complete the CAPTCHA in its new
-verification view, and let its completion return to sign-in. The app resumes
-once; repeated verification or failure stops for a fresh sign-in attempt.
-No real CAPTCHA completion or authenticated session issuance has been tested
-by the agent. Source tests do not establish that live behavior.
+[Simulator screenshots](https://github.com/sandrscore/oldFunny-iOS/actions/runs/39488614457/artifacts/12295550123)
+show the actual feed, open sidebar and comments on an iPhone 16 / iOS 18.5
+simulator. These were visually inspected with offline generated sample content.
+They establish layout only, not real server/account behavior or iOS 27 support.
 
-The user confirmed Featured loads in 0.1.1, but completing its browser CAPTCHA
-opens the official iFunny app. The new flow uses an isolated in-app WebKit view,
-intercepts the observed `ifunny://captcha_resolved` completion locally, and
-resumes sign-in once. The password stays in the pending task's memory while the
-challenge is open; cancellation/backgrounding discards that attempt. The web
-view receives no password or API authorization. No global `ifunny` URL scheme
-registration is added. Actual server acceptance still needs a phone test.
+The user confirmed Featured loading, and successful password sign-in with CAPTCHA
+in 0.1.2 on their iPhone 16 / reported iOS 27.0.1. Six authentication/session
+source files are byte-for-byte unchanged by this UI pass. The new build has not
+been signed, installed or tested on that phone. Update via Zeus, then check saved
+sign-in, feed swiping, sidebar routes, image/video viewing and comments. Pull down
+to refresh comments; the optional trailing header refresh icon needs follow-up
+visual polish. No posting/chat action is required for these initial checks.
 
-**Previous build: 0.1.1 connection fix.**
+Complete Android feature parity remains unfinished. Collective, Explore/search,
+Chats, Studio/publishing, push, Google/Apple sign-in, advanced profile/settings,
+read queues/badges, Photos exports and other additions still require native work.
+See [feature status](PORT_STATUS.md) and [protocol provenance](PROTOCOL_PROVENANCE.md).
 
-[Download the corrected 0.1.1 artifact ZIP](https://github.com/sandrscore/oldFunny-iOS/actions/runs/39480215788/artifacts/12291750634)
-(extract its IPA and sign/update through Zeus; expires October 27, 2026).
+## Build and test
 
-[The Mac build](https://github.com/sandrscore/oldFunny-iOS/actions/runs/39480215788)
-passed all 15 core tests and compiled the ARM64 app. Downloaded ZIP and IPA
-hashes were independently verified. IPA SHA-256:
-`edcba53064e941590e4d724f86dbe3c41828a8a8cc8051efb147a5c5b269c0e3`.
-The executable reports `cryptid=0`.
-
-Version 0.1.0 installed and launched on the target phone, but all server requests
-failed. Controlled checks reproduced server disconnects for its legacy User-Agent.
-The modern iOS request profile returned HTTP 200 for Featured and app/features;
-the corrected Swift client decoded five Featured posts. This validates anonymous
-host requests, not fresh phone sign-in or complete server compatibility.
-See [feature status](PORT_STATUS.md) before treating this as a replacement.
-The Android implementation, original archives and existing accounts are preserved.
-The new app uses its own `mobi.oldfunny.ios` bundle and Keychain data.
-
-## Structure
-
-- `OldFunny/`: UIKit app, sign-in form, Keychain store, horizontal feeds, media
-  viewing, comments/replies, basic account timelines and explicit smile toggles.
-- `OldFunnyCore/`: portable Foundation networking/models and offline Swift tests.
-- [Protocol provenance](PROTOCOL_PROVENANCE.md): endpoints and public client ID.
-- `../tools/ios_native_project.py`: assets, Xcode project, scoped source export.
-- `../tools/build_ios_native.py`: tests, Mac compilation, unsigned IPA packaging,
-  SHA-256 and static architecture/encryption inspection.
-
-## Build an unsigned IPA
-
-On a Mac with Xcode and its iOS SDK installed:
+On a Mac with Xcode and an iOS SDK:
 
 ```sh
 python3 tools/build_ios_native.py
 ```
 
-Output after a successful build:
+The output is .ios-work/ios-port/dist/oldFunny-ios-0.2.0-unsigned.ipa, with a
+.sha256 file and .inspection.json report. Choose an unused --output path for
+repeat builds. No Apple account, signing certificate or original iFunny binary
+is used. Zeus signing and installation are separate device steps.
 
-```text
-.ios-work/ios-port/dist/oldFunny-ios-0.2.0-unsigned.ipa
-.ios-work/ios-port/dist/oldFunny-ios-0.2.0-unsigned.inspection.json
-.ios-work/ios-port/dist/oldFunny-ios-0.2.0-unsigned.sha256
-```
+The public repository's Build oldFunny iOS workflow uses a standard GitHub-hosted
+Mac runner. It refuses private repositories to avoid paid private-repository
+minutes; artifacts are retained seven days. No Apple secrets are configured.
 
-The build uses no Apple account, signing certificate, provisioning profile,
-downloaded iFunny executable or decryption service. The unsigned IPA is intended
-for Zeus to sign on the user's phone. Signing, installation and launch remain
-untested; packaging and ARM64 alone do not prove them.
-
-For the Steam Deck without Xcode, `.github/workflows/ios-native.yml` uses a
-**standard GitHub-hosted Mac runner in a public repository**. GitHub documents
-these runners as free for public repositories:
-https://docs.github.com/en/actions/reference/runners/github-hosted-runners
-The workflow refuses private repositories to avoid potentially paid minutes.
-It keeps artifacts seven days, needs no Apple secrets, and does not publish a
-GitHub release or install anything on a device.
-
-1. The scoped source is published at https://github.com/sandrscore/oldFunny-iOS.
-   Keep future uploads limited to native source and the reviewed asset subset.
-2. Open Actions → Build oldFunny iOS → Run workflow (or push native sources).
-3. After the job passes, download `oldFunny-ios-unsigned` from its artifacts.
-4. Extract and sign/install the IPA through Zeus, preserving the existing
-   iFunny app. Record launch, fresh sign-in and feed results separately.
-
-## First build: 0.1.0 (1)
-
-[Successful Mac build](https://github.com/sandrscore/oldFunny-iOS/actions/runs/39478438577)
-from commit `64b4439b2a6b0147bed4a513cc71ecde2a5de4f0` passed all 13 core tests,
-compiled with Xcode 16.4 / iOS SDK 18.5, and produced the unsigned IPA.
-[Download the artifact ZIP](https://github.com/sandrscore/oldFunny-iOS/actions/runs/39478438577/artifacts/12291131063)
-while retained (expires October 27, 2026). Extract the IPA from the ZIP for Zeus.
-
-IPA SHA-256: `0faaff10a27b38025f6f3fd8f260b89a22c5fbfcb9ab38cd2e2e752c46c87c76`.
-Independent local inspection confirmed bundle `mobi.oldfunny.ios`, version 0.1.0,
-build 1, minimum iOS 16.0, ARM64, `cryptid=0`, no FairPlay resources and no
-embedded extension/framework requiring additional architecture review.
-This executable was compiled from source; it is not a decrypted original iFunny.
-The ZIP and IPA hashes both matched the downloaded artifact. The build used no device. The user subsequently installed and launched 0.1.0;
-network requests failed, so use the 0.1.1 correction instead.
-
-Initial phone checks: sign the IPA with Zeus, install it, check launch, then check
-Featured, fresh password sign-in, Subscriptions and media/comments navigation.
-Report failures without sharing passwords, tokens or authentication transcripts.
-This is a partial prototype: Chats, Studio/publishing, push and other parity work
-remain unfinished. A successful build is not evidence of iOS 27 runtime or live
-server compatibility. The initial anonymous probes failed with the legacy request profile. Correcting
-the User-Agent resolved anonymous Featured access in a controlled host test;
-authenticated requests and target-phone behavior still require validation.
-
-## Test on Linux
-
-With Swift 5.9 or newer and its Linux runtime dependencies:
+On Linux or Mac with Swift 5.9 or newer:
 
 ```sh
 swift test --package-path ios/OldFunnyCore --scratch-path .ios-work/ios-port/core-build
 ```
 
-Offline tests cover request encoding, public Basic-auth vectors, CAPTCHA origins,
-modern text-video/attached-comment parsing, cursor loops, refresh and concurrent
-refresh sharing, session changes, and avoiding social-write retries. These tests
-do not type-check UIKit or validate an iOS install.
+Tests cover public protocol signatures, request encoding, trusted CAPTCHA
+callbacks, session storage/refresh boundaries, paging, attached posts and modern
+avatar schemas. A separately enabled OldFunnyProbe --anonymous-read-only performs
+one anonymous feed GET; it performs no sign-in or social writes.
 
-An explicitly enabled read-only probe makes one anonymous feed GET with a new
-diagnostic installation and reports counts only:
+## Offline UIKit previews
 
 ```sh
-swift run --package-path ios/OldFunnyCore OldFunnyProbe --anonymous-read-only
+# Mac with an installed iOS simulator runtime:
+python3 tools/preview_ios_native.py
 ```
 
-It performs no login, account lookup, social action, read acknowledgement,
-upload, preference change or existing-session transfer.
+The tool compiles a separate CLASSIC_UI_PREVIEW configuration, creates its own
+disposable simulator, renders feed/sidebar/comments, saves PNGs and preview.json
+under .ios-work/ios-port/ui-previews, then removes that simulator. It uses no real
+account, Keychain session or API request. The preview marker is checked before
+launch, including Xcode's separate Debug library. Release packaging refuses it.
+The fixture code is excluded from the Release IPA.
 
-## Classic resources and export
+## Resources and source export
 
-The original recovery remains under ignored `.ios-work/restoration/4.6.8/`:
-116 selected resources, 575 decoded image variants, 12 parsed layout archives,
-English/Portuguese strings and a searchable `ui-audit/index.html` gallery.
-`baseline.json` retains the original 4.6.8 identity; that executable stays encrypted.
-
-Stage a hash-verified icon subset and the existing Android eyepatch artwork:
+Only the same 16 reviewed PNGs are included. Some recovered catalog variants
+(smile/comments/subscribe) are entirely transparent; native vector equivalents
+now render those controls. Their original files and hashes remain preserved.
+The approved Android eyepatch launcher and recovered Featured icon are retained.
+Local reference screenshots and original archives are excluded from publication.
 
 ```sh
-python3 tools/ios_native_project.py stage-assets --android-apk dist/oldfunny-4.6.7-optional-google-01.apk
 python3 tools/ios_native_project.py generate
-```
-
-The staged resources are ignored and have a provenance manifest. Builds without
-these files use system symbols and a simple original oldFunny monogram.
-
-Export only the new source, build tools and optional selected icons:
-
-```sh
 python3 tools/ios_native_project.py export-source --include-assets --output .ios-work/ios-port/oldFunny-ios-source.zip
 ```
 
-Use an unused output filename. The allowlisted export excludes original app
-binaries, Apple account metadata, DRM, provisioning, sessions and the Android
-workspace. Inspect it before public upload.
+Use an unused output filename. The export allowlists native code, tools,
+documentation, tests and reviewed icons. It excludes app archives, credentials,
+sessions, DRM, provisioning and the Android workspace. Generated Xcode projects,
+asset catalogs, local tools and build work remain ignored.
 
-## Compatibility limits
-
-Fresh sign-in must be verified on the target phone. Prior Android tests showed
-that successful OAuth using the public iOS client does not alone guarantee full
-content/attachment visibility. This port does not promise to change the server's
-installation classification.
-
-Google/Apple sign-in, push/background delivery, Chats, Studio/publishing and many
-Android additions are not implemented. App identity changes affect OAuth, Keychain
-and APNs. Complete feature parity is not established by this source or its tests.
+The original recovery under .ios-work/restoration/4.6.8 and baseline.json retain
+iFunny iOS 4.6.8's identity/resources. Its executable stays encrypted and is not
+part of the native source build. The Android implementation remains unchanged.

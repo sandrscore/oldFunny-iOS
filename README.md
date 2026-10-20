@@ -1,9 +1,13 @@
 # oldFunny iOS
 
-A new Swift/UIKit oldFunny client in progress.
+**0.2.0 (build 6)** brings the first classic interface pass: a charcoal author bar, dark sidebar, full-width media, compact post controls and styled comments with avatars and attached-post previews.
 
-[Download 0.1.2 (build 3), unsigned IPA artifact ZIP](https://github.com/sandrscore/oldFunny-iOS/actions/runs/39482055586/artifacts/12291623017) — extract the IPA and sign/update through Zeus. Artifact expires October 27, 2026.
+[Download unsigned IPA ZIP](https://github.com/sandrscore/oldFunny-iOS/actions/runs/39488614457/artifacts/12293774317) · [Simulator screenshots](https://github.com/sandrscore/oldFunny-iOS/actions/runs/39488614457/artifacts/12295550123) · [Build](https://github.com/sandrscore/oldFunny-iOS/actions/runs/39488614457)
 
-This build keeps manual CAPTCHA verification in an isolated in-app WebKit view and intercepts its scoped completion locally, then resumes sign-in once. It replaces the browser handoff that opened official iFunny. The Mac build and all 17 core tests pass; live CAPTCHA completion and authenticated sign-in still need a target-phone test.
+Extract the IPA and sign/update with Zeus. Artifact expires October 27, 2026. IPA SHA-256: `91abe2d26c5fb00cae5311145f71696fa901570da6942dac021564da2cc9a3b5`.
 
-Featured loads on the phone with the prior 0.1.1 request-header correction. See [build instructions and verification](ios/README.md) and [feature status](ios/PORT_STATUS.md). Chats, Studio/publishing, push and other features remain unfinished. This is a native source port, not an APK binary conversion or a feature-complete release.
+18 Swift tests pass, and feed/sidebar/comments were reviewed on an iPhone 16 / iOS 18.5 simulator using offline sample content. The user confirmed password/CAPTCHA sign-in in 0.1.2; this UI pass preserves that authentication code. Version 0.2.0 still needs phone installation, saved-session and live feature checks. Pull down to refresh comments; its optional header refresh icon needs polish.
+
+This is a new Swift/UIKit client, not an APK binary conversion. Complete Android feature parity is unfinished; Chats, Studio, push and other features remain pending. No original APK/IPA, credentials, personal sessions or signing secrets are published. Only the same 16 reviewed artwork files are included.
+
+See [build and verification instructions](ios/README.md), [feature status](ios/PORT_STATUS.md) and [protocol provenance](ios/PROTOCOL_PROVENANCE.md).

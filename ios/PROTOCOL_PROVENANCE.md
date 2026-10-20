@@ -81,3 +81,21 @@ challenge URLs were used in the agent's tests.
 
 Apple references: [navigation policy](https://developer.apple.com/documentation/webkit/wknavigationdelegate)
 and [nonpersistent website data](https://developer.apple.com/documentation/webkit/wkwebsitedatastore).
+
+## Classic interface pass (0.2.0)
+
+The user confirmed the 0.1.2 password/CAPTCHA flow on their phone. Its six
+auth/session source files remain unchanged. Modern post creator.avatar and
+comment user.photo.thumb avatar shapes are documented in the workspace's public
+picture/attached-comment fixtures; only HTTPS URLs are accepted.
+
+The local Android sidebar/viewer/reply screenshots informed spacing and colors
+but were not published. No additional product bitmap artwork was added. The
+reviewed recovered smile/comments/subscribe renditions contain zero pixels, so
+native vectors render these controls while original resource hashes stay intact.
+
+A separate simulator configuration uses generated sample media and fixture users
+under CLASSIC_UI_PREVIEW. It never reads real Keychain data or calls the API.
+The preview runner checks its marker in the executable or Xcode Debug library
+before launch, and Release packaging rejects that marker. Simulator layout
+review does not establish live server actions, target-phone behavior or parity.

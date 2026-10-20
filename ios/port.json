@@ -13,8 +13,8 @@
   "android_reference": "oldfunny-4.6.7-optional-google-01.apk",
   "ui_reference": "iFunny iOS 4.6.8 build 4121 resources",
   "feature_parity_complete": false,
-  "ios_compiled": false,
-  "ipa_produced": false,
+  "ios_compiled": true,
+  "ipa_produced": true,
   "runtime_tested": false,
   "cloud_source_published": true,
   "signed": false,
@@ -40,5 +40,24 @@
     "session_survives_relaunch": "unverified"
   },
   "ui_phase": "Classic author bar, sidebar, full-width media, compact post controls, styled comments with avatars and inline attachments",
-  "simulator_previews": "Offline fixtures compiled only with CLASSIC_UI_PREVIEW; absent from Release"
+  "simulator_previews": "Offline fixtures compiled only with CLASSIC_UI_PREVIEW; absent from Release",
+  "verified_build_source_commit": "5f58a60fa4c428e5eb9f5870d774efc24cbd2f03",
+  "verified_build_url": "https://github.com/sandrscore/oldFunny-iOS/actions/runs/39488614457",
+  "ipa_sha256": "91abe2d26c5fb00cae5311145f71696fa901570da6942dac021564da2cc9a3b5",
+  "contains_arm64": true,
+  "main_executable_cryptid": 0,
+  "simulator_ui": {
+    "device": "iPhone 16",
+    "ios": "18.5",
+    "offline_fixtures": true,
+    "screens_reviewed": [
+      "feed",
+      "sidebar",
+      "comments"
+    ],
+    "target_phone_tested": false
+  },
+  "known_ui_polish": [
+    "Optional comments header refresh icon; pull-to-refresh remains available"
+  ]
 }

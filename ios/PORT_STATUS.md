@@ -2,30 +2,27 @@
 
 Target: iPhone 16 / iOS 27.0.1. Bundle ID: `mobi.oldfunny.ios`.
 
-This is **an incomplete first implementation**, not a feature-complete APK
-conversion. The first unsigned ARM64 IPA compiled successfully on the public Mac
-runner; [build details](README.md#first-build-010-1). The user installed and
-launched 0.1.0 on the target iPhone; all network requests failed. A controlled
-comparison identified server rejection of the legacy User-Agent. The 0.1.1
-correction loads Featured on the phone. Sign-in reaches CAPTCHA but the browser
-completion opens official iFunny. Version 0.1.2 adds a scoped in-app WebKit
-completion handler and one sign-in continuation. The user confirmed successful
-CAPTCHA completion and password sign-in on the target phone. Version 0.2.0 is
-the first classic interface pass; its new screens still need device validation.
+Version 0.2.0 (build 6) is the first classic interface pass. Release compilation,
+18 Mac core tests, local packaging checks and three offline simulator renders
+passed. The feed, sidebar and comments were visually inspected on iPhone 16 /
+iOS 18.5. The user previously confirmed Featured and password/CAPTCHA sign-in
+in 0.1.2 on their target phone. This UI pass preserves those auth source files.
+The new version's target-phone UI and saved-session behavior remain untested;
+complete Android feature parity is unfinished.
 
 | Area | Source implemented | Validation and remaining work |
 | --- | --- | --- |
 | App-client requests | HTTPS, documented iOS Basic protocol, installation cookie, refused API redirects | Modern iOS protocol profile: anonymous Featured and app/features return 200; Swift decodes 5 posts; authenticated classification unknown |
 | Password sign-in | Native form, bootstrap/OAuth/account lookup, manual in-app CAPTCHA and origin/frame-checked callback | Offline protocol tests; User confirmed 0.1.2 CAPTCHA completion and successful password sign-in; 0.2.0 preserves this code |
-| Session storage/refresh | Device-only Keychain; shared refresh; old-account response fencing; local removal | Portable core tests; Keychain integration needs Mac/device checks |
-| Featured / Subscriptions | Endpoint routing, paging, duplicate/cursor-loop handling, horizontal viewer, refresh | Offline models; UIKit and live accounts unverified; no persistent feed cache yet |
+| Session storage/refresh | Device-only Keychain; shared refresh; old-account response fencing; local removal | 0.1.2 sign-in/session creation user-confirmed; refresh/relaunch persistence still needs device checks |
+| Featured / Subscriptions | Endpoint routing, paging, duplicate/cursor-loop handling, horizontal viewer, refresh | Featured previously phone-confirmed; 0.2.0 simulator layout reviewed; Subscriptions and persistent feed cache need work |
 | Profile | Author and own-account timelines | Basic timeline only; no profile editing, advanced search, pins or featured grid yet |
 | Media | Still-image zoom, WebP via ImageIO, bounded small GIF preview, native AVPlayer controls, text-video title/body | Device/codec checks pending; long-image fidelity, GIF frame timing, video zoom/trim/scrub parity pending |
 | Comments | Paginated thread/replies, text sending, opening attached posts | Inline attached-post previews, avatars and author profile links added; offline request tests; mentions, attachment picker and deletion pending |
 | Reactions/share | Explicit smile toggle and public-link share sheet | No live social writes; device checks pending; unsmile/repub features pending |
 | Read tracking | Bounded read-acknowledgement API method | Exposure timers, durable per-account read queues/filtering and subscription badges not connected yet |
-| Classic appearance | Flat charcoal author bar, dark sidebar, full-width viewer, small counters, classic comment rows, reviewed original icons | Simulator visual checks prepared; exact original layouts and phone UI still unverified |
-| Build/signing | Generated Xcode project, Mac build script, unsigned IPA packaging/inspection, public-repo CI | Local script tests; 0.1.2 Mac build and 17 core tests passed; downloaded IPA hashes and ARM64/cryptid=0 verified; Zeus update and CAPTCHA test pending |
+| Classic appearance | Flat charcoal author bar, dark sidebar, full-width viewer, small counters, classic comment rows, reviewed original icons | Three simulator screens reviewed; exact original layouts and target-phone UI remain unverified; comments header refresh polish pending |
+| Build/signing | Generated Xcode project, Mac build script, unsigned IPA packaging/inspection, public-repo CI | 0.2.0 build 6 Mac compilation and 18 core tests passed; IPA hashes/ARM64/cryptid=0 verified; simulator launch/layout checked; Zeus phone update pending |
 | Studio/publishing | Not implemented yet | Caption/comics/GIF/video editing, drafts, uploads/task polling and publishing need native implementations |
 | Chats/groups | Not implemented yet | REST/WAMP state machine, attachments, groups/discovery/drafts/read receipts pending |
 | Notifications | Not implemented yet | APNs requires independent signing/entitlement/server registration; sockets do not establish background push parity |
