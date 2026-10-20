@@ -34,6 +34,61 @@ private func token(_ name: String = "fixtureAccess", refresh: String? = "fixture
 }
 
 final class CoreTests: XCTestCase {
+    func testStaleComposerAndReactionSessionCannotSendAfterAccountChange() async throws {
+        let transport = ScriptedTransport([])
+        let api = try APIClient(installation: installation, userAgent: "fixture", store: MemoryStore(try token()), transport: transport)
+        let old = await api.sessionEpoch(); try await api.forgetSession()
+        let actions: [() async throws -> Void] = [
+            { try await api.sendComment(postID: "Post1", text: "Old draft", session: old) },
+            { try await api.reactToComment(postID: "Post1", commentID: "C1", unsmile: false, enabled: true, session: old) },
+            { try await api.deleteComment(postID: "Post1", commentID: "C1", session: old) },
+            { try await api.reportComment(postID: "Post1", commentID: "C1", session: old) },
+            { try await api.smile(postID: "Post1", enabled: true, source: "feat", session: old) },
+            { try await api.unsmile(postID: "Post1", enabled: true, source: "feat", session: old) },
+            { try await api.republish(postID: "Post1", enabled: true, source: "feat", session: old) }
+        ]
+        for action in actions {
+            do { try await action(); XCTFail("Stale action reached transport") }
+            catch { XCTAssertEqual(error as? ClientError, .sessionChanged) }
+        }
+        let requests = await transport.recorded(); XCTAssertTrue(requests.isEmpty)
+    }
+    func testCommentScoreSubtractsUnsmilesAndSuppressesNonpositiveCounts() throws {
+        func comment(_ extra: String) throws -> Comment {
+            try Comment(JSON.decode(Data(("{\"id\":\"C1\",\"num\":{\"smiles\":4,\"unsmiles\":7}" + extra + "}").utf8)))
+        }
+        XCTAssertNil(try comment("").displayedScore)
+        XCTAssertEqual(try comment(",\"is_smiled\":true").displayedScore, 1)
+        XCTAssertNil(try comment(",\"is_unsmiled\":true").displayedScore)
+        let positive = try Comment(JSON.decode(Data(#"{"id":"C2","num":{"smiles":7,"unsmiles":2}}"#.utf8)))
+        XCTAssertEqual(positive.displayedScore, 5)
+        let page = try CommentPage(JSON.decode(Data(#"{"comment":{"replies_count":17},"replies":{"items":[],"paging":{"hasNext":false}}}"#.utf8)), replies: true)
+        XCTAssertEqual(page.replyCount, 17)
+    }
+    func testReplyRecipientUsesSelectedCommentWhileKeepingThreadRootAndDraftRevision() throws {
+        let comment = try Comment(JSON.decode(Data(#"{"id":"Reply1","text":"reply","user":{"nick":"Reader"},"root_comm_id":"Root1","parent_comm_id":"Root1","depth":1}"#.utf8)))
+        XCTAssertEqual(comment.rootCommentID, "Root1"); XCTAssertEqual(comment.parentCommentID, "Root1"); XCTAssertEqual(comment.depth, 1)
+        var draft = CommentDraft(); draft.edit("Hello")
+        let submitted = draft.revision
+        draft.reply(to: comment)
+        XCTAssertEqual(draft.replyParentID(root: "Root1"), "Reply1")
+        draft.clear(ifRevision: submitted)
+        XCTAssertEqual(draft.text, "Hello"); XCTAssertEqual(draft.recipient?.nickname, "Reader")
+        draft.reply(to: nil)
+        XCTAssertEqual(draft.text, "Hello"); XCTAssertEqual(draft.replyParentID(root: "Root1"), "Root1")
+        draft.reply(to: comment); draft.clear(ifRevision: draft.revision)
+        XCTAssertNil(draft.recipient); XCTAssertFalse(draft.canSend)
+    }
+    func testReplyToReplyReadsRootButWritesSelectedRecipientWithoutInventedFields() async throws {
+        let transport = ScriptedTransport([reply(#"{"status":200,"data":{"replies":{"items":[],"paging":{"hasNext":false}}}}"#), reply("", status: 204)])
+        let api = try APIClient(installation: installation, userAgent: "fixture", store: MemoryStore(try token()), transport: transport)
+        _ = try await api.comments(postID: "Post1", parentID: "Root1")
+        try await api.sendComment(postID: "Post1", parentID: "Reply1", text: "Hello", attachmentID: "Picture1")
+        let requests = await transport.recorded()
+        XCTAssertEqual(requests.map(\.httpMethod), ["GET", "POST"])
+        XCTAssertEqual(requests.map { $0.url!.path }, ["/v4/content/Post1/comments/Root1/replies", "/v4/content/Post1/comments/Reply1/replies"])
+        XCTAssertEqual(String(decoding: requests[1].httpBody!, as: UTF8.self), "text=Hello&content=Picture1")
+    }
     func testAndroidViewerPanelTransitionTable() {
         XCTAssertEqual(ViewerInteraction.destination(from: .media, swipe: .up), .comments)
         XCTAssertEqual(ViewerInteraction.destination(from: .comments, swipe: .down), .media)

@@ -224,7 +224,11 @@ public actor APIClient {
         if let next, next.utf8.count <= 8192 { query.append(("next", next)) }
         return try CommentPage(await call(path: path, query: query)["data"], replies: parentID != nil)
     }
-    public func sendComment(postID: String, parentID: String? = nil, text: String, attachmentID: String? = nil) async throws {
+    private func validateWriteSession(_ session: UUID?) throws {
+        if let session, session != epoch { throw ClientError.sessionChanged }
+    }
+    public func sendComment(postID: String, parentID: String? = nil, text: String, attachmentID: String? = nil, session: UUID? = nil) async throws {
+        try validateWriteSession(session)
         guard text.utf16.count <= 300, !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || attachmentID != nil else {
             throw ClientError.invalidInput
         }
@@ -234,7 +238,8 @@ public actor APIClient {
         if let attachmentID { fields.append(("content", try Wire.requireID(attachmentID))) }
         _ = try await call(path: path, method: "POST", fields: fields, authenticated: true)
     }
-    public func smile(postID: String, enabled: Bool, source: String) async throws {
+    public func smile(postID: String, enabled: Bool, source: String, session: UUID? = nil) async throws {
+        try validateWriteSession(session)
         guard ["feat", "coll", "subs", "prof"].contains(source) else { throw ClientError.invalidInput }
         _ = try await call(path: "content/" + Wire.requireID(postID) + "/smiles", query: [("from", source)],
                            method: enabled ? "PUT" : "DELETE", authenticated: true)
@@ -246,23 +251,28 @@ public actor APIClient {
 
     // Native Android Retrofit contracts. All writes use the existing account
     // fence and single-attempt transport; none are automatically replayed.
-    public func unsmile(postID: String, enabled: Bool, source: String) async throws {
+    public func unsmile(postID: String, enabled: Bool, source: String, session: UUID? = nil) async throws {
+        try validateWriteSession(session)
         guard ["feat", "coll", "subs", "prof"].contains(source) else { throw ClientError.invalidInput }
         _ = try await call(path: "content/" + Wire.requireID(postID) + "/unsmiles", query: [("from", source)], method: enabled ? "PUT" : "DELETE", authenticated: true)
     }
-    public func republish(postID: String, enabled: Bool, source: String) async throws {
+    public func republish(postID: String, enabled: Bool, source: String, session: UUID? = nil) async throws {
+        try validateWriteSession(session)
         guard ["feat", "coll", "subs", "prof"].contains(source) else { throw ClientError.invalidInput }
         _ = try await call(path: "content/" + Wire.requireID(postID) + "/republished", query: [("from", source)], method: enabled ? "POST" : "DELETE", authenticated: true)
     }
-    public func reactToComment(postID: String, commentID: String, unsmile: Bool, enabled: Bool) async throws {
+    public func reactToComment(postID: String, commentID: String, unsmile: Bool, enabled: Bool, session: UUID? = nil) async throws {
+        try validateWriteSession(session)
         let path = "content/" + (try Wire.requireID(postID)) + "/comments/" + (try Wire.requireID(commentID)) + (unsmile ? "/unsmiles" : "/smiles")
         _ = try await call(path: path, method: enabled ? "PUT" : "DELETE", authenticated: true)
     }
-    public func deleteComment(postID: String, commentID: String) async throws {
+    public func deleteComment(postID: String, commentID: String, session: UUID? = nil) async throws {
+        try validateWriteSession(session)
         let path = "content/" + (try Wire.requireID(postID)) + "/comments/" + (try Wire.requireID(commentID))
         _ = try await call(path: path, method: "DELETE", authenticated: true)
     }
-    public func reportComment(postID: String, commentID: String) async throws {
+    public func reportComment(postID: String, commentID: String, session: UUID? = nil) async throws {
+        try validateWriteSession(session)
         let path = "content/" + (try Wire.requireID(postID)) + "/comments/" + (try Wire.requireID(commentID)) + "/abuses"
         _ = try await call(path: path, method: "PUT", authenticated: true)
     }

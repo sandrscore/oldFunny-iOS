@@ -5,6 +5,42 @@ final class ViewerTests: XCTestCase {
     private func capture(_ name: String, app: XCUIApplication) {
         let picture = XCTAttachment(screenshot: app.screenshot()); picture.name = name; picture.lifetime = .keepAlways; add(picture)
     }
+    func testUnconfirmedInlineReactionKeepsThreadAndDraft() {
+        let app = XCUIApplication(); app.launchArguments = ["--ui-tests", "--ui-tests-account"]; app.launch()
+        XCTAssertTrue(app.buttons["3 comments"].waitForExistence(timeout: 10)); app.buttons["3 comments"].tap()
+        let draft = app.textFields["comment-draft"]; XCTAssertTrue(draft.waitForExistence(timeout: 5))
+        draft.tap(); draft.typeText("Do not lose this")
+        let smile = app.buttons["comment-smile-PreviewComment1"]
+        smile.tap() // First outside tap only dismisses the keyboard.
+        XCTAssertEqual(app.keyboards.count, 0); XCTAssertFalse(app.alerts.firstMatch.exists)
+        smile.tap() // The offline transport rejects social writes.
+        XCTAssertTrue(app.alerts["oldFunny"].waitForExistence(timeout: 5)); app.alerts.buttons["OK"].tap()
+        XCTAssertEqual(draft.value as? String, "Do not lose this")
+        XCTAssertEqual(smile.label, "Smile comment")
+        XCTAssertTrue(app.otherElements["comments-screen"].exists)
+        capture("unconfirmed-comment-reaction-keeps-draft", app: app)
+    }
+    func testReplyThreadRetainsRootRecipientAndDraftThroughBack() {
+        let app = XCUIApplication(); app.launchArguments = ["--ui-tests", "--ui-tests-account"]; app.launch()
+        XCTAssertTrue(app.buttons["3 comments"].waitForExistence(timeout: 10)); app.buttons["3 comments"].tap()
+        let replies = app.staticTexts["2 replies"].firstMatch
+        XCTAssertTrue(replies.waitForExistence(timeout: 5)); replies.tap()
+        let reply = app.staticTexts["Reply number one"]
+        XCTAssertTrue(reply.waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["The classic look is coming back."].exists)
+        reply.tap()
+        let draft = app.textFields["comment-draft"]; draft.typeText("Reply draft")
+        XCTAssertEqual(app.staticTexts["reply-recipient"].label, "Reply to ReaderOne")
+        app.buttons["Back"].tap()
+        XCTAssertTrue(replies.waitForExistence(timeout: 5)); replies.tap()
+        XCTAssertTrue(reply.waitForExistence(timeout: 5))
+        XCTAssertEqual(draft.value as? String, "Reply draft")
+        XCTAssertEqual(app.staticTexts["reply-recipient"].label, "Reply to ReaderOne")
+        capture("retained-reply-root-recipient-draft", app: app)
+        app.buttons["Cancel recipient and clear reply text"].tap()
+        XCTAssertFalse(app.staticTexts["reply-recipient"].exists)
+        XCTAssertEqual(draft.value as? String, "Say something funny…")
+    }
     func testVerticalPanelsRetainPostAndDraftWithoutPushingComments() {
         let app = XCUIApplication(); app.launchArguments = ["--ui-tests"]; app.launch()
         let media = app.otherElements["post-media"]
@@ -22,7 +58,7 @@ final class ViewerTests: XCTestCase {
         let start = comments.coordinate(withNormalizedOffset: CGVector(dx: 0.50, dy: 0.03))
         let end = comments.coordinate(withNormalizedOffset: CGVector(dx: 0.50, dy: 0.60))
         start.press(forDuration: 0.05, thenDragTo: end, withVelocity: .fast, thenHoldForDuration: 0)
-        XCTAssertTrue(app.buttons["128 smiles, smile"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["128 smiles, smile"].waitForExistence(timeout: 5), "Gesture trace: \(String(describing: app.otherElements["post-scene"].firstMatch.value))")
         media.swipeUp(velocity: .fast)
         XCTAssertTrue(draft.waitForExistence(timeout: 5)); XCTAssertEqual(draft.value as? String, "Keep this draft")
         capture("comments-draft-retained", app: app)
@@ -49,6 +85,9 @@ final class ViewerTests: XCTestCase {
         let app = XCUIApplication(); app.launchArguments = ["--ui-tests"]; app.launch()
         let media = app.otherElements["post-media"]
         XCTAssertTrue(app.buttons["ClassicFan, Featured, open profile"].waitForExistence(timeout: 10))
+        let picture = app.images["post-image"]
+        XCTAssertTrue(picture.waitForExistence(timeout: 5))
+        XCTAssertEqual(picture.frame.height / picture.frame.width, 760.0 / 640.0, accuracy: 0.02, "The fitted image must use the resolved media viewport")
         app.swipeLeft(velocity: .fast)
         XCTAssertTrue(app.buttons["NextFan, Featured, open profile"].waitForExistence(timeout: 5))
         app.swipeRight(velocity: .fast)

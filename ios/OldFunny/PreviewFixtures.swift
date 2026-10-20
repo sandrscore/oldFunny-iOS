@@ -18,7 +18,8 @@ private struct PreviewTransport: HTTPTransport {
         // A fixture action must never masquerade as a confirmed social write.
         guard request.httpMethod == "GET" || (request.httpMethod == "POST" && request.url?.path == "/v4/feeds/collective") else { throw ClientError.invalidInput }
         let value: String
-        if request.url?.path.contains("comments") == true { value = PreviewFixtures.comments }
+        if request.url?.path.contains("/replies") == true { value = PreviewFixtures.replies }
+        else if request.url?.path.contains("comments") == true { value = PreviewFixtures.comments }
         else if request.url?.path.contains("feeds") == true || request.url?.path.contains("timelines") == true { value = PreviewFixtures.feed }
         else { throw ClientError.invalidInput }
         return HTTPResult(status: 200, body: Data(value.utf8))
@@ -44,6 +45,7 @@ enum PreviewFixtures {
         ],"paging":{"hasNext":false}}}}
         """
     }
+    static let replies = #"{"status":200,"data":{"comment":{"replies_count":2},"replies":{"items":[{"id":"PreviewReply1","user":{"id":"Reader1","nick":"ReaderOne"},"text":"Reply number one","root_comm_id":"PreviewComment1","parent_comm_id":"PreviewComment1","depth":1,"num":{"smiles":2}},{"id":"PreviewReply2","user":{"id":"Reader2","nick":"ReaderTwo"},"text":"Reply number two","root_comm_id":"PreviewComment1","parent_comm_id":"PreviewReply1","depth":2}],"paging":{"hasNext":false}}}}"#
     @MainActor static func image(_ url: URL) -> UIImage {
         let isAvatar = url.path.contains("avatar")
         let size = isAvatar ? CGSize(width: 96, height: 96) : CGSize(width: 640, height: 760)

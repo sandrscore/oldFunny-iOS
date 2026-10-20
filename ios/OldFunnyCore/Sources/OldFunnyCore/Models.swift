@@ -82,7 +82,9 @@ public struct Comment: Sendable {
     public let authorID: String?, authorAvatarURL: URL?, date: Date?
     public let attachments: [Post]
     public let replies: Int
-    public let smiles: Int, isSmiled: Bool, isUnsmiled: Bool
+    public let smiles: Int, unsmiles: Int, isSmiled: Bool, isUnsmiled: Bool
+    public var displayedScore: Int? { smiles > unsmiles ? smiles - unsmiles : (isSmiled ? 1 : nil) }
+    public let rootCommentID: String?, parentCommentID: String?, depth: Int
     public init(_ value: JSON) throws {
         id = try Wire.requireID(value["id"].string ?? "")
         text = value["text"].string ?? ""
@@ -95,8 +97,12 @@ public struct Comment: Sendable {
         attachments = value["attachments"]["content"].items.compactMap { try? Post($0) }
         replies = max(0, value["num"]["replies"].integer ?? 0)
         smiles = max(0, value["num"]["smiles"].integer ?? 0)
+        unsmiles = max(0, value["num"]["unsmiles"].integer ?? 0)
         isSmiled = value["is_smiled"].flag ?? value["is"]["smiled"].flag ?? false
         isUnsmiled = value["is_unsmiled"].flag ?? value["is"]["unsmiled"].flag ?? false
+        rootCommentID = value["root_comm_id"].string.flatMap { Wire.validID($0) ? $0 : nil }
+        parentCommentID = value["parent_comm_id"].string.flatMap { Wire.validID($0) ? $0 : nil }
+        depth = max(0, value["depth"].integer ?? 0)
     }
 }
 
@@ -117,12 +123,14 @@ private enum ProfileMedia {
 public struct CommentPage: Sendable {
     public let comments: [Comment]
     public let paging: Paging
+    public let replyCount: Int?
     public init(_ data: JSON, replies: Bool = false) throws {
         let root = data[replies ? "replies" : "comments"]
         guard case .array = root["items"] else { throw ClientError.malformedResponse }
         var seen = Set<String>()
         comments = root["items"].items.compactMap { try? Comment($0) }.filter { seen.insert($0.id).inserted }
         paging = try Paging(root["paging"])
+        replyCount = replies ? data["comment"]["replies_count"].integer.map { max(0, $0) } : nil
     }
 }
 

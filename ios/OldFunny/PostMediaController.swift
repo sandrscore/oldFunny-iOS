@@ -9,7 +9,7 @@ final class PostMediaController: UIViewController, UIScrollViewDelegate, UIGestu
     private let source: String
     private let section: String
     private let embedded: Bool
-    private let outer = UIScrollView(), zoom = UIScrollView(), image = UIImageView()
+    private let outer = UIScrollView(), zoom = FittedMediaScrollView(), image = UIImageView()
     private let media = UIView(), titlePanel = UIView(), bodyPanel = UIView()
     private let smile = ClassicCounterButton(), comments = ClassicCounterButton()
     private let unsmile = ClassicTheme.button(.unsmile, label: "Unsmile")
@@ -71,7 +71,8 @@ final class PostMediaController: UIViewController, UIScrollViewDelegate, UIGestu
         ])
         zoom.delegate = self; zoom.minimumZoomScale = 1; zoom.maximumZoomScale = 6
         zoom.backgroundColor = .black; zoom.showsVerticalScrollIndicator = false; zoom.showsHorizontalScrollIndicator = false
-        image.contentMode = .scaleAspectFit; image.autoresizingMask = [.flexibleWidth, .flexibleHeight]; zoom.addSubview(image)
+        image.contentMode = .scaleAspectFit; zoom.addSubview(image); zoom.fittedContent = image
+        image.isAccessibilityElement = true; image.accessibilityLabel = "Post image"; image.accessibilityIdentifier = "post-image"
         media.addSubview(zoom); zoom.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([zoom.topAnchor.constraint(equalTo: media.topAnchor), zoom.bottomAnchor.constraint(equalTo: media.bottomAnchor), zoom.leadingAnchor.constraint(equalTo: media.leadingAnchor), zoom.trailingAnchor.constraint(equalTo: media.trailingAnchor)])
         smile.icon = ClassicTheme.image("smile", fallback: "face.smiling")
@@ -121,7 +122,6 @@ final class PostMediaController: UIViewController, UIScrollViewDelegate, UIGestu
             let height = max(100, min(outer.bounds.width * CGFloat(post.height / post.width), max(100, outer.bounds.height - textHeight)))
             if abs(mediaHeight.constant - height) > 0.5 { mediaHeight.constant = height }
         }
-        if zoom.zoomScale == 1 { image.frame = zoom.bounds; zoom.contentSize = zoom.bounds.size }
     }
     override func viewWillDisappear(_ animated: Bool) { super.viewWillDisappear(animated); pause() }
     func canScrollVertically(down: Bool) -> Bool {
@@ -163,8 +163,10 @@ final class PostMediaController: UIViewController, UIScrollViewDelegate, UIGestu
         guard !changingReaction else { return }; changingReaction = true; smile.isEnabled = false; unsmile.isEnabled = false
         Task { [weak self] in
             guard let self else { return }; defer { changingReaction = false; smile.isEnabled = true; unsmile.isEnabled = true }
+            let session = await app.api.sessionEpoch()
             guard await app.api.account() != nil else { app.signIn(from: self); return }
-            do { try await app.api.smile(postID: post.id, enabled: !smiled, source: source); smiled.toggle(); if smiled { unsmiled = false }; updateSmile(); unsmile.tintColor = unsmiled ? ClassicTheme.yellow : .white }
+            guard view.window != nil else { return }
+            do { try await app.api.smile(postID: post.id, enabled: !smiled, source: source, session: session); smiled.toggle(); if smiled { unsmiled = false }; updateSmile(); unsmile.tintColor = unsmiled ? ClassicTheme.yellow : .white }
             catch { showError(error) }
         }
     }
@@ -172,8 +174,10 @@ final class PostMediaController: UIViewController, UIScrollViewDelegate, UIGestu
         guard !changingReaction else { return }; changingReaction = true; smile.isEnabled = false; unsmile.isEnabled = false
         Task { [weak self] in
             guard let self else { return }; defer { changingReaction = false; smile.isEnabled = true; unsmile.isEnabled = true }
+            let session = await app.api.sessionEpoch()
             guard await app.api.account() != nil else { app.signIn(from: self); return }
-            do { try await app.api.unsmile(postID: post.id, enabled: !unsmiled, source: source); unsmiled.toggle(); if unsmiled { smiled = false }; updateSmile(); unsmile.tintColor = unsmiled ? ClassicTheme.yellow : .white }
+            guard view.window != nil else { return }
+            do { try await app.api.unsmile(postID: post.id, enabled: !unsmiled, source: source, session: session); unsmiled.toggle(); if unsmiled { smiled = false }; updateSmile(); unsmile.tintColor = unsmiled ? ClassicTheme.yellow : .white }
             catch { showError(error) }
         }
     }
@@ -204,8 +208,10 @@ final class PostMediaController: UIViewController, UIScrollViewDelegate, UIGestu
         guard !changingRepublish else { return }; changingRepublish = true
         Task { [weak self] in
             guard let self else { return }; defer { changingRepublish = false }
+            let session = await app.api.sessionEpoch()
             guard await app.api.account() != nil else { app.signIn(from: self); return }
-            do { try await app.api.republish(postID: post.id, enabled: !republished, source: source); republished.toggle() }
+            guard view.window != nil else { return }
+            do { try await app.api.republish(postID: post.id, enabled: !republished, source: source, session: session); republished.toggle() }
             catch { showError(error) }
         }
     }
@@ -225,10 +231,25 @@ final class PostMediaController: UIViewController, UIScrollViewDelegate, UIGestu
     }
 }
 
+/// The inner scroll view can resize after the post controller's layout callback
+/// (the containing stack resolves its media height separately). Fit here, where
+/// the actual viewport is known; never reset a user's zoom/pan during a resize.
+private final class FittedMediaScrollView: UIScrollView {
+    weak var fittedContent: UIView?
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        guard abs(zoomScale - minimumZoomScale) < 0.001, let fittedContent,
+              fittedContent.bounds.size != bounds.size else { return }
+        fittedContent.frame = CGRect(origin: .zero, size: bounds.size)
+        contentSize = bounds.size
+    }
+}
+
 final class ClassicCounterButton: UIControl {
     private let symbol = UIImageView(), label = UILabel()
     var icon: UIImage? { didSet { symbol.image = icon } }
     var count = 0 { didSet { label.text = String(count) } }
+    var showsCount = true { didSet { label.isHidden = !showsCount } }
     override var isEnabled: Bool { didSet { alpha = isEnabled ? 1 : 0.4 } }
     override init(frame: CGRect = .zero) {
         super.init(frame: frame); tintColor = .white

@@ -91,10 +91,10 @@ post panels. Process-death restoration and every gesture edge case remain checks
 | GIF save | Original GIF or MP4→animated GIF, frames/timing preserved; `GifSaving` | Partial: original GIF save; MP4 GIF currently saved as video, conversion missing |
 | Video save | Original MP4 with audio; `VideoSaving` | Source added; file fidelity/Photos device test pending |
 | Post sharing | Public links, internal post navigation, platform share targets | Partial: iOS share sheet and copy link; in-app inbound link routing missing |
-| Comment layout | Blue author, round avatar, date, proportional preview, replies/smile counts; native CommentViews/PictureComments | Partial: basic rows/previews; exact top/hidden/deleted states and in-row reactions pending |
+| Comment layout | Blue author, round avatar, date, proportional preview, replies/smile counts; native CommentViews/PictureComments | Partial: basic rows/previews; inline reactions and net score added in source; exact recent-count/top/hidden/deleted states pending |
 | Thread paging | Cursor continuation, dedupe, retry without losing loaded rows | Source, endpoint/server pagination checks pending |
-| Replies | Root parent context, recipient chip, mentions, retained thread; `AnswersFragment` | Partial: reply pages; root/recipient chip/notification semantics missing |
-| Comment options | Copy, smile/unsmile, reply, report, owned deletion | Source added to hold menu; per-action request tests and live/device validation pending |
+| Replies | Root parent context, recipient chip, mentions, retained thread; `AnswersFragment` | Partial source: root row, retained thread/draft, selected reply recipient and separate root-read/recipient-write routing added; Android recipient X clears reply text and preserves attachment. Depth limits, full deleted-root state and notifications/mentions pending; UIKit tests added, execution pending |
+| Comment options | Copy, smile/unsmile, reply, report, owned deletion | Source in hold menu and per-row smile/unsmile controls; serialized confirmed actions and explicit captured-session fence. Request tests pass; native interaction/server/device validation pending |
 | Comment selection | Pencil/hold multi-selection, permitted rows, immediate partial-success counts; `CommentDelete` | Missing bulk mode; single delete added |
 | Comment delete ack | Empty successful bulk results mean success only with explicit outer status | Missing bulk mode; do not invent equivalent receipts for malformed responses |
 | Attachment plus | Full-screen 3-column own posts/reposts, cursor paging, retained draft on Back; `CommentPostFeed`, `NativePostGrid` | Source added; picker needs simulator/account fixture and device checks |
@@ -134,7 +134,7 @@ post panels. Process-death restoration and every gesture edge case remain checks
 | Publishing | Multipart contenthub contract, immutable snapshot, one upload, task polling and native progress | Missing |
 | Studio drafts | Independent durable drafts, recover uncertain upload, never overwrite newer draft | Missing |
 | Email/password CAPTCHA | Bootstrap/token/account, manual WKWebView, trusted callback and cancellation | User confirmed 0.1.2; flow preserved, new version needs regression |
-| Session storage | Device-only Keychain, shared refresh, account fencing; no token in media/logs | Existing source/tests; relaunch and new build phone checks pending |
+| Session storage | Device-only Keychain, shared refresh, account fencing; no token in media/logs | Existing source/tests plus stale-UI write-session rejection; sign-in/refresh/authenticated-call algorithms unchanged. Relaunch/new build phone checks pending |
 | Alternate sign-in | Preserve supported native Google/Apple/web OAuth functionality | Missing; requires valid iOS client setup, not Android identifiers |
 | Preferences | Existing Android settings, notification filters, privacy, account controls and cache policy | Partial: local session removal only |
 | Offline/lifecycle | Navigation/cache restoration, draft survival, memory/background cleanup | Partial; foreground/media pause and account isolation exist, full persistence pending |
@@ -159,17 +159,28 @@ Apple references for native implementation: [gesture admission](https://develope
 
 ## Checkpoint audit (2026-10-20)
 
-Build 7 (`618c148e…`) compiled on the public Mac runner. Its downloaded IPA was
-independently inspected: version 0.3.0/build 7, ARM64, cryptid=0, no preview marker
-or test bundle. SHA-256: `e1a4c6693c6af8116a3706b00ee6c945629c7a6679df356b264277a481ae00f6`.
-Its actual UIKit run executed three tests: one passed, two failed (header context
-and a keyboard-dismissal tap opening the underlying profile). It is not a
-verified gesture checkpoint.
+Build 8 (`81709ce6…`, [CI](https://github.com/sandrscore/oldFunny-iOS/actions/runs/39495282820))
+compiled and passed 22 Mac contract tests plus 6 packaging/test-verification checks.
+The downloaded IPA independently verifies as 0.3.0/build 8, ARM64, cryptid=0,
+unsigned, with no preview marker/test bundle. SHA-256:
+`824edafacbc964a54c057226ef5a9072770204206bb1a20920c124e387583d82`.
+Actual UIKit: **4 executed, 3 passed, 1 failed**. Button/swipe shared draft,
+horizontal paging/zoom rejection and attachment picker/Back/refresh/removal pass.
+The first-outside-tap regression is fixed. Downward header fling still fails.
+The mandatory gate correctly makes the run fail. This is not a verified gesture
+checkpoint. Build 7 and the previous verified 0.2.0 IPA remain preserved locally.
 
-Build 8 source corrects per-post header context, adds the visible attachment X, corrects keyboard-dismissal routing,
-and extends offline UIKit coverage to attachment selection, picker Back, refresh
-and removal without losing text. The workflow retains diagnostics before a
-mandatory gate requiring every gesture test to execute and pass. These source
-changes have not yet been compiled. Local verification: 22 Swift contract tests
-and 6 packaging/test-gate checks pass. Android/protected-file hashes still match
-the preserved baseline. No live service write or iPhone test was performed.
+Build 9 source retains the original gesture touch target for child/control
+arbitration (a fast pan can move onto a row before UIKit asks shouldBegin), with
+fixture-only diagnostic values. It also adds root/recipient routing and retained
+reply controllers, inline serialized reactions/net scores, reply metadata counts,
+captured-session guards before social writes, and viewport-driven image fitting
+that preserves zoom. 26 Linux contract tests and 6 Python checks pass; six UIKit
+tests are prepared but not executed for this candidate. Mac compilation pending.
+
+Root deleted/hidden states, recent-count policy, depth eligibility, mentions,
+bulk selection and process persistence remain gaps. New reply notification and
+reaction behavior is unverified on the real server/phone. No live social write
+or iPhone test was performed. Authentication flow/refresh/call algorithms and the
+five dedicated auth/session files remain unchanged; new endpoint wrappers add
+an explicit pre-write session check. Android/protected hashes match baseline.

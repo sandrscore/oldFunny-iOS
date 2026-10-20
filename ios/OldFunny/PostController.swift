@@ -13,6 +13,7 @@ final class PostController: UIViewController, UIGestureRecognizerDelegate {
     private var current: UIViewController
     private var transitioning = false, obscured = false
     private var firstDirection: VerticalSwipe?
+    private weak var initialHit: UIView?
     private lazy var vertical = UIPanGestureRecognizer(target: self, action: #selector(pan(_:)))
     var onMenu: (() -> Void)? { didSet { media.onLeading = onMenu } }
     var onRefresh: (() -> Void)? { didSet { media.onRefresh = onRefresh } }
@@ -104,8 +105,7 @@ final class PostController: UIViewController, UIGestureRecognizerDelegate {
     private func editing(in view: UIView) -> Bool { view.isFirstResponder || view.subviews.contains { editing(in: $0) } }
     private func childCanScroll(_ gesture: UIPanGestureRecognizer, down: Bool) -> Bool {
         if panel == .media { return media.canScrollVertically(down: down) }
-        let point = gesture.location(in: current.view)
-        var hit = current.view.hitTest(point, with: nil)
+        var hit = initialHit
         while let item = hit, item !== view {
             if let scroll = item as? UIScrollView, scroll.isScrollEnabled {
                 let top = -scroll.adjustedContentInset.top
@@ -116,27 +116,42 @@ final class PostController: UIViewController, UIGestureRecognizerDelegate {
         }
         return false
     }
+    func gestureRecognizer(_ gesture: UIGestureRecognizer, shouldReceive touch: UITouch) -> Bool {
+        guard gesture === vertical else { return true }
+        initialHit = touch.view
+        return true
+    }
+    private func traceGesture(_ event: String) {
+        #if CLASSIC_UI_PREVIEW
+        let delta = vertical.translation(in: view), speed = vertical.velocity(in: view)
+        view.accessibilityValue = "\(event); panel=\(panel.rawValue); dy=\(Int(delta.y)); vx=\(Int(speed.x)); vy=\(Int(speed.y)); first=\(String(describing: firstDirection)); editing=\(editing(in: view))"
+        #endif
+    }
     func gestureRecognizerShouldBegin(_ gesture: UIGestureRecognizer) -> Bool {
-        guard gesture === vertical, !transitioning, !obscured, presentedViewController == nil, !editing(in: view) else { return false }
+        guard gesture === vertical, !transitioning, !obscured, presentedViewController == nil, !editing(in: view) else { traceGesture("blocked scene/editing"); return false }
         let speed = vertical.velocity(in: view), down = speed.y > 0
         let direction: VerticalSwipe = down ? .down : .up
-        guard ViewerInteraction.destination(from: panel, swipe: direction) != nil else { return false }
-        var hit = view.hitTest(vertical.location(in: view), with: nil)
-        while let item = hit, item !== view { if item is UIControl || item is UITextView { return false }; hit = item.superview }
-        guard abs(speed.y) > abs(speed.x), !childCanScroll(vertical, down: down) else { return false }
-        firstDirection = direction; return true
+        guard ViewerInteraction.destination(from: panel, swipe: direction) != nil else { traceGesture("blocked direction"); return false }
+        // Use the original touch target. At high speed the first delivered pan
+        // sample can already be over a different row/control below the header.
+        var hit = initialHit
+        while let item = hit, item !== view { if item is UIControl || item is UITextView { traceGesture("blocked starting control"); return false }; hit = item.superview }
+        guard abs(speed.y) > abs(speed.x), !childCanScroll(vertical, down: down) else { traceGesture("blocked axis/child scroll"); return false }
+        firstDirection = direction; traceGesture("admitted"); return true
     }
     func gestureRecognizer(_ gesture: UIGestureRecognizer, shouldRecognizeSimultaneouslyWith other: UIGestureRecognizer) -> Bool {
         gesture === vertical && other is UIPanGestureRecognizer
     }
     @objc private func pan(_ gesture: UIPanGestureRecognizer) {
+        if gesture.state == .cancelled || gesture.state == .failed { firstDirection = nil; initialHit = nil; traceGesture("cancelled"); return }
         guard gesture.state == .ended else { return }
-        defer { firstDirection = nil }
+        defer { firstDirection = nil; initialHit = nil }
         let delta = gesture.translation(in: view), speed = gesture.velocity(in: view)
         let direction: VerticalSwipe = delta.y > 0 ? .down : .up
         guard firstDirection == direction,
               ViewerInteraction.accepts(dx: Double(delta.x), dy: Double(delta.y), vx: Double(speed.x), vy: Double(speed.y), displayScale: Double(view.window?.screen.scale ?? UIScreen.main.scale), childCanScroll: false, editing: editing(in: view)),
-              let target = ViewerInteraction.destination(from: panel, swipe: direction) else { return }
+              let target = ViewerInteraction.destination(from: panel, swipe: direction) else { traceGesture("rejected fling"); return }
+        traceGesture("accepted fling")
         view.endEditing(true); showPanel(target)
     }
 }

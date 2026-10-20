@@ -29,9 +29,15 @@ public enum ViewerInteraction {
 
 /// Drafts are retained while switching panels and while choosing an existing
 /// post. A completion clears only the exact revision that was submitted.
+public struct ReplyRecipient: Equatable, Sendable {
+    public let commentID: String, nickname: String
+    public init(_ comment: Comment) { commentID = comment.id; nickname = comment.author }
+}
+
 public struct CommentDraft: Equatable, Sendable {
     public private(set) var text = ""
     public private(set) var attachment: Post?
+    public private(set) var recipient: ReplyRecipient?
     public private(set) var revision: UInt64 = 0
     public init() {}
     public var canSend: Bool {
@@ -39,7 +45,12 @@ public struct CommentDraft: Equatable, Sendable {
     }
     public mutating func edit(_ value: String) { if text != value { text = value; revision &+= 1 } }
     public mutating func attach(_ post: Post?) { if attachment != post { attachment = post; revision &+= 1 } }
+    public mutating func reply(to comment: Comment?) {
+        let value = comment.map(ReplyRecipient.init)
+        if recipient != value { recipient = value; revision &+= 1 }
+    }
+    public func replyParentID(root: String?) -> String? { recipient?.commentID ?? root }
     public mutating func clear(ifRevision submitted: UInt64) {
-        guard revision == submitted else { return }; text = ""; attachment = nil; revision &+= 1
+        guard revision == submitted else { return }; text = ""; attachment = nil; recipient = nil; revision &+= 1
     }
 }

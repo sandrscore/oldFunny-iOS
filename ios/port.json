@@ -4,7 +4,7 @@
   "product": "oldFunny",
   "bundle_identifier": "mobi.oldfunny.ios",
   "version": "0.3.0",
-  "build": "8",
+  "build": "9",
   "minimum_ios": "16.0",
   "target": {
     "device": "iPhone 16",
@@ -39,18 +39,23 @@
     "captcha_handoff": true,
     "session_survives_relaunch": "unverified"
   },
-  "ui_phase": "Build 8 candidate: retained vertical panels, correct feed header, attachment removal X and mandatory UIKit test gate",
+  "ui_phase": "Build 9 candidate: original-touch gesture arbitration, reply root/recipient/draft retention, inline reactions, fitted media sizing, stale-session write guards",
   "simulator_previews": "Offline fixtures compiled only with CLASSIC_UI_PREVIEW; absent from Release",
   "simulator_ui": {
     "device": "iPhone 16",
     "ios": "18.5",
     "offline_fixtures": true,
-    "screens_reviewed": [],
+    "screens_reviewed": [
+      "feed",
+      "sidebar",
+      "comments",
+      "information"
+    ],
     "target_phone_tested": false,
     "ui_gesture_tests_passed": false
   },
   "known_ui_polish": [
-    "Attachment X and feed context corrected in build 8 source; simulator validation pending"
+    "Fitted media viewport sizing fixed in build 9 source; simulator validation pending"
   ],
   "parity_audit": "ANDROID_PARITY.md",
   "compiled_candidate_build7": {
@@ -71,6 +76,24 @@
         "header context",
         "first outside tap opened underlying author profile"
       ]
+    },
+    "phone_tested": false
+  },
+  "compiled_candidate_build8": {
+    "source_commit": "81709ce66c7568f25ed2d60f0a2f1d620f5ec897",
+    "run_url": "https://github.com/sandrscore/oldFunny-iOS/actions/runs/39495282820",
+    "sha256": "824edafacbc964a54c057226ef5a9072770204206bb1a20920c124e387583d82",
+    "version": "0.3.0",
+    "build": "8",
+    "independent_inspection": true,
+    "contains_arm64": true,
+    "main_executable_cryptid": 0,
+    "fixture_code_absent": true,
+    "ui_gesture_tests": {
+      "executed": 4,
+      "passed": 3,
+      "failed": 1,
+      "remaining_failure": "downward header fling did not return to media"
     },
     "phone_tested": false
   }
