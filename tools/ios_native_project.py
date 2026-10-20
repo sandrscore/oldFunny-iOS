@@ -64,7 +64,7 @@ def generate(output: Path, bundle: str = "mobi.oldfunny.ios", ios: Path = IOS):
         resource_refs.append(ref)
         resources.append(obj(relative + ":build", "PBXBuildFile", fileRef=ref))
     framework_refs, framework_builds = [], []
-    for name in ("UIKit", "AVKit", "AVFoundation", "SafariServices", "Security", "ImageIO"):
+    for name in ("UIKit", "AVKit", "AVFoundation", "WebKit", "Security", "ImageIO"):
         ref = obj(name, "PBXFileReference", lastKnownFileType="wrapper.framework", path=f"System/Library/Frameworks/{name}.framework", sourceTree="SDKROOT")
         framework_refs.append(ref); framework_builds.append(obj(name + ":build", "PBXBuildFile", fileRef=ref))
     product = obj("product", "PBXFileReference", explicitFileType="wrapper.application", includeInIndex=0, path="OldFunny.app", sourceTree="BUILT_PRODUCTS_DIR")

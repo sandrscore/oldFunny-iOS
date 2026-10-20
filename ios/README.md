@@ -4,7 +4,17 @@ New Swift/UIKit implementation of oldFunny, targeting ARM64 and iOS 16 or later.
 The intended test device is iPhone 16 / iOS 27.0.1. This is a source port, not
 a converted APK or a modification of iFunny's encrypted executable.
 
-**0.1.1 (build 2) connection fix built; updated iPhone testing pending.**
+**0.1.2 (build 3) CAPTCHA handoff fix prepared; phone verification pending.**
+
+The user confirmed Featured loads in 0.1.1, but completing its browser CAPTCHA
+opens the official iFunny app. The new flow uses an isolated in-app WebKit view,
+intercepts the observed `ifunny://captcha_resolved` completion locally, and
+resumes sign-in once. The password stays in the pending task's memory while the
+challenge is open; cancellation/backgrounding discards that attempt. The web
+view receives no password or API authorization. No global `ifunny` URL scheme
+registration is added. Actual server acceptance still needs a phone test.
+
+**Previous build: 0.1.1 connection fix.**
 
 [Download the corrected 0.1.1 artifact ZIP](https://github.com/sandrscore/oldFunny-iOS/actions/runs/39480215788/artifacts/12291750634)
 (extract its IPA and sign/update through Zeus; expires October 27, 2026).
@@ -45,9 +55,9 @@ python3 tools/build_ios_native.py
 Output after a successful build:
 
 ```text
-.ios-work/ios-port/dist/oldFunny-ios-0.1.1-unsigned.ipa
-.ios-work/ios-port/dist/oldFunny-ios-0.1.1-unsigned.inspection.json
-.ios-work/ios-port/dist/oldFunny-ios-0.1.1-unsigned.sha256
+.ios-work/ios-port/dist/oldFunny-ios-0.1.2-unsigned.ipa
+.ios-work/ios-port/dist/oldFunny-ios-0.1.2-unsigned.inspection.json
+.ios-work/ios-port/dist/oldFunny-ios-0.1.2-unsigned.sha256
 ```
 
 The build uses no Apple account, signing certificate, provisioning profile,

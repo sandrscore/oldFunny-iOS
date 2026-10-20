@@ -1,5 +1,4 @@
 import UIKit
-import SafariServices
 
 final class LoginController: UIViewController {
     private let app: AppContext
@@ -35,25 +34,39 @@ final class LoginController: UIViewController {
         let secret = password.text ?? ""
         guard !name.isEmpty, !secret.isEmpty else { showError(ClientError.invalidInput); return }
         password.text = nil; view.endEditing(true); submit.isEnabled = false
-        isModalInPresentation = true
+        isModalInPresentation = true; navigationController?.isModalInPresentation = true
         navigationItem.leftBarButtonItem?.isEnabled = false
         task = Task { [weak self] in
             guard let self else { return }
             defer {
                 self.task = nil; self.submit.isEnabled = true; self.isModalInPresentation = false
+                self.navigationController?.isModalInPresentation = false
                 self.navigationItem.leftBarButtonItem?.isEnabled = true
             }
             do {
-                try await app.api.signIn(username: name, password: secret)
+                do {
+                    try await app.api.signIn(username: name, password: secret)
+                } catch ClientError.captcha(let url) {
+                    // The password stays in this task's memory during one
+                    // manual verification, then is released on cancel/failure.
+                    guard await verify(url) else { return }
+                    try Task.checkCancellation()
+                    // Resume once only after the real page's completion signal.
+                    // Server acceptance and account lookup still gate storage.
+                    try await app.api.signIn(username: name, password: secret)
+                }
                 dismiss(animated: true, completion: completed)
-            } catch ClientError.captcha(let url) {
-                let alert = UIAlertController(title: "Verify with iFunny", message: "Complete verification, then return here and enter your password again.", preferredStyle: .alert)
-                alert.addAction(UIAlertAction(title: "Open verification", style: .default) { [weak self] _ in
-                    self?.present(SFSafariViewController(url: url), animated: true)
-                })
-                alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
-                present(alert, animated: true)
+            } catch ClientError.captcha {
+                let alert = UIAlertController(title: "Verification not accepted", message: "iFunny requested verification again. Please try signing in again.", preferredStyle: .alert)
+                alert.addAction(UIAlertAction(title: "OK", style: .default)); present(alert, animated: true)
             } catch { showError(error) }
+        }
+    }
+    private func verify(_ url: URL) async -> Bool {
+        guard CaptchaPolicy.isChallenge(url) else { return false }
+        return await withCheckedContinuation { continuation in
+            let controller = CaptchaController(challenge: url) { result in continuation.resume(returning: result) }
+            present(UINavigationController(rootViewController: controller), animated: true)
         }
     }
 }

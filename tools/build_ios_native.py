@@ -60,7 +60,7 @@ def package(app: Path, output: Path):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--output", type=Path, default=ROOT / ".ios-work/ios-port/dist/oldFunny-ios-0.1.1-unsigned.ipa")
+    parser.add_argument("--output", type=Path, default=ROOT / ".ios-work/ios-port/dist/oldFunny-ios-0.1.2-unsigned.ipa")
     parser.add_argument("--work", type=Path, default=ROOT / ".ios-work/ios-port/xcode")
     parser.add_argument("--bundle-id", default="mobi.oldfunny.ios")
     args = parser.parse_args()

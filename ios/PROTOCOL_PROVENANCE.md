@@ -54,3 +54,30 @@ and probe. The independent oldFunny app version remains in Info.plist.
 Connection failures preserve only Foundation's numeric URLError code and a
 fixed explanation; raw error userInfo, URLs, headers and bodies remain excluded.
 This does not establish fresh-login, visibility classification or feature parity.
+
+## CAPTCHA handoff correction (0.1.2)
+
+Both the supplied classic Android `mobi/ifunny/captcha/CaptchaActivity$1` and
+modern `com/common/captcha/presentation/activity/CaptchaActivity$onCreate$2`
+intercept exactly `ifunny://captcha_resolved` inside their WebView and finish
+verification locally. Their code is inspected under ignored `analysis/`; no
+original binary or personal challenge URL is added to the source export.
+The iOS port's Safari presentation previously let that scheme open official
+iFunny. It now uses a nonpersistent WKWebView with a local navigation delegate.
+
+Only an exact callback originating from the main HTTPS `ifunny.co/captcha/`
+page and targeting the main frame is accepted. Subframes, other schemes,
+external main pages and altered callback URLs cannot complete the flow. HTTPS
+provider subframes remain available for the person to solve the real CAPTCHA.
+There is no JavaScript injection, automatic solving, global URL-scheme claim,
+certificate exception, password forwarding to WebKit, or CAPTCHA bypass.
+
+The pending login task retains the password in memory through one manual
+challenge. Cancel or backgrounding closes that challenge and releases the task;
+a valid callback resumes one normal sign-in attempt with the same installation.
+Only successful OAuth and account lookup persist the returned session. A repeated
+challenge stops and asks the person to sign in again. No real credentials or
+challenge URLs were used in the agent's tests.
+
+Apple references: [navigation policy](https://developer.apple.com/documentation/webkit/wknavigationdelegate)
+and [nonpersistent website data](https://developer.apple.com/documentation/webkit/wkwebsitedatastore).

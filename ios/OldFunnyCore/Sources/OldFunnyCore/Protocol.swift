@@ -105,8 +105,7 @@ public enum Wire {
     public static func captcha(_ value: JSON) -> URL? {
         guard value["error"].string == "captcha_required",
               let url = https(value["data"]["captcha_url"].string),
-              url.host?.lowercased() == "ifunny.co", url.port == nil,
-              url.path.hasPrefix("/captcha/") else { return nil }
+              CaptchaPolicy.isChallenge(url) else { return nil }
         return url
     }
     public static func form(_ fields: [(String, String)]) -> Data {

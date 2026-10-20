@@ -80,6 +80,48 @@ final class CoreTests: XCTestCase {
             XCTAssertNil(try url(bad))
         }
     }
+    func testCaptchaCallbackRequiresExactSignalFromTrustedMainPage() throws {
+        let challenge = URL(string: "https://ifunny.co/captcha/fixture-only")!
+        let resolved = URL(string: "ifunny://captcha_resolved")!
+        func decision(_ destination: URL, _ source: URL? = nil, _ sourceMain: Bool = true, _ targetMain: Bool = true) -> CaptchaPolicy.Decision {
+            CaptchaPolicy.decide(destination: destination, source: source, sourceIsMainFrame: sourceMain, targetIsMainFrame: targetMain)
+        }
+        XCTAssertEqual(decision(resolved, challenge), .resolved)
+        XCTAssertEqual(decision(resolved), .block)
+        XCTAssertEqual(decision(resolved, challenge, false), .block)
+        XCTAssertEqual(decision(resolved, challenge, true, false), .block)
+        for source in ["https://ifunny.co.attacker.invalid/captcha/a", "http://ifunny.co/captcha/a", "https://ifunny.co/other", "https://google.com/recaptcha", "https://ifunny.co:443/captcha/a"] {
+            XCTAssertEqual(decision(resolved, URL(string: source)), .block)
+        }
+        for destination in ["ifunny://captcha_resolved?accepted=1", "ifunny://captcha_resolved#fake", "ifunny://captcha_resolved.attacker", "ifunny://other", "https://ifunny.co/", "http://ifunny.co/captcha/a", "https://attacker.invalid/captcha/a", "javascript:alert(1)"] {
+            XCTAssertEqual(decision(URL(string: destination)!, challenge), .block)
+        }
+        XCTAssertEqual(decision(challenge), .allowPage)
+        XCTAssertEqual(decision(URL(string: "https://www.google.com/recaptcha/api2/anchor")!, challenge, true, false), .allowPage)
+        XCTAssertEqual(decision(URL(string: "about:blank")!, challenge, false, false), .allowPage)
+        XCTAssertEqual(decision(URL(string: "about:blank")!, challenge), .block)
+    }
+    func testCaptchaRetryUsesSameInstallationAndCommitsOnlyAfterServerAccepts() async throws {
+        let old = try token()
+        let store = MemoryStore(old)
+        let challenge = "https://ifunny.co/captcha/fixture-only"
+        let transport = ScriptedTransport([
+            reply("{}"), reply("{\"error\":\"captcha_required\",\"data\":{\"captcha_url\":\"\(challenge)\"}}", status: 403),
+            reply("{}"), reply(#"{"access_token":"verifiedFixture","refresh_token":"verifiedRefresh"}"#),
+            reply(#"{"data":{"user":{"id":"VerifiedUser","nick":"Verified"}}}"#)
+        ])
+        let client = try APIClient(installation: installation, userAgent: "Fixture", store: store, transport: transport)
+        do { try await client.signIn(username: "fixture", password: "fixture&password"); XCTFail("Expected CAPTCHA") }
+        catch { XCTAssertEqual(error as? ClientError, .captcha(URL(string: challenge)!)) }
+        XCTAssertEqual(try store.read(), old)
+        try await client.signIn(username: "fixture", password: "fixture&password")
+        XCTAssertEqual(try store.read()?.accountID, "VerifiedUser")
+        let requests = await transport.recorded()
+        XCTAssertEqual(requests.map { $0.url!.path }, ["/v4/app/features", "/v4/oauth2/token", "/v4/app/features", "/v4/oauth2/token", "/v4/account"])
+        XCTAssertTrue(requests.allSatisfy { $0.value(forHTTPHeaderField: "Cookie") == "device_id=" + installation })
+        XCTAssertEqual(requests[1].httpBody, requests[3].httpBody)
+        XCTAssertEqual(requests[1].value(forHTTPHeaderField: "Authorization"), requests[3].value(forHTTPHeaderField: "Authorization"))
+    }
     func testFeedKeepsTextVideoAndSkipsDeletedAndDuplicateEntries() throws {
         let data = try JSON.decode(Data(#"{"content":{"items":[{"id":"Video1","type":"text_video","title":"Title","description":"Body","url":"https://media.invalid/a.mp4","video_clip":{"screen_url":"https://media.invalid/a.webp"},"size":{"w":640,"h":450}},{"id":"Video1"},{"id":"Deleted1","state":"deleted"},{"id":"Picture2","type":"picture","url":"file:///private/example"}],"paging":{"hasNext":true,"cursors":{"next":"opaque&+cursor"}}}}"#.utf8))
         let page = try PostPage(data)
