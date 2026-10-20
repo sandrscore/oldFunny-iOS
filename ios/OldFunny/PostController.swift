@@ -11,7 +11,7 @@ final class PostController: UIViewController, UIGestureRecognizerDelegate {
     private var comments: CommentsController?, information: PostInfoController?
     private(set) var panel: ViewerPanel = .media
     private var current: UIViewController
-    private var transitioning = false, obscured = false
+    private var transitioning = false, obscured = false, selected: Bool
     private var firstDirection: VerticalSwipe?
     private weak var initialHit: UIView?
     private lazy var vertical = UIPanGestureRecognizer(target: self, action: #selector(pan(_:)))
@@ -19,11 +19,13 @@ final class PostController: UIViewController, UIGestureRecognizerDelegate {
     var onRefresh: (() -> Void)? { didSet { media.onRefresh = onRefresh } }
     var onPanelChange: ((ViewerPanel) -> Void)?
 
-    init(app: AppContext, post: Post, index: Int, source: String, section: String = "Post") {
+    init(app: AppContext, post: Post, index: Int, source: String, section: String = "Post", selected: Bool = true) {
         self.app = app; self.post = post; self.index = index; self.source = source
+        self.selected = selected
         media = PostMediaController(app: app, post: post, index: index, source: source, section: section)
         current = media
         super.init(nibName: nil, bundle: nil)
+        media.setObscured(!selected)
         media.onComments = { [weak self] in self?.showPanel(.comments) }
     }
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
@@ -85,7 +87,7 @@ final class PostController: UIViewController, UIGestureRecognizerDelegate {
         let forward = (previous == .media && target == .comments) || (previous == .information && target == .media)
         let distance = view.bounds.height * (forward ? 1 : -1)
         incoming.view.transform = CGAffineTransform(translationX: 0, y: distance)
-        media.setObscured(target != .media || obscured)
+        media.setObscured(target != .media || obscured || !selected)
         outgoing.beginAppearanceTransition(false, animated: animated); incoming.beginAppearanceTransition(true, animated: animated)
         let finish: (Bool) -> Void = { [weak self] _ in
             outgoing.view.isHidden = true; outgoing.view.transform = .identity
@@ -98,7 +100,8 @@ final class PostController: UIViewController, UIGestureRecognizerDelegate {
         if animated && !UIAccessibility.isReduceMotionEnabled { UIView.animate(withDuration: 0.25, delay: 0, options: [.curveEaseInOut], animations: changes, completion: finish) }
         else { changes(); finish(true) }
     }
-    func setObscured(_ value: Bool) { obscured = value; media.setObscured(value || panel != .media) }
+    func setSelected(_ value: Bool) { selected = value; media.setObscured(!value || obscured || panel != .media) }
+    func setObscured(_ value: Bool) { obscured = value; media.setObscured(value || !selected || panel != .media) }
     func returnToMedia() -> Bool {
         guard panel != .media else { return false }; view.endEditing(true); showPanel(.media); return true
     }

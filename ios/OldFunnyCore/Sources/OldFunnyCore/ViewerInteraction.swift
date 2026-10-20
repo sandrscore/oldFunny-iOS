@@ -6,6 +6,8 @@ public enum ViewerPanel: String, Sendable { case information, media, comments }
 public enum VerticalSwipe: Sendable { case up, down }
 
 public enum ViewerInteraction {
+    /// Android's default gallery disables downvotes; Collective and tags enable them.
+    public static func allowsUnsmile(source: String) -> Bool { source == "coll" || source == "tags" }
     public static func destination(from panel: ViewerPanel, swipe: VerticalSwipe) -> ViewerPanel? {
         switch (panel, swipe) {
         case (.media, .up): return .comments

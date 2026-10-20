@@ -5,6 +5,76 @@ final class ViewerTests: XCTestCase {
     private func capture(_ name: String, app: XCUIApplication) {
         let picture = XCTAttachment(screenshot: app.screenshot()); picture.name = name; picture.lifetime = .keepAlways; add(picture)
     }
+    private func waitUntil(_ message: String, timeout: TimeInterval = 8, _ condition: @escaping () -> Bool) {
+        let expectation = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in condition() }, object: nil)
+        XCTAssertEqual(XCTWaiter.wait(for: [expectation], timeout: timeout), .completed, message)
+    }
+    private func videoTime(_ scrubber: XCUIElement) -> (position: Int, duration: Int, idle: Bool) {
+        let text = scrubber.value as? String ?? ""
+        let fields = text.components(separatedBy: ";")[0].components(separatedBy: "/")
+        return (Int(fields.first ?? "") ?? -1, fields.count > 1 ? Int(fields[1]) ?? -1 : -1, text.contains("; idle;"))
+    }
+    func testVideoPausedSeekMuteZoomAndPageReturnUseActualPlayer() {
+        let app = XCUIApplication(); app.launchArguments = ["--ui-tests", "--ui-tests-video"]; app.launch()
+        let video = app.descendants(matching: .any)["post-video"].firstMatch
+        let bar = app.descendants(matching: .any)["video-scrubber"].firstMatch
+        XCTAssertTrue(video.waitForExistence(timeout: 10)); XCTAssertTrue(bar.waitForExistence(timeout: 10))
+        waitUntil("Actual player must advance") { self.videoTime(bar).position > 500 }
+        XCTAssertEqual(video.value as? String, "Playing")
+        XCTAssertEqual(videoTime(bar).duration, 12400, accuracy: 150)
+        video.tap(); waitUntil("Single confirmed tap pauses video") { video.value as? String == "Paused" }
+        let target = Int(Double(videoTime(bar).duration) * 0.78)
+        bar.coordinate(withNormalizedOffset: CGVector(dx: 0.78, dy: 0.8)).tap()
+        waitUntil("Accurate seek must land between sparse keyframes while paused") {
+            let time = self.videoTime(bar); return time.idle && abs(time.position - target) < 150
+        }
+        waitUntil("A decoded frame, not just the playback clock, must reach the sparse-keyframe seek target") {
+            let value = bar.value as? String ?? ""
+            let suffix = value.components(separatedBy: "frame=").last ?? ""
+            let frame = Int(suffix.components(separatedBy: ";").first ?? "") ?? -1
+            return abs(frame - target) < 150 && value.contains("visible=true")
+        }
+        XCTAssertEqual(video.value as? String, "Paused")
+        let paused = videoTime(bar).position
+        let sound = app.buttons["Unmute video"]
+        XCTAssertTrue(sound.waitForExistence(timeout: 5)); sound.tap()
+        XCTAssertTrue(app.buttons["Mute video"].exists)
+        XCTAssertEqual(videoTime(bar).position, paused, accuracy: 150, "Unmuting a paused clip must not restart it")
+        let media = app.otherElements["post-media"]
+        media.pinch(withScale: 2, velocity: 2)
+        XCTAssertFalse(app.buttons["Mute video"].exists)
+        XCTAssertEqual(video.value as? String, "Paused")
+        capture("paused-video-zoomed-mark", app: app)
+        media.pinch(withScale: 0.5, velocity: -2)
+        XCTAssertTrue(app.buttons["Mute video"].waitForExistence(timeout: 5))
+        app.buttons["3 comments"].tap(); XCTAssertTrue(app.textFields["comment-draft"].waitForExistence(timeout: 5))
+        app.buttons["Back"].tap(); XCTAssertTrue(video.waitForExistence(timeout: 5))
+        XCTAssertEqual(video.value as? String, "Paused")
+        app.swipeLeft(velocity: .fast)
+        XCTAssertTrue(app.buttons["NextFan, Featured, open profile"].waitForExistence(timeout: 5))
+        app.swipeRight(velocity: .fast); XCTAssertTrue(video.waitForExistence(timeout: 5))
+        XCTAssertEqual(video.value as? String, "Paused")
+        XCTAssertEqual(videoTime(bar).position, paused, accuracy: 150)
+        capture("paused-video-seek-retained-after-page", app: app)
+        video.tap(); waitUntil("Returning to a paused page must require explicit play") { self.videoTime(bar).position > paused + 300 }
+        app.buttons["Mute video"].tap(); app.buttons["Unmute video"].tap()
+        waitUntil("Enabling sound during playback restarts from zero") { self.videoTime(bar).position < 3000 }
+        XCTAssertEqual(video.value as? String, "Playing")
+    }
+    func testUnsmileContextAndTripleTapClassification() {
+        let app = XCUIApplication(); app.launchArguments = ["--ui-tests", "--ui-tests-account", "--ui-tests-reactions"]; app.launch()
+        let media = app.otherElements["post-media"]
+        XCTAssertTrue(app.buttons["128 smiles, smile"].waitForExistence(timeout: 10))
+        XCTAssertFalse(app.buttons["Unsmile"].exists)
+        app.buttons["Open menu"].tap(); app.buttons["Collective"].tap()
+        XCTAssertTrue(app.buttons["Unsmile"].waitForExistence(timeout: 5))
+        media.tap(withNumberOfTaps: 3, numberOfTouches: 1)
+        waitUntil("Triple tap must send only one unsmile and no intermediate smile") { media.value as? String == "unsmiles" }
+        XCTAssertTrue(app.buttons["128 smiles, smile"].exists)
+        media.doubleTap()
+        waitUntil("A later double tap must send exactly one smile") { media.value as? String == "unsmiles,smiles" }
+        XCTAssertTrue(app.buttons["129 smiles, remove smile"].exists)
+    }
     func testConfirmedReplyAndRootDeletionUpdatePostCountWithoutChangingReplyCountTwice() {
         let app = XCUIApplication(); app.launchArguments = ["--ui-tests", "--ui-tests-account", "--ui-tests-accepted-comments"]; app.launch()
         XCTAssertTrue(app.buttons["5 comments"].waitForExistence(timeout: 10)); app.buttons["5 comments"].tap()

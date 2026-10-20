@@ -18,6 +18,10 @@ private actor PreviewTransport: HTTPTransport {
     private var replyCount: Int { 2 + sentReplies.count - deleted.filter { $0.hasPrefix("PreviewReply") || $0.hasPrefix("FixtureSentReply") }.count }
     func send(_ request: URLRequest) async throws -> HTTPResult {
         let path = request.url?.path ?? "", method = request.httpMethod ?? "GET"
+        if ProcessInfo.processInfo.arguments.contains("--ui-tests-reactions"), ["PUT", "DELETE"].contains(method), path == "/v4/content/PreviewPost/smiles" || path == "/v4/content/PreviewPost/unsmiles" {
+            await MainActor.run { PreviewFixtures.reactionEvents.append(request.url!.lastPathComponent) }
+            return HTTPResult(status: 204, body: Data())
+        }
         // Explicit, per-launch offline acknowledgements for the count/state UI
         // test. No URLSession or real service is available in this transport.
         if ProcessInfo.processInfo.arguments.contains("--ui-tests-accepted-comments") {
@@ -73,6 +77,7 @@ private actor PreviewTransport: HTTPTransport {
 }
 
 enum PreviewFixtures {
+    @MainActor static var reactionEvents = [String]()
     @MainActor static func makeApp() throws -> AppContext {
         let api = try APIClient(installation: String(repeating: "a", count: 64), userAgent: "Offline UI preview", store: PreviewStore(), transport: PreviewTransport())
         return AppContext(previewAPI: api)
@@ -80,7 +85,11 @@ enum PreviewFixtures {
     static let post = #"{"id":"PreviewPost","type":"picture","url":"https://preview.invalid/post","size":{"w":640,"h":760},"creator":{"id":"PreviewUser","nick":"ClassicFan","avatar":{"s":"https://preview.invalid/avatar"}},"num":{"smiles":128,"comments":3}}"#
     static var feed: String {
         let second = post.replacingOccurrences(of: "PreviewPost", with: "NextPost").replacingOccurrences(of: "ClassicFan", with: "NextFan")
-        return "{\"status\":200,\"data\":{\"content\":{\"items\":[\(post),\(second)],\"paging\":{\"hasNext\":false}}}}"
+        let first = ProcessInfo.processInfo.arguments.contains("--ui-tests-video")
+            ? post.replacingOccurrences(of: "\"type\":\"picture\"", with: "\"type\":\"video\"")
+                .replacingOccurrences(of: "https://preview.invalid/post", with: "https://preview.invalid/fixture-video.mp4")
+                .replacingOccurrences(of: "\"h\":760", with: "\"h\":360") : post
+        return "{\"status\":200,\"data\":{\"content\":{\"items\":[\(first),\(second)],\"paging\":{\"hasNext\":false}}}}"
     }
     static var comments: String {
         """

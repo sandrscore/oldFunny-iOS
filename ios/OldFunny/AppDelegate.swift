@@ -50,16 +50,30 @@ final class SceneDelegate: UIResponder, UIWindowSceneDelegate {
 final class AppContext {
     let api: APIClient
     let media = MediaLoader()
+    // Android's application-scoped sound flag starts off and is shared by pages.
+    var videoSoundOn = false
+    private var inactiveSince: Date?
+    private var soundObservers = [NSObjectProtocol]()
     var onAccountChange: (() -> Void)?
     init() throws {
         let installation = try KeychainStore.installation()
         api = try APIClient(installation: installation,
             userAgent: Wire.apiUserAgent(systemVersion: UIDevice.current.systemVersion, model: UIDevice.current.model),
             store: KeychainStore())
+        observeSoundLifecycle()
     }
     #if CLASSIC_UI_PREVIEW
-    init(previewAPI: APIClient) { api = previewAPI }
+    init(previewAPI: APIClient) { api = previewAPI; observeSoundLifecycle() }
     #endif
+    deinit { soundObservers.forEach { NotificationCenter.default.removeObserver($0) } }
+    private func observeSoundLifecycle() {
+        soundObservers.append(NotificationCenter.default.addObserver(forName: UIApplication.didEnterBackgroundNotification, object: nil, queue: .main) { [weak self] _ in self?.inactiveSince = Date() })
+        soundObservers.append(NotificationCenter.default.addObserver(forName: UIApplication.willEnterForegroundNotification, object: nil, queue: .main) { [weak self] _ in
+            guard let self else { return }
+            if let inactiveSince, Date().timeIntervalSince(inactiveSince) > 600 { videoSoundOn = false }
+            inactiveSince = nil
+        })
+    }
     func signIn(from controller: UIViewController, completion: (() -> Void)? = nil) {
         let login = LoginController(app: self) { [weak self] in
             self?.onAccountChange?()

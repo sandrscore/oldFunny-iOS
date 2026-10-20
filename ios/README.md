@@ -1,3 +1,5 @@
+> Build 12 is a media candidate under verification. The verified build 11 below remains the fallback; its evidence does not cover the new player.
+
 # oldFunny iOS
 
 **0.3.0 build 11: verified offline viewer/gesture checkpoint.**

@@ -7,6 +7,9 @@ import re
 import subprocess
 import sys
 import time
+import math
+import struct
+import wave
 
 from ios_native_project import ROOT, IOS, generate
 
@@ -31,6 +34,15 @@ def main():
               "target_phone_tested": False, "screenshots": []}
     device = None; stage = "build"
     try:
+        stage = "fixture-media"
+        audio = output / "fixture-audio.wav"
+        with wave.open(str(audio), "wb") as stream:
+            stream.setnchannels(1); stream.setsampwidth(2); stream.setframerate(44100)
+            stream.writeframes(b"".join(struct.pack("<h", int(500 * math.sin(2 * math.pi * 440 * n / 44100))) for n in range(546840)))
+        fixture = output / "fixture-video.mp4"
+        run("swift", str(ROOT / "tools/render_ios_video_fixture.swift"), str(fixture), str(audio), timeout=180)
+        report["generated_video_fixture"] = {"duration_ms": 12400, "audio": True, "source": "synthetic CI output"}
+        stage = "build"
         generate(IOS / "OldFunny.xcodeproj")
         work = ROOT / ".ios-work/ios-port/preview-build"
         command = ["xcodebuild", "-project", str(IOS / "OldFunny.xcodeproj"), "-scheme", "OldFunny",
@@ -70,13 +82,19 @@ def main():
             report["screenshots"].append(path.name)
         # Exercise actual touch gestures in the separately compiled offline app.
         # Policy unit tests alone cannot establish UIKit recognizer arbitration.
+        # xcodebuild test installs its build product again. Copy this generated
+        # fixture after test compilation, then run without rebuilding the app.
         test_command = ["xcodebuild", "-project", str(IOS / "OldFunny.xcodeproj"), "-scheme", "OldFunny",
                         "-configuration", "Debug", "-destination", "platform=iOS Simulator,id=" + device,
                         "-derivedDataPath", str(work), "CODE_SIGNING_ALLOWED=NO", "CODE_SIGNING_REQUIRED=NO",
                         "SWIFT_ACTIVE_COMPILATION_CONDITIONS=DEBUG CLASSIC_UI_PREVIEW",
-                        "-parallel-testing-enabled", "NO", "-resultBundlePath", str(output / "ViewerTests.xcresult"), "test"]
+                        "-parallel-testing-enabled", "NO", "build-for-testing"]
         stage = "gesture-tests"
         with (output / "ui-tests.log").open("w") as log:
+            subprocess.run(test_command, stdout=log, stderr=subprocess.STDOUT, check=True, timeout=600)
+            import shutil
+            shutil.copyfile(fixture, app / fixture.name)
+            test_command[-1:] = ["-resultBundlePath", str(output / "ViewerTests.xcresult"), "test-without-building"]
             subprocess.run(test_command, stdout=log, stderr=subprocess.STDOUT, check=True, timeout=600)
         report["ui_gesture_tests"] = verify_gesture_tests((output / "ui-tests.log").read_text(), (IOS / "UITests/ViewerTests.swift").read_text())
         report["ui_gesture_tests_passed"] = True

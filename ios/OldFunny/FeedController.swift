@@ -162,7 +162,7 @@ final class FeedController: ClassicScreenController, UIPageViewControllerDataSou
     private func controller(at index: Int) -> PostController {
         let post = pages.posts[index]
         if let cached = retained[post.id] { return cached }
-        let controller = PostController(app: app, post: post, index: index, source: timelineID == nil ? feed.source : "prof", section: profileName ?? feed.title)
+        let controller = PostController(app: app, post: post, index: index, source: timelineID == nil ? feed.source : "prof", section: profileName ?? feed.title, selected: index == selected)
         if timelineID == nil { controller.onMenu = { [weak self] in self?.toggleMenu() } }
         controller.onRefresh = { [weak self] in self?.refresh() }
         retained[post.id] = controller
@@ -180,6 +180,7 @@ final class FeedController: ClassicScreenController, UIPageViewControllerDataSou
                             previousViewControllers: [UIViewController], transitionCompleted completed: Bool) {
         guard completed, let post = pageViewController.viewControllers?.first as? PostController else { return }
         selected = post.index; updateHeader()
+        retained.values.forEach { $0.setSelected($0 === post) }
         retained = retained.filter { abs($0.value.index - selected) <= 3 }
         if selected >= pages.posts.count - 5 { load(replacing: false) }
     }

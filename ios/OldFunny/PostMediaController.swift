@@ -1,5 +1,4 @@
 import UIKit
-import AVKit
 
 final class PostMediaController: UIViewController, UIScrollViewDelegate, UIGestureRecognizerDelegate {
     var onComments: (() -> Void)?, onLeading: (() -> Void)?, onRefresh: (() -> Void)?
@@ -16,7 +15,10 @@ final class PostMediaController: UIViewController, UIScrollViewDelegate, UIGestu
     private let share = ClassicTheme.button(.share, label: "Share post")
     private let status = StatusView()
     private var mediaHeight: NSLayoutConstraint!
-    private var video: AVPlayerViewController?
+    private var video: ClassicVideo?
+    private weak var controlsHost: UIView?, footerView: UIView?
+    private var barView: UIView?
+    private var chromeVisible = true
     private var mediaTask: Task<Void, Never>?
     private var smiled: Bool
     private var unsmiled: Bool, republished: Bool, changingReaction = false, changingRepublish = false
@@ -39,6 +41,7 @@ final class PostMediaController: UIViewController, UIScrollViewDelegate, UIGestu
         if !embedded {
             view.backgroundColor = ClassicTheme.bar
             let bar = ClassicBar(); bar.translatesAutoresizingMaskIntoConstraints = false; view.addSubview(bar)
+            barView = bar
             let header = AuthorHeader(); header.update(post: post, section: section, loader: app.media)
             header.action = { [weak self] in self?.profile() }; bar.setCenter(header)
             bar.onLeading = { [weak self] in
@@ -80,6 +83,7 @@ final class PostMediaController: UIViewController, UIScrollViewDelegate, UIGestu
         smile.addTarget(self, action: #selector(toggleSmile), for: .touchUpInside); updateSmile()
         unsmile.tintColor = unsmiled ? ClassicTheme.yellow : .white
         unsmile.addTarget(self, action: #selector(toggleUnsmile), for: .touchUpInside)
+        unsmile.isHidden = !ViewerInteraction.allowsUnsmile(source: source)
         comments.icon = ClassicTheme.image("comments", fallback: "text.bubble"); comments.count = post.comments
         comments.accessibilityLabel = "\(post.comments) comments"; comments.addTarget(self, action: #selector(openComments), for: .touchUpInside)
         share.addTarget(self, action: #selector(sharePost), for: .touchUpInside)
@@ -87,6 +91,7 @@ final class PostMediaController: UIViewController, UIScrollViewDelegate, UIGestu
         let footer = UIStackView(arrangedSubviews: [smile, unsmile, spacer, comments, share]); footer.spacing = 6; footer.alignment = .center
         footer.backgroundColor = .black; footer.layoutMargins = UIEdgeInsets(top: 0, left: 6, bottom: 0, right: 6); footer.isLayoutMarginsRelativeArrangement = true
         footer.translatesAutoresizingMaskIntoConstraints = false; holder.addSubview(footer)
+        controlsHost = holder; footerView = footer
         NSLayoutConstraint.activate([
             outer.topAnchor.constraint(equalTo: holder.topAnchor), outer.leadingAnchor.constraint(equalTo: holder.leadingAnchor), outer.trailingAnchor.constraint(equalTo: holder.trailingAnchor),
             outer.bottomAnchor.constraint(equalTo: footer.topAnchor), footer.leadingAnchor.constraint(equalTo: holder.leadingAnchor), footer.trailingAnchor.constraint(equalTo: holder.trailingAnchor),
@@ -95,15 +100,13 @@ final class PostMediaController: UIViewController, UIScrollViewDelegate, UIGestu
         media.addSubview(status); status.backgroundColor = .black; status.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([status.leadingAnchor.constraint(equalTo: media.leadingAnchor), status.trailingAnchor.constraint(equalTo: media.trailingAnchor), status.topAnchor.constraint(equalTo: media.topAnchor), status.bottomAnchor.constraint(equalTo: media.bottomAnchor)])
         status.retry.addTarget(self, action: #selector(loadMedia), for: .touchUpInside)
-        if post.isVideo, let url = post.mediaURL {
-            let player = AVPlayerViewController(); player.player = AVPlayer(url: url); player.player?.isMuted = post.type == "gif"
-            addChild(player); media.insertSubview(player.view, belowSubview: status); player.didMove(toParent: self)
-            player.view.translatesAutoresizingMaskIntoConstraints = false
-            NSLayoutConstraint.activate([player.view.leadingAnchor.constraint(equalTo: media.leadingAnchor), player.view.trailingAnchor.constraint(equalTo: media.trailingAnchor), player.view.topAnchor.constraint(equalTo: media.topAnchor), player.view.bottomAnchor.constraint(equalTo: media.bottomAnchor)])
-            video = player; zoom.isHidden = true; status.isHidden = true
-        } else { loadMedia() }
+        loadMedia()
         NotificationCenter.default.addObserver(self, selector: #selector(pause), name: UIApplication.willResignActiveNotification, object: nil)
-        let doubleTap = UITapGestureRecognizer(target: self, action: #selector(toggleSmile)); doubleTap.numberOfTapsRequired = 2; doubleTap.delegate = self; outer.addGestureRecognizer(doubleTap)
+        let tripleTap = UITapGestureRecognizer(target: self, action: #selector(tripleTap)); tripleTap.numberOfTapsRequired = 3; tripleTap.delegate = self; outer.addGestureRecognizer(tripleTap)
+        let doubleTap = UITapGestureRecognizer(target: self, action: #selector(doubleTap)); doubleTap.numberOfTapsRequired = 2; doubleTap.delegate = self
+        doubleTap.require(toFail: tripleTap); outer.addGestureRecognizer(doubleTap)
+        let singleTap = UITapGestureRecognizer(target: self, action: #selector(mediaTap(_:))); singleTap.delegate = self
+        singleTap.require(toFail: doubleTap); outer.addGestureRecognizer(singleTap)
         let hold = UILongPressGestureRecognizer(target: self, action: #selector(postOptions(_:))); hold.delegate = self; outer.addGestureRecognizer(hold)
     }
     func setCommentCount(_ count: Int) { comments.count = count; comments.accessibilityLabel = "\(count) comments" }
@@ -130,12 +133,47 @@ final class PostMediaController: UIViewController, UIScrollViewDelegate, UIGestu
         let bottom = max(top, outer.contentSize.height - outer.bounds.height + outer.adjustedContentInset.bottom)
         return down ? outer.contentOffset.y > top + 1 : outer.contentOffset.y < bottom - 1
     }
-    @objc private func pause() { video?.player?.pause(); image.stopAnimating() }
-    override func viewDidAppear(_ animated: Bool) { super.viewDidAppear(animated); if !obscured { image.startAnimating() } }
-    func setObscured(_ value: Bool) { obscured = value; if value { pause() } else if view.window != nil { image.startAnimating() } }
-    func viewForZooming(in scrollView: UIScrollView) -> UIView? { image }
+    @objc private func pause() { video?.suspend(); image.stopAnimating() }
+    override func viewDidAppear(_ animated: Bool) { super.viewDidAppear(animated); if !obscured { image.startAnimating(); video?.refresh() } }
+    func setObscured(_ value: Bool) { obscured = value; if value { pause() } else if view.window != nil { image.startAnimating(); video?.refresh() } }
+    func viewForZooming(in scrollView: UIScrollView) -> UIView? { video?.surface ?? image }
+    func scrollViewWillBeginZooming(_ scrollView: UIScrollView, with view: UIView?) { video?.setZoomed(true) }
+    func scrollViewDidZoom(_ scrollView: UIScrollView) { video?.setZoomed(scrollView.isZooming || scrollView.zoomScale > scrollView.minimumZoomScale * 1.01) }
+    func scrollViewDidEndZooming(_ scrollView: UIScrollView, with view: UIView?, atScale scale: CGFloat) { video?.setZoomed(scale > scrollView.minimumZoomScale * 1.01) }
+    @objc private func mediaTap(_ gesture: UITapGestureRecognizer) {
+        if let video, video.tap(at: gesture.location(in: video.surface)) { return }
+        chromeVisible.toggle(); barView?.alpha = chromeVisible ? 1 : 0
+        footerView?.alpha = chromeVisible ? 1 : 0; video?.setChromeVisible(chromeVisible)
+    }
     @objc private func loadMedia() {
-        guard video == nil else { return }; mediaTask?.cancel()
+        mediaTask?.cancel()
+        if post.isVideo {
+            guard let url = post.mediaURL, let holder = controlsHost, let footer = footerView else { status.message("Video is unavailable.", canRetry: false); return }
+            video?.suspend(); video?.surface.removeFromSuperview(); video?.sound.removeFromSuperview(); video?.scrubber.removeFromSuperview()
+            let clip = ClassicVideo(app: app, url: url); video = clip
+            clip.isCurrent = { [weak self] in
+                guard let self, !obscured, view.window != nil else { return false }
+                var owner: UIViewController? = self
+                while let controller = owner {
+                    if controller.presentedViewController != nil || controller.isBeingDismissed || controller.isMovingFromParent { return false }
+                    owner = controller.parent
+                }
+                if let navigationController, let top = navigationController.topViewController, !isDescendant(of: top) { return false }
+                return true
+            }
+            clip.onFailure = { [weak self] in self?.status.message("Could not load this video.") }
+            image.isHidden = true; zoom.addSubview(clip.surface); zoom.fittedContent = clip.surface
+            zoom.setZoomScale(zoom.minimumZoomScale, animated: false); zoom.setNeedsLayout()
+            holder.addSubview(clip.scrubber); holder.addSubview(clip.sound)
+            clip.scrubber.translatesAutoresizingMaskIntoConstraints = false; clip.sound.translatesAutoresizingMaskIntoConstraints = false
+            NSLayoutConstraint.activate([
+                clip.scrubber.leadingAnchor.constraint(equalTo: holder.leadingAnchor), clip.scrubber.trailingAnchor.constraint(equalTo: holder.trailingAnchor),
+                clip.scrubber.bottomAnchor.constraint(equalTo: footer.topAnchor), clip.scrubber.heightAnchor.constraint(equalToConstant: 24),
+                clip.sound.trailingAnchor.constraint(equalTo: holder.trailingAnchor, constant: -8), clip.sound.bottomAnchor.constraint(equalTo: clip.scrubber.topAnchor, constant: -8),
+                clip.sound.widthAnchor.constraint(equalToConstant: 44), clip.sound.heightAnchor.constraint(equalToConstant: 44)
+            ])
+            status.isHidden = true; clip.setChromeVisible(chromeVisible); clip.refresh(); return
+        }
         guard let url = post.mediaURL ?? post.posterURL else { status.message("Media is unavailable.", canRetry: false); return }
         status.loading()
         mediaTask = Task { [weak self] in
@@ -145,6 +183,11 @@ final class PostMediaController: UIViewController, UIScrollViewDelegate, UIGestu
                 image.image = loaded; status.isHidden = true; if obscured { image.stopAnimating() }
             } catch { if !Task.isCancelled { status.message("Could not load this image.") } }
         }
+    }
+    private func isDescendant(of controller: UIViewController) -> Bool {
+        var owner: UIViewController? = self
+        while let item = owner { if item === controller { return true }; owner = item.parent }
+        return false
     }
     @objc private func openComments() {
         pause(); onComments?()
@@ -158,6 +201,9 @@ final class PostMediaController: UIViewController, UIScrollViewDelegate, UIGestu
         smile.count = count; smile.tintColor = smiled ? ClassicTheme.yellow : .white
         smile.accessibilityLabel = "\(count) smiles, \(smiled ? "remove smile" : "smile")"
         smile.accessibilityTraits = smiled ? [.button, .selected] : .button
+        #if CLASSIC_UI_PREVIEW
+        if ProcessInfo.processInfo.arguments.contains("--ui-tests-reactions") { view.accessibilityValue = PreviewFixtures.reactionEvents.joined(separator: ",") }
+        #endif
     }
     @objc private func toggleSmile() {
         guard !changingReaction else { return }; changingReaction = true; smile.isEnabled = false; unsmile.isEnabled = false
@@ -170,7 +216,22 @@ final class PostMediaController: UIViewController, UIScrollViewDelegate, UIGestu
             catch { showError(error) }
         }
     }
+    @objc private func doubleTap() {
+        // Android ignores signed-out double taps outside its BR exception.
+        Task { [weak self] in
+            guard let self, await app.api.account() != nil, view.window != nil, !obscured else { return }
+            toggleSmile()
+        }
+    }
+    @objc private func tripleTap() {
+        guard ViewerInteraction.allowsUnsmile(source: source) else { return }
+        Task { [weak self] in
+            guard let self, await app.api.account() != nil, view.window != nil, !obscured else { return }
+            toggleUnsmile()
+        }
+    }
     @objc private func toggleUnsmile() {
+        guard ViewerInteraction.allowsUnsmile(source: source) else { return }
         guard !changingReaction else { return }; changingReaction = true; smile.isEnabled = false; unsmile.isEnabled = false
         Task { [weak self] in
             guard let self else { return }; defer { changingReaction = false; smile.isEnabled = true; unsmile.isEnabled = true }
