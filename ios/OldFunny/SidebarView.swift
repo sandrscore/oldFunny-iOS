@@ -24,6 +24,7 @@ final class SidebarView: UIView {
             rows.topAnchor.constraint(equalTo: panel.topAnchor, constant: 6), rows.bottomAnchor.constraint(equalTo: panel.bottomAnchor, constant: -6)
         ])
         addRow("Featured", image: ClassicTheme.image("featured", fallback: "sparkles"), selected: selected == .featured, destination: .feed(.featured))
+        addRow("Collective", image: UIImage(systemName: "square.stack.fill"), selected: selected == .collective, destination: .feed(.collective))
         addRow("Subscriptions", image: ClassicTheme.image("subscribe", fallback: "checkmark.circle.fill"), selected: selected == .subscriptions, destination: .feed(.subscriptions))
         addRow("Profile", image: ClassicGlyph.profile.image, selected: false, destination: .profile)
         let separator = UIView(); separator.backgroundColor = UIColor.white.withAlphaComponent(0.08)

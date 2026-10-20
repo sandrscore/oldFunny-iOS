@@ -27,11 +27,6 @@ final class SceneDelegate: UIResponder, UIWindowSceneDelegate {
             #endif
             let feed = FeedController(app: app, feed: .featured)
             let navigation = ClassicNavigationController(rootViewController: feed)
-            #if CLASSIC_UI_PREVIEW
-            if ProcessInfo.processInfo.arguments.contains("--preview-comments") {
-                navigation.setViewControllers([feed, CommentsController(app: app, postID: "PreviewPost", count: 3)], animated: false)
-            }
-            #endif
             window.rootViewController = navigation
         } catch {
             let controller = UIViewController()

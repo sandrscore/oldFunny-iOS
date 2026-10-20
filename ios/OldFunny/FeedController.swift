@@ -13,6 +13,7 @@ final class FeedController: ClassicScreenController, UIPageViewControllerDataSou
     private var loading = false
     private var task: Task<Void, Never>?
     private var generation = UUID()
+    private var retained = [String: PostController]()
     #if CLASSIC_UI_PREVIEW
     private var previewOpened = false
     #endif
@@ -25,6 +26,7 @@ final class FeedController: ClassicScreenController, UIPageViewControllerDataSou
     deinit { task?.cancel() }
     override func viewDidLoad() {
         super.viewDidLoad(); contentView.backgroundColor = .black
+        setClassicBarHidden(true) // Each retained post owns all three panel headers.
         classicBar.setCenter(authorHeader)
         authorHeader.action = { [weak self] in self?.openAuthor() }
         classicBar.onTrailing = { [weak self] in self?.refresh() }
@@ -62,7 +64,7 @@ final class FeedController: ClassicScreenController, UIPageViewControllerDataSou
     private func refresh() { closeSidebar(); load(replacing: true) }
     private func resetAndLoad() {
         closeSidebar(); task?.cancel(); generation = UUID(); loading = false; pages = FeedPages(); selected = 0
-        pager.setViewControllers(nil, direction: .forward, animated: false); updateHeader()
+        pager.setViewControllers(nil, direction: .forward, animated: false); retained = [:]; updateHeader()
         load(replacing: true)
     }
     private func toggleMenu() {
@@ -136,8 +138,15 @@ final class FeedController: ClassicScreenController, UIPageViewControllerDataSou
                     status.message(pages.next == nil ? "No posts to display." : "No posts in this page. Tap Try again to continue.")
                 } else {
                     status.isHidden = true
+                    if replacing { retained = [:] }
                     if replacing || pager.viewControllers?.isEmpty != false { pager.setViewControllers([controller(at: selected)], direction: .forward, animated: false) }
                     pager.dataSource = nil; pager.dataSource = self
+                    #if CLASSIC_UI_PREVIEW
+                    if let post = pager.viewControllers?.first as? PostController {
+                        if ProcessInfo.processInfo.arguments.contains("--preview-comments") { post.showPanel(.comments, animated: false) }
+                        if ProcessInfo.processInfo.arguments.contains("--preview-information") { post.showPanel(.information, animated: false) }
+                    }
+                    #endif
                 }
                 updateHeader()
             } catch {
@@ -151,7 +160,13 @@ final class FeedController: ClassicScreenController, UIPageViewControllerDataSou
         }
     }
     private func controller(at index: Int) -> PostController {
-        PostController(app: app, post: pages.posts[index], index: index, source: timelineID == nil ? feed.source : "prof", embedded: true)
+        let post = pages.posts[index]
+        if let cached = retained[post.id] { return cached }
+        let controller = PostController(app: app, post: post, index: index, source: timelineID == nil ? feed.source : "prof", embedded: true)
+        if timelineID == nil { controller.onMenu = { [weak self] in self?.toggleMenu() } }
+        controller.onRefresh = { [weak self] in self?.refresh() }
+        retained[post.id] = controller
+        return controller
     }
     func pageViewController(_ pageViewController: UIPageViewController, viewControllerBefore viewController: UIViewController) -> UIViewController? {
         guard let post = viewController as? PostController, post.index > 0 else { return nil }; return controller(at: post.index - 1)
@@ -165,6 +180,7 @@ final class FeedController: ClassicScreenController, UIPageViewControllerDataSou
                             previousViewControllers: [UIViewController], transitionCompleted completed: Bool) {
         guard completed, let post = pageViewController.viewControllers?.first as? PostController else { return }
         selected = post.index; updateHeader()
+        retained = retained.filter { abs($0.value.index - selected) <= 3 }
         if selected >= pages.posts.count - 5 { load(replacing: false) }
     }
 }

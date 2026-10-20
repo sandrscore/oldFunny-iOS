@@ -1,172 +1,142 @@
 import UIKit
-import AVKit
 
-final class PostController: UIViewController, UIScrollViewDelegate {
+/// A retained Android-style post scene. Panel changes never push/pop navigation
+/// and preserve the post's zoom, comments position and unsent draft.
+final class PostController: UIViewController, UIGestureRecognizerDelegate {
     let index: Int
+    let post: Post
     private let app: AppContext
-    private let post: Post
     private let source: String
-    private let embedded: Bool
-    private let outer = UIScrollView(), zoom = UIScrollView(), image = UIImageView()
-    private let media = UIView(), titlePanel = UIView(), bodyPanel = UIView()
-    private let smile = ClassicCounterButton(), comments = ClassicCounterButton()
-    private let share = ClassicTheme.button(.share, label: "Share post")
-    private let status = StatusView()
-    private var mediaHeight: NSLayoutConstraint!
-    private var video: AVPlayerViewController?
-    private var mediaTask: Task<Void, Never>?
-    private var smiled: Bool
-    private var obscured = false
-    init(app: AppContext, post: Post, index: Int, source: String, embedded: Bool = false) {
-        self.app = app; self.post = post; self.index = index; self.source = source; self.embedded = embedded; smiled = post.isSmiled
-        super.init(nibName: nil, bundle: nil)
-    }
-    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
-    deinit { mediaTask?.cancel() }
-    override var preferredStatusBarStyle: UIStatusBarStyle { .lightContent }
-    override func viewWillAppear(_ animated: Bool) { super.viewWillAppear(animated); navigationController?.setNavigationBarHidden(true, animated: false) }
-    override func viewDidLoad() {
-        super.viewDidLoad(); view.backgroundColor = .black
-        let holder = UIView(); holder.translatesAutoresizingMaskIntoConstraints = false; view.addSubview(holder)
-        var top = view.topAnchor
-        if !embedded {
-            view.backgroundColor = ClassicTheme.bar
-            let bar = ClassicBar(); bar.translatesAutoresizingMaskIntoConstraints = false; view.addSubview(bar)
-            let header = AuthorHeader(); header.update(post: post, section: "Post", loader: app.media)
-            header.action = { [weak self] in self?.profile() }; bar.setCenter(header)
-            bar.onLeading = { [weak self] in self?.navigationController?.popViewController(animated: true) }
-            bar.onTrailing = { [weak self] in self?.loadMedia() }
-            NSLayoutConstraint.activate([bar.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor), bar.leadingAnchor.constraint(equalTo: view.leadingAnchor), bar.trailingAnchor.constraint(equalTo: view.trailingAnchor), bar.heightAnchor.constraint(equalToConstant: 52)])
-            top = bar.bottomAnchor
-        }
-        holder.backgroundColor = .black
-        NSLayoutConstraint.activate([holder.topAnchor.constraint(equalTo: top), holder.leadingAnchor.constraint(equalTo: view.leadingAnchor), holder.trailingAnchor.constraint(equalTo: view.trailingAnchor), holder.bottomAnchor.constraint(equalTo: embedded ? view.bottomAnchor : view.safeAreaLayoutGuide.bottomAnchor)])
-        outer.backgroundColor = .black; outer.showsVerticalScrollIndicator = false
-        let container = UIView(); container.translatesAutoresizingMaskIntoConstraints = false
-        let stack = UIStackView(arrangedSubviews: [titlePanel, media, bodyPanel]); stack.axis = .vertical; stack.translatesAutoresizingMaskIntoConstraints = false
-        addText(post.title, to: titlePanel, bold: true); addText(post.body, to: bodyPanel, bold: false)
-        outer.addSubview(container); container.addSubview(stack)
-        outer.translatesAutoresizingMaskIntoConstraints = false; holder.addSubview(outer)
-        let preferredHeight = container.heightAnchor.constraint(equalTo: stack.heightAnchor); preferredHeight.priority = .defaultHigh
-        mediaHeight = media.heightAnchor.constraint(equalToConstant: 300)
-        NSLayoutConstraint.activate([
-            container.topAnchor.constraint(equalTo: outer.contentLayoutGuide.topAnchor), container.bottomAnchor.constraint(equalTo: outer.contentLayoutGuide.bottomAnchor),
-            container.leadingAnchor.constraint(equalTo: outer.contentLayoutGuide.leadingAnchor), container.trailingAnchor.constraint(equalTo: outer.contentLayoutGuide.trailingAnchor),
-            container.widthAnchor.constraint(equalTo: outer.frameLayoutGuide.widthAnchor), container.heightAnchor.constraint(greaterThanOrEqualTo: outer.frameLayoutGuide.heightAnchor), preferredHeight,
-            stack.leadingAnchor.constraint(equalTo: container.leadingAnchor), stack.trailingAnchor.constraint(equalTo: container.trailingAnchor),
-            stack.centerYAnchor.constraint(equalTo: container.centerYAnchor), stack.topAnchor.constraint(greaterThanOrEqualTo: container.topAnchor),
-            stack.bottomAnchor.constraint(lessThanOrEqualTo: container.bottomAnchor), mediaHeight
-        ])
-        zoom.delegate = self; zoom.minimumZoomScale = 1; zoom.maximumZoomScale = 6
-        zoom.backgroundColor = .black; zoom.showsVerticalScrollIndicator = false; zoom.showsHorizontalScrollIndicator = false
-        image.contentMode = .scaleAspectFit; image.autoresizingMask = [.flexibleWidth, .flexibleHeight]; zoom.addSubview(image)
-        media.addSubview(zoom); zoom.translatesAutoresizingMaskIntoConstraints = false
-        NSLayoutConstraint.activate([zoom.topAnchor.constraint(equalTo: media.topAnchor), zoom.bottomAnchor.constraint(equalTo: media.bottomAnchor), zoom.leadingAnchor.constraint(equalTo: media.leadingAnchor), zoom.trailingAnchor.constraint(equalTo: media.trailingAnchor)])
-        smile.icon = ClassicTheme.image("smile", fallback: "face.smiling")
-        smile.addTarget(self, action: #selector(toggleSmile), for: .touchUpInside); updateSmile()
-        comments.icon = ClassicTheme.image("comments", fallback: "text.bubble"); comments.count = post.comments
-        comments.accessibilityLabel = "\(post.comments) comments"; comments.addTarget(self, action: #selector(openComments), for: .touchUpInside)
-        share.addTarget(self, action: #selector(sharePost), for: .touchUpInside)
-        let spacer = UIView()
-        let footer = UIStackView(arrangedSubviews: [smile, spacer, comments, share]); footer.spacing = 6; footer.alignment = .center
-        footer.backgroundColor = .black; footer.layoutMargins = UIEdgeInsets(top: 0, left: 6, bottom: 0, right: 6); footer.isLayoutMarginsRelativeArrangement = true
-        footer.translatesAutoresizingMaskIntoConstraints = false; holder.addSubview(footer)
-        NSLayoutConstraint.activate([
-            outer.topAnchor.constraint(equalTo: holder.topAnchor), outer.leadingAnchor.constraint(equalTo: holder.leadingAnchor), outer.trailingAnchor.constraint(equalTo: holder.trailingAnchor),
-            outer.bottomAnchor.constraint(equalTo: footer.topAnchor), footer.leadingAnchor.constraint(equalTo: holder.leadingAnchor), footer.trailingAnchor.constraint(equalTo: holder.trailingAnchor),
-            footer.bottomAnchor.constraint(equalTo: holder.bottomAnchor), footer.heightAnchor.constraint(equalToConstant: 54)
-        ])
-        media.addSubview(status); status.backgroundColor = .black; status.translatesAutoresizingMaskIntoConstraints = false
-        NSLayoutConstraint.activate([status.leadingAnchor.constraint(equalTo: media.leadingAnchor), status.trailingAnchor.constraint(equalTo: media.trailingAnchor), status.topAnchor.constraint(equalTo: media.topAnchor), status.bottomAnchor.constraint(equalTo: media.bottomAnchor)])
-        status.retry.addTarget(self, action: #selector(loadMedia), for: .touchUpInside)
-        if post.isVideo, let url = post.mediaURL {
-            let player = AVPlayerViewController(); player.player = AVPlayer(url: url); player.player?.isMuted = post.type == "gif"
-            addChild(player); media.insertSubview(player.view, belowSubview: status); player.didMove(toParent: self)
-            player.view.translatesAutoresizingMaskIntoConstraints = false
-            NSLayoutConstraint.activate([player.view.leadingAnchor.constraint(equalTo: media.leadingAnchor), player.view.trailingAnchor.constraint(equalTo: media.trailingAnchor), player.view.topAnchor.constraint(equalTo: media.topAnchor), player.view.bottomAnchor.constraint(equalTo: media.bottomAnchor)])
-            video = player; zoom.isHidden = true; status.isHidden = true
-        } else { loadMedia() }
-        NotificationCenter.default.addObserver(self, selector: #selector(pause), name: UIApplication.willResignActiveNotification, object: nil)
-    }
-    private func addText(_ text: String, to panel: UIView, bold: Bool) {
-        panel.isHidden = text.isEmpty
-        guard !text.isEmpty else { return }
-        let label = UILabel(); label.text = text; label.textColor = .white; label.font = ClassicTheme.font(bold ? 19 : 17, bold: bold)
-        label.numberOfLines = 0; label.textAlignment = .center; label.adjustsFontForContentSizeCategory = true
-        label.translatesAutoresizingMaskIntoConstraints = false; panel.addSubview(label)
-        NSLayoutConstraint.activate([label.leadingAnchor.constraint(equalTo: panel.leadingAnchor, constant: 12), label.trailingAnchor.constraint(equalTo: panel.trailingAnchor, constant: -12), label.topAnchor.constraint(equalTo: panel.topAnchor, constant: 8), label.bottomAnchor.constraint(equalTo: panel.bottomAnchor, constant: -8)])
-    }
-    override func viewDidLayoutSubviews() {
-        super.viewDidLayoutSubviews()
-        if outer.bounds.width > 0 && outer.bounds.height > 0 {
-            let target = CGSize(width: outer.bounds.width, height: 0)
-            let textHeight = [titlePanel, bodyPanel].filter { !$0.isHidden }.reduce(CGFloat(0)) { $0 + $1.systemLayoutSizeFitting(target, withHorizontalFittingPriority: .required, verticalFittingPriority: .fittingSizeLevel).height }
-            let height = max(100, min(outer.bounds.width * CGFloat(post.height / post.width), max(100, outer.bounds.height - textHeight)))
-            if abs(mediaHeight.constant - height) > 0.5 { mediaHeight.constant = height }
-        }
-        if zoom.zoomScale == 1 { image.frame = zoom.bounds; zoom.contentSize = zoom.bounds.size }
-    }
-    override func viewWillDisappear(_ animated: Bool) { super.viewWillDisappear(animated); pause() }
-    @objc private func pause() { video?.player?.pause(); image.stopAnimating() }
-    override func viewDidAppear(_ animated: Bool) { super.viewDidAppear(animated); if !obscured { image.startAnimating() } }
-    func setObscured(_ value: Bool) { obscured = value; if value { pause() } else if view.window != nil { image.startAnimating() } }
-    func viewForZooming(in scrollView: UIScrollView) -> UIView? { image }
-    @objc private func loadMedia() {
-        guard video == nil else { return }; mediaTask?.cancel()
-        guard let url = post.mediaURL ?? post.posterURL else { status.message("Media is unavailable.", canRetry: false); return }
-        status.loading()
-        mediaTask = Task { [weak self] in
-            guard let self else { return }
-            do {
-                let loaded = try await app.media.image(url); try Task.checkCancellation()
-                image.image = loaded; status.isHidden = true; if obscured { image.stopAnimating() }
-            } catch { if !Task.isCancelled { status.message("Could not load this image.") } }
-        }
-    }
-    @objc private func openComments() {
-        pause(); navigationController?.pushViewController(CommentsController(app: app, postID: post.id, count: post.comments), animated: true)
-    }
-    @objc private func profile() {
-        guard let id = post.authorID else { return }; pause()
-        navigationController?.pushViewController(FeedController(app: app, feed: .featured, timelineID: id, profileName: post.author), animated: true)
-    }
-    private func updateSmile() {
-        let count = max(0, post.smiles + (smiled == post.isSmiled ? 0 : (smiled ? 1 : -1)))
-        smile.count = count; smile.tintColor = smiled ? ClassicTheme.yellow : .white
-        smile.accessibilityLabel = "\(count) smiles, \(smiled ? "remove smile" : "smile")"
-        smile.accessibilityTraits = smiled ? [.button, .selected] : .button
-    }
-    @objc private func toggleSmile() {
-        smile.isEnabled = false
-        Task { [weak self] in
-            guard let self else { return }; defer { smile.isEnabled = true }
-            guard await app.api.account() != nil else { app.signIn(from: self); return }
-            do { try await app.api.smile(postID: post.id, enabled: !smiled, source: source); smiled.toggle(); updateSmile() }
-            catch { showError(error) }
-        }
-    }
-    @objc private func sharePost() {
-        let url = URL(string: "https://ifunny.co/\(post.isVideo ? "video" : "picture")/\(post.id)")!
-        let controller = UIActivityViewController(activityItems: [url], applicationActivities: nil)
-        controller.popoverPresentationController?.sourceView = share; present(controller, animated: true)
-    }
-}
+    private let media: PostMediaController
+    private var comments: CommentsController?, information: PostInfoController?
+    private(set) var panel: ViewerPanel = .media
+    private var current: UIViewController
+    private var transitioning = false, obscured = false
+    private var firstDirection: VerticalSwipe?
+    private lazy var vertical = UIPanGestureRecognizer(target: self, action: #selector(pan(_:)))
+    var onMenu: (() -> Void)? { didSet { media.onLeading = onMenu } }
+    var onRefresh: (() -> Void)? { didSet { media.onRefresh = onRefresh } }
+    var onPanelChange: ((ViewerPanel) -> Void)?
 
-final class ClassicCounterButton: UIControl {
-    private let symbol = UIImageView(), label = UILabel()
-    var icon: UIImage? { didSet { symbol.image = icon } }
-    var count = 0 { didSet { label.text = String(count) } }
-    override var isEnabled: Bool { didSet { alpha = isEnabled ? 1 : 0.4 } }
-    override init(frame: CGRect = .zero) {
-        super.init(frame: frame); tintColor = .white
-        symbol.contentMode = .scaleAspectFit; symbol.tintColor = .white
-        label.textColor = .white; label.font = ClassicTheme.font(14, bold: true)
-        let row = UIStackView(arrangedSubviews: [symbol, label]); row.spacing = 6; row.alignment = .center; row.isUserInteractionEnabled = false
-        row.translatesAutoresizingMaskIntoConstraints = false; addSubview(row)
-        NSLayoutConstraint.activate([row.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 8), row.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -8), row.centerYAnchor.constraint(equalTo: centerYAnchor), symbol.widthAnchor.constraint(equalToConstant: 24), symbol.heightAnchor.constraint(equalToConstant: 24), heightAnchor.constraint(equalToConstant: 44), widthAnchor.constraint(greaterThanOrEqualToConstant: 68)])
-        isAccessibilityElement = true; accessibilityTraits = .button
+    init(app: AppContext, post: Post, index: Int, source: String, embedded: Bool = false) {
+        self.app = app; self.post = post; self.index = index; self.source = source
+        media = PostMediaController(app: app, post: post, index: index, source: source)
+        current = media
+        super.init(nibName: nil, bundle: nil)
+        media.onComments = { [weak self] in self?.showPanel(.comments) }
     }
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
-    override func tintColorDidChange() { super.tintColorDidChange(); symbol.tintColor = tintColor; label.textColor = tintColor }
-    override var isHighlighted: Bool { didSet { alpha = isHighlighted ? 0.55 : (isEnabled ? 1 : 0.4) } }
+    override var preferredStatusBarStyle: UIStatusBarStyle { .lightContent }
+    override var shouldAutomaticallyForwardAppearanceMethods: Bool { false }
+    override func viewWillAppear(_ animated: Bool) { super.viewWillAppear(animated); current.beginAppearanceTransition(true, animated: animated) }
+    override func viewDidAppear(_ animated: Bool) { super.viewDidAppear(animated); current.endAppearanceTransition(); setObscured(false) }
+    override func viewWillDisappear(_ animated: Bool) { super.viewWillDisappear(animated); setObscured(true); current.beginAppearanceTransition(false, animated: animated) }
+    override func viewDidDisappear(_ animated: Bool) { super.viewDidDisappear(animated); current.endAppearanceTransition() }
+    override func viewDidLoad() {
+        super.viewDidLoad(); view.backgroundColor = .black; view.clipsToBounds = true
+        view.accessibilityIdentifier = "post-scene"
+        attach(media); vertical.delegate = self; vertical.maximumNumberOfTouches = 1
+        vertical.cancelsTouchesInView = false; view.addGestureRecognizer(vertical)
+        view.accessibilityCustomActions = [
+            UIAccessibilityCustomAction(name: "Open comments", target: self, selector: #selector(accessibleComments)),
+            UIAccessibilityCustomAction(name: "Post information", target: self, selector: #selector(accessibleInformation)),
+            UIAccessibilityCustomAction(name: "Return to post", target: self, selector: #selector(accessibleMedia))
+        ]
+    }
+    @objc private func accessibleComments() -> Bool { showPanel(.comments); return true }
+    @objc private func accessibleInformation() -> Bool { showPanel(.information); return true }
+    @objc private func accessibleMedia() -> Bool { showPanel(.media); return true }
+    private func attach(_ child: UIViewController) {
+        addChild(child); view.addSubview(child.view); child.view.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([child.view.leadingAnchor.constraint(equalTo: view.leadingAnchor), child.view.trailingAnchor.constraint(equalTo: view.trailingAnchor), child.view.topAnchor.constraint(equalTo: view.topAnchor), child.view.bottomAnchor.constraint(equalTo: view.bottomAnchor)])
+        child.didMove(toParent: self)
+    }
+    func showPanel(_ target: ViewerPanel, animated: Bool = true) {
+        loadViewIfNeeded()
+        guard target != panel, !transitioning else { return }
+        view.endEditing(true)
+        // Nonadjacent accessibility/button routes go through media first.
+        if panel != .media && target != .media {
+            showPanel(.media, animated: false); showPanel(target, animated: animated); return
+        }
+        let incoming: UIViewController
+        switch target {
+        case .media: incoming = media
+        case .comments:
+            if comments == nil {
+                let child = CommentsController(app: app, postID: post.id, count: post.comments, postAuthorID: post.authorID)
+                child.onClose = { [weak self] in self?.showPanel(.media) }; child.isEmbeddedPanel = true
+                child.onCountChange = { [weak self] count in self?.media.setCommentCount(count) }
+                comments = child
+            }
+            incoming = comments!
+        case .information:
+            if information == nil {
+                let child = PostInfoController(app: app, post: post)
+                child.onClose = { [weak self] in self?.showPanel(.media) }; information = child
+            }
+            incoming = information!
+        }
+        let outgoing = current, previous = panel
+        transitioning = true; panel = target; current = incoming
+        if incoming.parent == nil { attach(incoming) }
+        incoming.view.isHidden = false; view.bringSubviewToFront(incoming.view); view.layoutIfNeeded()
+        let forward = (previous == .media && target == .comments) || (previous == .information && target == .media)
+        let distance = view.bounds.height * (forward ? 1 : -1)
+        incoming.view.transform = CGAffineTransform(translationX: 0, y: distance)
+        media.setObscured(target != .media || obscured)
+        outgoing.beginAppearanceTransition(false, animated: animated); incoming.beginAppearanceTransition(true, animated: animated)
+        let finish: (Bool) -> Void = { [weak self] _ in
+            outgoing.view.isHidden = true; outgoing.view.transform = .identity
+            incoming.view.transform = .identity
+            outgoing.endAppearanceTransition(); incoming.endAppearanceTransition()
+            self?.transitioning = false; self?.onPanelChange?(target)
+            UIAccessibility.post(notification: .screenChanged, argument: incoming.view)
+        }
+        let changes = { outgoing.view.transform = CGAffineTransform(translationX: 0, y: -distance); incoming.view.transform = .identity }
+        if animated && !UIAccessibility.isReduceMotionEnabled { UIView.animate(withDuration: 0.25, delay: 0, options: [.curveEaseInOut], animations: changes, completion: finish) }
+        else { changes(); finish(true) }
+    }
+    func setObscured(_ value: Bool) { obscured = value; media.setObscured(value || panel != .media) }
+    func returnToMedia() -> Bool {
+        guard panel != .media else { return false }; view.endEditing(true); showPanel(.media); return true
+    }
+    private func editing(in view: UIView) -> Bool { view.isFirstResponder || view.subviews.contains { editing(in: $0) } }
+    private func childCanScroll(_ gesture: UIPanGestureRecognizer, down: Bool) -> Bool {
+        if panel == .media { return media.canScrollVertically(down: down) }
+        let point = gesture.location(in: current.view)
+        var hit = current.view.hitTest(point, with: nil)
+        while let item = hit, item !== view {
+            if let scroll = item as? UIScrollView, scroll.isScrollEnabled {
+                let top = -scroll.adjustedContentInset.top
+                let bottom = max(top, scroll.contentSize.height - scroll.bounds.height + scroll.adjustedContentInset.bottom)
+                if scroll.zoomScale > scroll.minimumZoomScale + 0.01 || (down ? scroll.contentOffset.y > top + 1 : scroll.contentOffset.y < bottom - 1) { return true }
+            }
+            hit = item.superview
+        }
+        return false
+    }
+    func gestureRecognizerShouldBegin(_ gesture: UIGestureRecognizer) -> Bool {
+        guard gesture === vertical, !transitioning, !obscured, presentedViewController == nil, !editing(in: view) else { return false }
+        let speed = vertical.velocity(in: view), down = speed.y > 0
+        let direction: VerticalSwipe = down ? .down : .up
+        guard ViewerInteraction.destination(from: panel, swipe: direction) != nil else { return false }
+        var hit = view.hitTest(vertical.location(in: view), with: nil)
+        while let item = hit, item !== view { if item is UIControl || item is UITextView { return false }; hit = item.superview }
+        guard abs(speed.y) > abs(speed.x), !childCanScroll(vertical, down: down) else { return false }
+        firstDirection = direction; return true
+    }
+    func gestureRecognizer(_ gesture: UIGestureRecognizer, shouldRecognizeSimultaneouslyWith other: UIGestureRecognizer) -> Bool {
+        gesture === vertical && other is UIPanGestureRecognizer
+    }
+    @objc private func pan(_ gesture: UIPanGestureRecognizer) {
+        guard gesture.state == .ended else { return }
+        defer { firstDirection = nil }
+        let delta = gesture.translation(in: view), speed = gesture.velocity(in: view)
+        let direction: VerticalSwipe = delta.y > 0 ? .down : .up
+        guard firstDirection == direction,
+              ViewerInteraction.accepts(dx: Double(delta.x), dy: Double(delta.y), vx: Double(speed.x), vy: Double(speed.y), displayScale: Double(view.window?.screen.scale ?? UIScreen.main.scale), childCanScroll: false, editing: editing(in: view)),
+              let target = ViewerInteraction.destination(from: panel, swipe: direction) else { return }
+        view.endEditing(true); showPanel(target)
+    }
 }

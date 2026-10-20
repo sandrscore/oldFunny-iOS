@@ -55,6 +55,7 @@ jobs:
             .ios-work/ios-port/ui-previews/*.png
             .ios-work/ios-port/ui-previews/*.json
             .ios-work/ios-port/ui-previews/*.log
+            .ios-work/ios-port/ui-previews/*.xcresult
           if-no-files-found: warn
           retention-days: 7
           include-hidden-files: true

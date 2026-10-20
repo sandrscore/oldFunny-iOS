@@ -1,0 +1,243 @@
+import UIKit
+import AVKit
+
+final class PostMediaController: UIViewController, UIScrollViewDelegate, UIGestureRecognizerDelegate {
+    var onComments: (() -> Void)?, onLeading: (() -> Void)?, onRefresh: (() -> Void)?
+    let index: Int
+    private let app: AppContext
+    private let post: Post
+    private let source: String
+    private let embedded: Bool
+    private let outer = UIScrollView(), zoom = UIScrollView(), image = UIImageView()
+    private let media = UIView(), titlePanel = UIView(), bodyPanel = UIView()
+    private let smile = ClassicCounterButton(), comments = ClassicCounterButton()
+    private let unsmile = ClassicTheme.button(.unsmile, label: "Unsmile")
+    private let share = ClassicTheme.button(.share, label: "Share post")
+    private let status = StatusView()
+    private var mediaHeight: NSLayoutConstraint!
+    private var video: AVPlayerViewController?
+    private var mediaTask: Task<Void, Never>?
+    private var smiled: Bool
+    private var unsmiled: Bool, republished: Bool, changingReaction = false, changingRepublish = false
+    private var obscured = false
+    init(app: AppContext, post: Post, index: Int, source: String, embedded: Bool = false) {
+        self.app = app; self.post = post; self.index = index; self.source = source; self.embedded = embedded; smiled = post.isSmiled
+        unsmiled = post.isUnsmiled; republished = post.isRepublished
+        super.init(nibName: nil, bundle: nil)
+    }
+    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+    deinit { mediaTask?.cancel() }
+    override var preferredStatusBarStyle: UIStatusBarStyle { .lightContent }
+    override func viewWillAppear(_ animated: Bool) { super.viewWillAppear(animated); navigationController?.setNavigationBarHidden(true, animated: false) }
+    override func viewDidLoad() {
+        super.viewDidLoad(); view.backgroundColor = .black
+        view.accessibilityIdentifier = "post-media"
+        let holder = UIView(); holder.translatesAutoresizingMaskIntoConstraints = false; view.addSubview(holder)
+        var top = view.topAnchor
+        if !embedded {
+            view.backgroundColor = ClassicTheme.bar
+            let bar = ClassicBar(); bar.translatesAutoresizingMaskIntoConstraints = false; view.addSubview(bar)
+            let header = AuthorHeader(); header.update(post: post, section: "Post", loader: app.media)
+            header.action = { [weak self] in self?.profile() }; bar.setCenter(header)
+            bar.onLeading = { [weak self] in
+                guard let self else { return }; if let onLeading { onLeading() } else { navigationController?.popViewController(animated: true) }
+            }
+            if onLeading != nil { bar.leading.setImage(ClassicGlyph.menu.image, for: .normal); bar.leading.accessibilityLabel = "Open menu" }
+            bar.onTrailing = { [weak self] in
+                guard let self else { return }; if let onRefresh { onRefresh() } else { loadMedia() }
+            }
+            NSLayoutConstraint.activate([bar.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor), bar.leadingAnchor.constraint(equalTo: view.leadingAnchor), bar.trailingAnchor.constraint(equalTo: view.trailingAnchor), bar.heightAnchor.constraint(equalToConstant: 52)])
+            top = bar.bottomAnchor
+        }
+        holder.backgroundColor = .black
+        NSLayoutConstraint.activate([holder.topAnchor.constraint(equalTo: top), holder.leadingAnchor.constraint(equalTo: view.leadingAnchor), holder.trailingAnchor.constraint(equalTo: view.trailingAnchor), holder.bottomAnchor.constraint(equalTo: embedded ? view.bottomAnchor : view.safeAreaLayoutGuide.bottomAnchor)])
+        outer.backgroundColor = .black; outer.showsVerticalScrollIndicator = false
+        let container = UIView(); container.translatesAutoresizingMaskIntoConstraints = false
+        let stack = UIStackView(arrangedSubviews: [titlePanel, media, bodyPanel]); stack.axis = .vertical; stack.translatesAutoresizingMaskIntoConstraints = false
+        addText(post.title, to: titlePanel, bold: true); addText(post.body, to: bodyPanel, bold: false)
+        outer.addSubview(container); container.addSubview(stack)
+        outer.translatesAutoresizingMaskIntoConstraints = false; holder.addSubview(outer)
+        let preferredHeight = container.heightAnchor.constraint(equalTo: stack.heightAnchor); preferredHeight.priority = .defaultHigh
+        mediaHeight = media.heightAnchor.constraint(equalToConstant: 300)
+        NSLayoutConstraint.activate([
+            container.topAnchor.constraint(equalTo: outer.contentLayoutGuide.topAnchor), container.bottomAnchor.constraint(equalTo: outer.contentLayoutGuide.bottomAnchor),
+            container.leadingAnchor.constraint(equalTo: outer.contentLayoutGuide.leadingAnchor), container.trailingAnchor.constraint(equalTo: outer.contentLayoutGuide.trailingAnchor),
+            container.widthAnchor.constraint(equalTo: outer.frameLayoutGuide.widthAnchor), container.heightAnchor.constraint(greaterThanOrEqualTo: outer.frameLayoutGuide.heightAnchor), preferredHeight,
+            stack.leadingAnchor.constraint(equalTo: container.leadingAnchor), stack.trailingAnchor.constraint(equalTo: container.trailingAnchor),
+            stack.centerYAnchor.constraint(equalTo: container.centerYAnchor), stack.topAnchor.constraint(greaterThanOrEqualTo: container.topAnchor),
+            stack.bottomAnchor.constraint(lessThanOrEqualTo: container.bottomAnchor), mediaHeight
+        ])
+        zoom.delegate = self; zoom.minimumZoomScale = 1; zoom.maximumZoomScale = 6
+        zoom.backgroundColor = .black; zoom.showsVerticalScrollIndicator = false; zoom.showsHorizontalScrollIndicator = false
+        image.contentMode = .scaleAspectFit; image.autoresizingMask = [.flexibleWidth, .flexibleHeight]; zoom.addSubview(image)
+        media.addSubview(zoom); zoom.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([zoom.topAnchor.constraint(equalTo: media.topAnchor), zoom.bottomAnchor.constraint(equalTo: media.bottomAnchor), zoom.leadingAnchor.constraint(equalTo: media.leadingAnchor), zoom.trailingAnchor.constraint(equalTo: media.trailingAnchor)])
+        smile.icon = ClassicTheme.image("smile", fallback: "face.smiling")
+        smile.addTarget(self, action: #selector(toggleSmile), for: .touchUpInside); updateSmile()
+        unsmile.tintColor = unsmiled ? ClassicTheme.yellow : .white
+        unsmile.addTarget(self, action: #selector(toggleUnsmile), for: .touchUpInside)
+        comments.icon = ClassicTheme.image("comments", fallback: "text.bubble"); comments.count = post.comments
+        comments.accessibilityLabel = "\(post.comments) comments"; comments.addTarget(self, action: #selector(openComments), for: .touchUpInside)
+        share.addTarget(self, action: #selector(sharePost), for: .touchUpInside)
+        let spacer = UIView()
+        let footer = UIStackView(arrangedSubviews: [smile, unsmile, spacer, comments, share]); footer.spacing = 6; footer.alignment = .center
+        footer.backgroundColor = .black; footer.layoutMargins = UIEdgeInsets(top: 0, left: 6, bottom: 0, right: 6); footer.isLayoutMarginsRelativeArrangement = true
+        footer.translatesAutoresizingMaskIntoConstraints = false; holder.addSubview(footer)
+        NSLayoutConstraint.activate([
+            outer.topAnchor.constraint(equalTo: holder.topAnchor), outer.leadingAnchor.constraint(equalTo: holder.leadingAnchor), outer.trailingAnchor.constraint(equalTo: holder.trailingAnchor),
+            outer.bottomAnchor.constraint(equalTo: footer.topAnchor), footer.leadingAnchor.constraint(equalTo: holder.leadingAnchor), footer.trailingAnchor.constraint(equalTo: holder.trailingAnchor),
+            footer.bottomAnchor.constraint(equalTo: holder.bottomAnchor), footer.heightAnchor.constraint(equalToConstant: 54)
+        ])
+        media.addSubview(status); status.backgroundColor = .black; status.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([status.leadingAnchor.constraint(equalTo: media.leadingAnchor), status.trailingAnchor.constraint(equalTo: media.trailingAnchor), status.topAnchor.constraint(equalTo: media.topAnchor), status.bottomAnchor.constraint(equalTo: media.bottomAnchor)])
+        status.retry.addTarget(self, action: #selector(loadMedia), for: .touchUpInside)
+        if post.isVideo, let url = post.mediaURL {
+            let player = AVPlayerViewController(); player.player = AVPlayer(url: url); player.player?.isMuted = post.type == "gif"
+            addChild(player); media.insertSubview(player.view, belowSubview: status); player.didMove(toParent: self)
+            player.view.translatesAutoresizingMaskIntoConstraints = false
+            NSLayoutConstraint.activate([player.view.leadingAnchor.constraint(equalTo: media.leadingAnchor), player.view.trailingAnchor.constraint(equalTo: media.trailingAnchor), player.view.topAnchor.constraint(equalTo: media.topAnchor), player.view.bottomAnchor.constraint(equalTo: media.bottomAnchor)])
+            video = player; zoom.isHidden = true; status.isHidden = true
+        } else { loadMedia() }
+        NotificationCenter.default.addObserver(self, selector: #selector(pause), name: UIApplication.willResignActiveNotification, object: nil)
+        let doubleTap = UITapGestureRecognizer(target: self, action: #selector(toggleSmile)); doubleTap.numberOfTapsRequired = 2; doubleTap.delegate = self; outer.addGestureRecognizer(doubleTap)
+        let hold = UILongPressGestureRecognizer(target: self, action: #selector(postOptions(_:))); hold.delegate = self; outer.addGestureRecognizer(hold)
+    }
+    func setCommentCount(_ count: Int) { comments.count = count; comments.accessibilityLabel = "\(count) comments" }
+    private func addText(_ text: String, to panel: UIView, bold: Bool) {
+        panel.isHidden = text.isEmpty
+        guard !text.isEmpty else { return }
+        let label = UILabel(); label.text = text; label.textColor = .white; label.font = ClassicTheme.font(bold ? 19 : 17, bold: bold)
+        label.numberOfLines = 0; label.textAlignment = .center; label.adjustsFontForContentSizeCategory = true
+        label.translatesAutoresizingMaskIntoConstraints = false; panel.addSubview(label)
+        NSLayoutConstraint.activate([label.leadingAnchor.constraint(equalTo: panel.leadingAnchor, constant: 12), label.trailingAnchor.constraint(equalTo: panel.trailingAnchor, constant: -12), label.topAnchor.constraint(equalTo: panel.topAnchor, constant: 8), label.bottomAnchor.constraint(equalTo: panel.bottomAnchor, constant: -8)])
+    }
+    override func viewDidLayoutSubviews() {
+        super.viewDidLayoutSubviews()
+        if outer.bounds.width > 0 && outer.bounds.height > 0 {
+            let target = CGSize(width: outer.bounds.width, height: 0)
+            let textHeight = [titlePanel, bodyPanel].filter { !$0.isHidden }.reduce(CGFloat(0)) { $0 + $1.systemLayoutSizeFitting(target, withHorizontalFittingPriority: .required, verticalFittingPriority: .fittingSizeLevel).height }
+            let height = max(100, min(outer.bounds.width * CGFloat(post.height / post.width), max(100, outer.bounds.height - textHeight)))
+            if abs(mediaHeight.constant - height) > 0.5 { mediaHeight.constant = height }
+        }
+        if zoom.zoomScale == 1 { image.frame = zoom.bounds; zoom.contentSize = zoom.bounds.size }
+    }
+    override func viewWillDisappear(_ animated: Bool) { super.viewWillDisappear(animated); pause() }
+    func canScrollVertically(down: Bool) -> Bool {
+        if zoom.zoomScale > zoom.minimumZoomScale + 0.01 { return true }
+        let top = -outer.adjustedContentInset.top
+        let bottom = max(top, outer.contentSize.height - outer.bounds.height + outer.adjustedContentInset.bottom)
+        return down ? outer.contentOffset.y > top + 1 : outer.contentOffset.y < bottom - 1
+    }
+    @objc private func pause() { video?.player?.pause(); image.stopAnimating() }
+    override func viewDidAppear(_ animated: Bool) { super.viewDidAppear(animated); if !obscured { image.startAnimating() } }
+    func setObscured(_ value: Bool) { obscured = value; if value { pause() } else if view.window != nil { image.startAnimating() } }
+    func viewForZooming(in scrollView: UIScrollView) -> UIView? { image }
+    @objc private func loadMedia() {
+        guard video == nil else { return }; mediaTask?.cancel()
+        guard let url = post.mediaURL ?? post.posterURL else { status.message("Media is unavailable.", canRetry: false); return }
+        status.loading()
+        mediaTask = Task { [weak self] in
+            guard let self else { return }
+            do {
+                let loaded = try await app.media.image(url); try Task.checkCancellation()
+                image.image = loaded; status.isHidden = true; if obscured { image.stopAnimating() }
+            } catch { if !Task.isCancelled { status.message("Could not load this image.") } }
+        }
+    }
+    @objc private func openComments() {
+        pause(); onComments?()
+    }
+    @objc private func profile() {
+        guard let id = post.authorID else { return }; pause()
+        navigationController?.pushViewController(FeedController(app: app, feed: .featured, timelineID: id, profileName: post.author), animated: true)
+    }
+    private func updateSmile() {
+        let count = max(0, post.smiles + (smiled == post.isSmiled ? 0 : (smiled ? 1 : -1)))
+        smile.count = count; smile.tintColor = smiled ? ClassicTheme.yellow : .white
+        smile.accessibilityLabel = "\(count) smiles, \(smiled ? "remove smile" : "smile")"
+        smile.accessibilityTraits = smiled ? [.button, .selected] : .button
+    }
+    @objc private func toggleSmile() {
+        guard !changingReaction else { return }; changingReaction = true; smile.isEnabled = false; unsmile.isEnabled = false
+        Task { [weak self] in
+            guard let self else { return }; defer { changingReaction = false; smile.isEnabled = true; unsmile.isEnabled = true }
+            guard await app.api.account() != nil else { app.signIn(from: self); return }
+            do { try await app.api.smile(postID: post.id, enabled: !smiled, source: source); smiled.toggle(); if smiled { unsmiled = false }; updateSmile(); unsmile.tintColor = unsmiled ? ClassicTheme.yellow : .white }
+            catch { showError(error) }
+        }
+    }
+    @objc private func toggleUnsmile() {
+        guard !changingReaction else { return }; changingReaction = true; smile.isEnabled = false; unsmile.isEnabled = false
+        Task { [weak self] in
+            guard let self else { return }; defer { changingReaction = false; smile.isEnabled = true; unsmile.isEnabled = true }
+            guard await app.api.account() != nil else { app.signIn(from: self); return }
+            do { try await app.api.unsmile(postID: post.id, enabled: !unsmiled, source: source); unsmiled.toggle(); if unsmiled { smiled = false }; updateSmile(); unsmile.tintColor = unsmiled ? ClassicTheme.yellow : .white }
+            catch { showError(error) }
+        }
+    }
+    func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldReceive touch: UITouch) -> Bool {
+        var hit = touch.view
+        while let item = hit, item !== outer { if item is UIControl { return false }; hit = item.superview }
+        return true
+    }
+    @objc private func postOptions(_ gesture: UILongPressGestureRecognizer) {
+        guard gesture.state == .began, presentedViewController == nil else { return }; pause()
+        let sheet = UIAlertController(title: nil, message: nil, preferredStyle: .actionSheet)
+        sheet.addAction(UIAlertAction(title: republished ? "Remove republish" : "Republish", style: .default) { [weak self] _ in self?.confirmRepublish() })
+        sheet.addAction(UIAlertAction(title: "Copy link", style: .default) { [weak self] _ in UIPasteboard.general.url = self?.postURL })
+        sheet.addAction(UIAlertAction(title: "Share", style: .default) { [weak self] _ in self?.sharePost() })
+        sheet.addAction(UIAlertAction(title: post.isVideo ? "Save video to Photos" : "Save image to Photos", style: .default) { [weak self] _ in self?.saveMedia() })
+        sheet.addAction(UIAlertAction(title: "Cancel", style: .cancel))
+        sheet.popoverPresentationController?.sourceView = outer; sheet.popoverPresentationController?.sourceRect = CGRect(origin: gesture.location(in: outer), size: .zero)
+        present(sheet, animated: true)
+    }
+    private var postURL: URL { URL(string: "https://ifunny.co/\(post.isVideo ? "video" : "picture")/\(post.id)")! }
+    private func confirmRepublish() {
+        let alert = UIAlertController(title: republished ? "Remove this republish?" : "Republish to your profile?", message: nil, preferredStyle: .alert)
+        alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
+        alert.addAction(UIAlertAction(title: republished ? "Remove" : "Republish", style: .default) { [weak self] _ in self?.changeRepublish() })
+        present(alert, animated: true)
+    }
+    private func changeRepublish() {
+        guard !changingRepublish else { return }; changingRepublish = true
+        Task { [weak self] in
+            guard let self else { return }; defer { changingRepublish = false }
+            guard await app.api.account() != nil else { app.signIn(from: self); return }
+            do { try await app.api.republish(postID: post.id, enabled: !republished, source: source); republished.toggle() }
+            catch { showError(error) }
+        }
+    }
+    private func saveMedia() {
+        Task { [weak self] in
+            guard let self else { return }
+            let result = await PhotoExporter.save(post, loader: app.media)
+            guard view.window != nil else { return }
+            let alert = UIAlertController(title: "Save to Photos", message: result, preferredStyle: .alert)
+            alert.addAction(UIAlertAction(title: "OK", style: .default)); present(alert, animated: true)
+        }
+    }
+    @objc private func sharePost() {
+        let url = postURL
+        let controller = UIActivityViewController(activityItems: [url], applicationActivities: nil)
+        controller.popoverPresentationController?.sourceView = share; present(controller, animated: true)
+    }
+}
+
+final class ClassicCounterButton: UIControl {
+    private let symbol = UIImageView(), label = UILabel()
+    var icon: UIImage? { didSet { symbol.image = icon } }
+    var count = 0 { didSet { label.text = String(count) } }
+    override var isEnabled: Bool { didSet { alpha = isEnabled ? 1 : 0.4 } }
+    override init(frame: CGRect = .zero) {
+        super.init(frame: frame); tintColor = .white
+        symbol.contentMode = .scaleAspectFit; symbol.tintColor = .white
+        label.textColor = .white; label.font = ClassicTheme.font(14, bold: true)
+        let row = UIStackView(arrangedSubviews: [symbol, label]); row.spacing = 6; row.alignment = .center; row.isUserInteractionEnabled = false
+        row.translatesAutoresizingMaskIntoConstraints = false; addSubview(row)
+        NSLayoutConstraint.activate([row.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 8), row.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -8), row.centerYAnchor.constraint(equalTo: centerYAnchor), symbol.widthAnchor.constraint(equalToConstant: 24), symbol.heightAnchor.constraint(equalToConstant: 24), heightAnchor.constraint(equalToConstant: 44), widthAnchor.constraint(greaterThanOrEqualToConstant: 68)])
+        isAccessibilityElement = true; accessibilityTraits = .button
+    }
+    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+    override func tintColorDidChange() { super.tintColorDidChange(); symbol.tintColor = tintColor; label.textColor = tintColor }
+    override var isHighlighted: Bool { didSet { alpha = isHighlighted ? 0.55 : (isEnabled ? 1 : 0.4) } }
+}

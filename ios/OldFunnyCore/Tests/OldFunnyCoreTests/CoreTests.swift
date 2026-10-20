@@ -34,6 +34,55 @@ private func token(_ name: String = "fixtureAccess", refresh: String? = "fixture
 }
 
 final class CoreTests: XCTestCase {
+    func testAndroidViewerPanelTransitionTable() {
+        XCTAssertEqual(ViewerInteraction.destination(from: .media, swipe: .up), .comments)
+        XCTAssertEqual(ViewerInteraction.destination(from: .comments, swipe: .down), .media)
+        XCTAssertEqual(ViewerInteraction.destination(from: .media, swipe: .down), .information)
+        XCTAssertEqual(ViewerInteraction.destination(from: .information, swipe: .up), .media)
+        XCTAssertNil(ViewerInteraction.destination(from: .information, swipe: .down))
+        XCTAssertNil(ViewerInteraction.destination(from: .comments, swipe: .up))
+    }
+    func testVerticalFlingDoesNotStealScrollingPinchingEditingOrHorizontalPaging() {
+        XCTAssertTrue(ViewerInteraction.accepts(dx: 10, dy: -160, vx: 20, vy: -600, displayScale: 3, childCanScroll: false, editing: false))
+        XCTAssertFalse(ViewerInteraction.accepts(dx: 10, dy: -160, vx: 20, vy: -500, displayScale: 3, childCanScroll: false, editing: false))
+        XCTAssertFalse(ViewerInteraction.accepts(dx: 200, dy: -160, vx: 900, vy: -600, displayScale: 3, childCanScroll: false, editing: false))
+        XCTAssertFalse(ViewerInteraction.accepts(dx: 10, dy: -160, vx: 20, vy: 600, displayScale: 3, childCanScroll: false, editing: false))
+        XCTAssertFalse(ViewerInteraction.accepts(dx: 10, dy: -160, vx: 20, vy: -600, displayScale: 3, childCanScroll: true, editing: false))
+        XCTAssertFalse(ViewerInteraction.accepts(dx: 10, dy: -160, vx: 20, vy: -600, displayScale: 3, childCanScroll: false, editing: true))
+        XCTAssertFalse(ViewerInteraction.accepts(dx: 10, dy: -160, vx: 20, vy: -600, displayScale: 3, childCanScroll: false, editing: false, touches: 2))
+        XCTAssertFalse(ViewerInteraction.accepts(dx: .nan, dy: -160, vx: 20, vy: -600, displayScale: 3, childCanScroll: false, editing: false))
+    }
+    func testCommentDraftRevisionPreservesNewerEditsAndIndependentAttachment() throws {
+        let post = try Post(JSON.decode(Data(#"{"id":"FixturePost","type":"picture"}"#.utf8)))
+        var draft = CommentDraft(); XCTAssertFalse(draft.canSend)
+        draft.attach(post); XCTAssertTrue(draft.canSend)
+        draft.edit("Original"); let submitted = draft
+        draft.edit("New draft"); draft.edit("Original")
+        draft.clear(ifRevision: submitted.revision)
+        XCTAssertEqual(draft.text, "Original"); XCTAssertEqual(draft.attachment, post)
+        draft.attach(nil); XCTAssertEqual(draft.text, "Original")
+        draft.edit(String(repeating: "a", count: 301)); XCTAssertFalse(draft.canSend)
+        draft.edit("OK"); draft.clear(ifRevision: draft.revision)
+        XCTAssertEqual(draft.text, ""); XCTAssertNil(draft.attachment)
+    }
+    func testNewActionsUseAndroidMethodsFieldsAndPathsWithoutReplay() async throws {
+        let transport = ScriptedTransport([reply(emptyPage)] + Array(repeating: reply("", status: 204), count: 8))
+        let api = try APIClient(installation: installation, userAgent: "fixture", store: MemoryStore(try token()), transport: transport)
+        _ = try await api.feed(.collective, next: "cursor +&")
+        try await api.unsmile(postID: "Post1", enabled: true, source: "coll")
+        try await api.unsmile(postID: "Post1", enabled: false, source: "coll")
+        try await api.republish(postID: "Post1", enabled: true, source: "prof")
+        try await api.republish(postID: "Post1", enabled: false, source: "prof")
+        try await api.reactToComment(postID: "Post1", commentID: "Comment1", unsmile: false, enabled: true)
+        try await api.reactToComment(postID: "Post1", commentID: "Comment1", unsmile: true, enabled: false)
+        try await api.deleteComment(postID: "Post1", commentID: "Comment1")
+        try await api.reportComment(postID: "Post1", commentID: "Comment1")
+        let requests = await transport.recorded()
+        XCTAssertEqual(requests.map(\.httpMethod), ["POST", "PUT", "DELETE", "POST", "DELETE", "PUT", "DELETE", "DELETE", "PUT"])
+        XCTAssertEqual(requests.map { $0.url!.path }, ["/v4/feeds/collective", "/v4/content/Post1/unsmiles", "/v4/content/Post1/unsmiles", "/v4/content/Post1/republished", "/v4/content/Post1/republished", "/v4/content/Post1/comments/Comment1/smiles", "/v4/content/Post1/comments/Comment1/unsmiles", "/v4/content/Post1/comments/Comment1", "/v4/content/Post1/comments/Comment1/abuses"])
+        XCTAssertEqual(String(data: requests[0].httpBody!, encoding: .utf8), "limit=30&next=cursor+%2B%26")
+        XCTAssertTrue(requests.allSatisfy { $0.value(forHTTPHeaderField: "Authorization") == "Bearer fixtureAccess" })
+    }
     func testModernProtocolProfileIsUsedOnActualRequests() async throws {
         let agent = Wire.apiUserAgent(systemVersion: "27.0.1", model: "iPhone")
         XCTAssertEqual(agent, "iFunny/10.45.1(25370) iPhone/27.0.1 (Apple; iPhone)")

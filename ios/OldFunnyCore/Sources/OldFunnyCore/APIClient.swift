@@ -206,6 +206,10 @@ public actor APIClient {
         if let next, next.utf8.count > 8192 { throw ClientError.invalidInput }
         var query = [("limit", "30")]
         if let next { query.append(("next", next)) }
+        // The supplied Android client uses POST form fields for this read.
+        if feed == .collective {
+            return try PostPage(await call(path: feed.path, method: "POST", fields: query)["data"])
+        }
         return try PostPage(await call(path: feed.path, query: query, authenticated: feed == .subscriptions)["data"])
     }
     public func timeline(userID: String, next: String? = nil) async throws -> PostPage {
@@ -231,12 +235,35 @@ public actor APIClient {
         _ = try await call(path: path, method: "POST", fields: fields, authenticated: true)
     }
     public func smile(postID: String, enabled: Bool, source: String) async throws {
-        guard ["feat", "subs", "prof"].contains(source) else { throw ClientError.invalidInput }
+        guard ["feat", "coll", "subs", "prof"].contains(source) else { throw ClientError.invalidInput }
         _ = try await call(path: "content/" + Wire.requireID(postID) + "/smiles", query: [("from", source)],
                            method: enabled ? "PUT" : "DELETE", authenticated: true)
     }
     public func markRead(ids: [String], feed: Feed) async throws {
         guard !ids.isEmpty, ids.count <= 30, ids.allSatisfy(Wire.validID) else { throw ClientError.invalidInput }
         _ = try await call(path: "reads/" + ids.joined(separator: ","), query: [("from", feed.source)], method: "PUT", authenticated: true)
+    }
+
+    // Native Android Retrofit contracts. All writes use the existing account
+    // fence and single-attempt transport; none are automatically replayed.
+    public func unsmile(postID: String, enabled: Bool, source: String) async throws {
+        guard ["feat", "coll", "subs", "prof"].contains(source) else { throw ClientError.invalidInput }
+        _ = try await call(path: "content/" + Wire.requireID(postID) + "/unsmiles", query: [("from", source)], method: enabled ? "PUT" : "DELETE", authenticated: true)
+    }
+    public func republish(postID: String, enabled: Bool, source: String) async throws {
+        guard ["feat", "coll", "subs", "prof"].contains(source) else { throw ClientError.invalidInput }
+        _ = try await call(path: "content/" + Wire.requireID(postID) + "/republished", query: [("from", source)], method: enabled ? "POST" : "DELETE", authenticated: true)
+    }
+    public func reactToComment(postID: String, commentID: String, unsmile: Bool, enabled: Bool) async throws {
+        let path = "content/" + (try Wire.requireID(postID)) + "/comments/" + (try Wire.requireID(commentID)) + (unsmile ? "/unsmiles" : "/smiles")
+        _ = try await call(path: path, method: enabled ? "PUT" : "DELETE", authenticated: true)
+    }
+    public func deleteComment(postID: String, commentID: String) async throws {
+        let path = "content/" + (try Wire.requireID(postID)) + "/comments/" + (try Wire.requireID(commentID))
+        _ = try await call(path: path, method: "DELETE", authenticated: true)
+    }
+    public func reportComment(postID: String, commentID: String) async throws {
+        let path = "content/" + (try Wire.requireID(postID)) + "/comments/" + (try Wire.requireID(commentID)) + "/abuses"
+        _ = try await call(path: path, method: "PUT", authenticated: true)
     }
 }

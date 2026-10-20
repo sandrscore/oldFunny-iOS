@@ -1,3 +1,5 @@
+> 0.3.0 build 7 is being compiled and checked against the Android behavior inventory in [ANDROID_PARITY.md](ANDROID_PARITY.md). The 0.2.0 artifact below is the previous build.
+
 # oldFunny iOS
 
 **0.2.0 (build 6): first classic interface pass.**

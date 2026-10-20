@@ -25,7 +25,10 @@ enum PreviewFixtures {
         return AppContext(previewAPI: api)
     }
     static let post = #"{"id":"PreviewPost","type":"picture","url":"https://preview.invalid/post","size":{"w":640,"h":760},"creator":{"id":"PreviewUser","nick":"ClassicFan","avatar":{"s":"https://preview.invalid/avatar"}},"num":{"smiles":128,"comments":3}}"#
-    static var feed: String { "{\"status\":200,\"data\":{\"content\":{\"items\":[\(post)],\"paging\":{\"hasNext\":false}}}}" }
+    static var feed: String {
+        let second = post.replacingOccurrences(of: "PreviewPost", with: "NextPost").replacingOccurrences(of: "ClassicFan", with: "NextFan")
+        return "{\"status\":200,\"data\":{\"content\":{\"items\":[\(post),\(second)],\"paging\":{\"hasNext\":false}}}}"
+    }
     static var comments: String {
         """
         {"status":200,"data":{"comments":{"items":[

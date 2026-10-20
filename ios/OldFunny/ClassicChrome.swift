@@ -4,7 +4,7 @@ import UIKit
 /// current iOS button style. Only the already-reviewed recovered icons are used.
 @MainActor
 enum ClassicGlyph {
-    case menu, back, refresh, share, profile, account, send, chevron, smile, comment, subscription
+    case menu, back, refresh, share, profile, account, send, chevron, smile, unsmile, comment, subscription
     var image: UIImage {
         UIGraphicsImageRenderer(size: CGSize(width: 24, height: 24)).image { context in
             UIColor.white.setStroke(); UIColor.white.setFill()
@@ -35,12 +35,14 @@ enum ClassicGlyph {
                 line(CGPoint(x: 14, y: 5), CGPoint(x: 21, y: 12)); path.addLine(to: CGPoint(x: 14, y: 19))
             case .chevron:
                 path.move(to: CGPoint(x: 8, y: 5)); path.addLine(to: CGPoint(x: 15, y: 12)); path.addLine(to: CGPoint(x: 8, y: 19))
-            case .smile:
+            case .smile, .unsmile:
                 UIBezierPath(ovalIn: CGRect(x: 2, y: 2, width: 20, height: 20)).fill()
                 context.cgContext.saveGState(); context.cgContext.setBlendMode(.clear)
                 for x in [8, 15] { UIBezierPath(ovalIn: CGRect(x: CGFloat(x) - 1, y: 7, width: 2, height: 3)).fill() }
                 let mouth = UIBezierPath(); mouth.lineWidth = 1.5
-                mouth.addArc(withCenter: CGPoint(x: 12, y: 12), radius: 5, startAngle: 0.2, endAngle: .pi - 0.2, clockwise: true); mouth.stroke()
+                if self == .smile { mouth.addArc(withCenter: CGPoint(x: 12, y: 12), radius: 5, startAngle: 0.2, endAngle: .pi - 0.2, clockwise: true) }
+                else { mouth.move(to: CGPoint(x: 7, y: 17)); mouth.addQuadCurve(to: CGPoint(x: 17, y: 17), controlPoint: CGPoint(x: 12, y: 10)) }
+                mouth.stroke()
                 context.cgContext.restoreGState()
             case .comment:
                 UIBezierPath(roundedRect: CGRect(x: 2, y: 3, width: 20, height: 16), cornerRadius: 7).fill()
@@ -114,19 +116,22 @@ final class ClassicBar: UIView {
 
 class ClassicScreenController: UIViewController {
     let classicBar = ClassicBar(), contentView = UIView()
+    private var barHeight: NSLayoutConstraint!
     override var preferredStatusBarStyle: UIStatusBarStyle { .lightContent }
     override func viewDidLoad() {
         super.viewDidLoad(); view.backgroundColor = ClassicTheme.bar
         contentView.backgroundColor = ClassicTheme.background
         for item in [classicBar, contentView] { item.translatesAutoresizingMaskIntoConstraints = false; view.addSubview(item) }
+        barHeight = classicBar.heightAnchor.constraint(equalToConstant: 52)
         NSLayoutConstraint.activate([
             classicBar.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor), classicBar.leadingAnchor.constraint(equalTo: view.leadingAnchor),
-            classicBar.trailingAnchor.constraint(equalTo: view.trailingAnchor), classicBar.heightAnchor.constraint(equalToConstant: 52),
+            classicBar.trailingAnchor.constraint(equalTo: view.trailingAnchor), barHeight,
             contentView.topAnchor.constraint(equalTo: classicBar.bottomAnchor), contentView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             contentView.trailingAnchor.constraint(equalTo: view.trailingAnchor), contentView.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor)
         ])
         classicBar.onLeading = { [weak self] in self?.navigationController?.popViewController(animated: true) }
     }
+    func setClassicBarHidden(_ hidden: Bool) { classicBar.isHidden = hidden; barHeight.constant = hidden ? 0 : 52 }
     override func viewWillAppear(_ animated: Bool) { super.viewWillAppear(animated); navigationController?.setNavigationBarHidden(true, animated: false) }
 }
 

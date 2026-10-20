@@ -13,6 +13,25 @@ actor MediaLoader {
         config.timeoutIntervalForResource = 60
         session = URLSession(configuration: config)
     }
+    func exportFile(_ post: Post) async throws -> URL {
+        guard let url = post.mediaURL, url.scheme == "https" else { throw ClientError.unsupportedMedia }
+        #if CLASSIC_UI_PREVIEW
+        if url.host == "preview.invalid" { throw ClientError.unsupportedMedia }
+        #endif
+        let (temporary, response) = try await session.download(from: url)
+        defer { try? FileManager.default.removeItem(at: temporary) }
+        try Task.checkCancellation()
+        let size = (try FileManager.default.attributesOfItem(atPath: temporary.path)[.size] as? NSNumber)?.intValue ?? 0
+        guard (response as? HTTPURLResponse)?.statusCode == 200, size > 0, size <= 150 * 1024 * 1024 else { throw ClientError.unsupportedMedia }
+        let mime = response.mimeType?.lowercased() ?? ""
+        let suffix: String
+        if post.isVideo { guard mime.hasPrefix("video/") || mime == "application/octet-stream" else { throw ClientError.unsupportedMedia }; suffix = "mp4" }
+        else {
+            switch mime { case "image/gif": suffix = "gif"; case "image/png": suffix = "png"; case "image/jpeg": suffix = "jpg"; case "image/webp": suffix = "webp"; default: throw ClientError.unsupportedMedia }
+        }
+        let destination = FileManager.default.temporaryDirectory.appendingPathComponent("oldFunny-save-" + UUID().uuidString).appendingPathExtension(suffix)
+        try FileManager.default.copyItem(at: temporary, to: destination); return destination
+    }
     func image(_ url: URL) async throws -> UIImage {
         #if CLASSIC_UI_PREVIEW
         if url.host == "preview.invalid" { return await PreviewFixtures.image(url) }

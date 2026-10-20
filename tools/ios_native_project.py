@@ -64,7 +64,7 @@ def generate(output: Path, bundle: str = "mobi.oldfunny.ios", ios: Path = IOS):
         resource_refs.append(ref)
         resources.append(obj(relative + ":build", "PBXBuildFile", fileRef=ref))
     framework_refs, framework_builds = [], []
-    for name in ("UIKit", "AVKit", "AVFoundation", "WebKit", "Security", "ImageIO"):
+    for name in ("UIKit", "AVKit", "AVFoundation", "WebKit", "Security", "ImageIO", "Photos"):
         ref = obj(name, "PBXFileReference", lastKnownFileType="wrapper.framework", path=f"System/Library/Frameworks/{name}.framework", sourceTree="SDKROOT")
         framework_refs.append(ref); framework_builds.append(obj(name + ":build", "PBXBuildFile", fileRef=ref))
     product = obj("product", "PBXFileReference", explicitFileType="wrapper.application", includeInIndex=0, path="OldFunny.app", sourceTree="BUILT_PRODUCTS_DIR")
@@ -96,12 +96,33 @@ def generate(output: Path, bundle: str = "mobi.oldfunny.ios", ios: Path = IOS):
         lists.append(obj(label + ":configs", "XCConfigurationList", buildConfigurations=configs, defaultConfigurationIsVisible=0, defaultConfigurationName="Release"))
     target = obj("target", "PBXNativeTarget", buildConfigurationList=lists[1], buildPhases=[sources, framework_phase, resource_phase], buildRules=[], dependencies=[], name=PRODUCT, productName=PRODUCT, productReference=product, productType="com.apple.product-type.application")
     project = obj("project", "PBXProject", attributes={"LastUpgradeCheck": "1600"}, buildConfigurationList=lists[0], compatibilityVersion="Xcode 14.0", developmentRegion="en", hasScannedForEncodings=0, knownRegions=["en", "Base"], mainGroup=main_group, productRefGroup=products, projectDirPath="", projectRoot="", targets=[target])
+    ui_target = None
+    ui_sources = sorted((ios / "UITests").glob("*.swift"))
+    if ui_sources:
+        refs, builds = [], []
+        for path in ui_sources:
+            relative = path.relative_to(ios).as_posix()
+            ref = obj(relative, "PBXFileReference", lastKnownFileType="sourcecode.swift", path=relative, sourceTree="SOURCE_ROOT")
+            refs.append(ref); builds.append(obj(relative + ":build", "PBXBuildFile", fileRef=ref))
+        objects[main_group]["children"] += refs
+        ui_product = obj("ui-product", "PBXFileReference", explicitFileType="wrapper.cfbundle", includeInIndex=0, path="OldFunnyUITests.xctest", sourceTree="BUILT_PRODUCTS_DIR")
+        objects[products]["children"].append(ui_product)
+        ui_configs = []
+        for mode in ("Debug", "Release"):
+            ui_configs.append(obj("ui:" + mode, "XCBuildConfiguration", name=mode, buildSettings={"PRODUCT_NAME": "OldFunnyUITests", "PRODUCT_BUNDLE_IDENTIFIER": bundle + ".uitests", "GENERATE_INFOPLIST_FILE": "YES", "TARGETED_DEVICE_FAMILY": "1,2", "CODE_SIGNING_ALLOWED": "NO", "CODE_SIGNING_REQUIRED": "NO", "TEST_TARGET_NAME": PRODUCT}))
+        ui_list = obj("ui-configs", "XCConfigurationList", buildConfigurations=ui_configs, defaultConfigurationIsVisible=0, defaultConfigurationName="Debug")
+        ui_phase = obj("ui-sources", "PBXSourcesBuildPhase", buildActionMask=2147483647, files=builds, runOnlyForDeploymentPostprocessing=0)
+        proxy = obj("ui-proxy", "PBXContainerItemProxy", containerPortal=project, proxyType=1, remoteGlobalIDString=target, remoteInfo=PRODUCT)
+        dependency = obj("ui-dependency", "PBXTargetDependency", target=target, targetProxy=proxy)
+        ui_target = obj("ui-target", "PBXNativeTarget", buildConfigurationList=ui_list, buildPhases=[ui_phase], buildRules=[], dependencies=[dependency], name="OldFunnyUITests", productName="OldFunnyUITests", productReference=ui_product, productType="com.apple.product-type.bundle.ui-testing")
+        objects[project]["targets"].append(ui_target)
     document = {"archiveVersion": 1, "classes": {}, "objectVersion": 56, "objects": objects, "rootObject": project}
     (output / "project.pbxproj").write_text("// !$*UTF8*$!\n" + openstep(document) + "\n")
     # SOURCE_ROOT must be ios/, so default project lives directly inside ios/.
     if output.parent.resolve() != ios.resolve():
         raise ValueError("Place the generated .xcodeproj directly in the iOS source directory")
     schemes = output / "xcshareddata/xcschemes"; schemes.mkdir(parents=True, exist_ok=True)
+    test_action = "" if ui_target is None else f'''<TestAction buildConfiguration="Debug" selectedDebuggerIdentifier="Xcode.DebuggerFoundation.Debugger.LLDB" selectedLauncherIdentifier="Xcode.IDEFoundation.Launcher.LLDB" shouldUseLaunchSchemeArgsEnv="YES"><Testables><TestableReference skipped="NO"><BuildableReference BuildableIdentifier="primary" BlueprintIdentifier="{ui_target}" BuildableName="OldFunnyUITests.xctest" BlueprintName="OldFunnyUITests" ReferencedContainer="container:OldFunny.xcodeproj"/></TestableReference></Testables></TestAction>'''
     (schemes / "OldFunny.xcscheme").write_text(f'''<?xml version="1.0" encoding="UTF-8"?>
 <Scheme LastUpgradeVersion="1600" version="1.3">
   <BuildAction parallelizeBuildables="YES" buildImplicitDependencies="YES"><BuildActionEntries>
@@ -109,6 +130,7 @@ def generate(output: Path, bundle: str = "mobi.oldfunny.ios", ios: Path = IOS):
       <BuildableReference BuildableIdentifier="primary" BlueprintIdentifier="{target}" BuildableName="OldFunny.app" BlueprintName="OldFunny" ReferencedContainer="container:OldFunny.xcodeproj"/>
     </BuildActionEntry>
   </BuildActionEntries></BuildAction>
+  {test_action}
   <LaunchAction buildConfiguration="Debug" selectedDebuggerIdentifier="Xcode.DebuggerFoundation.Debugger.LLDB" selectedLauncherIdentifier="Xcode.IDEFoundation.Launcher.LLDB" launchStyle="0" useCustomWorkingDirectory="NO" ignoresPersistentStateOnLaunch="NO" debugDocumentVersioning="YES" debugServiceExtension="internal" allowLocationSimulation="YES">
     <BuildableProductRunnable runnableDebuggingMode="0"><BuildableReference BuildableIdentifier="primary" BlueprintIdentifier="{target}" BuildableName="OldFunny.app" BlueprintName="OldFunny" ReferencedContainer="container:OldFunny.xcodeproj"/></BuildableProductRunnable>
   </LaunchAction>
@@ -151,9 +173,11 @@ def export_source(output: Path, include_assets: bool):
     if output.exists(): raise ValueError("Choose a new source bundle path")
     paths = sorted((IOS / "OldFunny").glob("*.swift"))
     paths += [IOS / "OldFunny/Info.plist", IOS / "OldFunny/LaunchScreen.storyboard", IOS / "README.md", IOS / "PORT_STATUS.md", IOS / "PROTOCOL_PROVENANCE.md", IOS / "OldFunnyCore/Package.swift", IOS / "port.json"]
+    if (IOS / "ANDROID_PARITY.md").exists(): paths.append(IOS / "ANDROID_PARITY.md")
     paths += sorted((IOS / "OldFunnyCore/Sources").rglob("*.swift"))
     paths += sorted((IOS / "OldFunnyCore/Tests").rglob("*.swift"))
-    paths += [ROOT / "tools/ios_native_project.py", ROOT / "tools/build_ios_native.py", ROOT / "tools/preview_ios_native.py", ROOT / "tools/render_ios_icon.swift", ROOT / "tools/inspect_ipa.py", ROOT / ".github/workflows/ios-native.yml"]
+    paths += sorted((IOS / "UITests").glob("*.swift"))
+    paths += [ROOT / "tools/ios_native_project.py", ROOT / "tools/build_ios_native.py", ROOT / "tools/preview_ios_native.py", ROOT / "tools/render_ios_icon.swift", ROOT / "tools/inspect_ipa.py", ROOT / "tools/audit_android_ios_parity.py", ROOT / ".github/workflows/ios-native.yml"]
     if include_assets:
         paths += sorted((IOS / "OldFunny/Resources/Classic").glob("*.png"))
         paths += sorted((IOS / "OldFunny/Resources/Branding").glob("*.png"))

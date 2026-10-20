@@ -50,12 +50,22 @@ def main():
         run("xcrun", "simctl", "status_bar", device, "override", "--time", "9:41", "--dataNetwork", "wifi", "--wifiMode", "active", "--wifiBars", "3", "--batteryState", "charged", "--batteryLevel", "100")
         run("xcrun", "simctl", "install", device, str(app))
         report.update(simulator_device=kind["name"], simulator_ios=runtime["version"])
-        for name, args in [("feed", []), ("sidebar", ["--preview-sidebar"]), ("comments", ["--preview-comments"])]:
+        for name, args in [("feed", []), ("sidebar", ["--preview-sidebar"]), ("comments", ["--preview-comments"]), ("information", ["--preview-information"])]:
             run("xcrun", "simctl", "launch", "--terminate-running-process", device, "mobi.oldfunny.ios", *args)
             time.sleep(3)
             path = output / (name + ".png")
             run("xcrun", "simctl", "io", device, "screenshot", "--type=png", str(path))
             report["screenshots"].append(path.name)
+        # Exercise actual touch gestures in the separately compiled offline app.
+        # Policy unit tests alone cannot establish UIKit recognizer arbitration.
+        test_command = ["xcodebuild", "-project", str(IOS / "OldFunny.xcodeproj"), "-scheme", "OldFunny",
+                        "-configuration", "Debug", "-destination", "platform=iOS Simulator,id=" + device,
+                        "-derivedDataPath", str(work), "CODE_SIGNING_ALLOWED=NO", "CODE_SIGNING_REQUIRED=NO",
+                        "SWIFT_ACTIVE_COMPILATION_CONDITIONS=DEBUG CLASSIC_UI_PREVIEW",
+                        "-parallel-testing-enabled", "NO", "-resultBundlePath", str(output / "ViewerTests.xcresult"), "test"]
+        with (output / "ui-tests.log").open("w") as log:
+            subprocess.run(test_command, stdout=log, stderr=subprocess.STDOUT, check=True, timeout=600)
+        report["ui_gesture_tests_passed"] = True
         report["success"] = True
     except Exception as error:
         report.update(success=False, error=str(error))

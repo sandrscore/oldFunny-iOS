@@ -15,6 +15,11 @@ public struct Post: Equatable, Sendable {
     public let smiles: Int
     public let comments: Int
     public let isSmiled: Bool
+    public let isUnsmiled: Bool, isRepublished: Bool
+    public let date: Date?
+    public let views: Int, republishes: Int
+    public let tags: [String]
+    public let originalAuthor: String?, originalAuthorID: String?
     public var isVideo: Bool { type == "video" || type == "text_video" || mediaURL?.pathExtension.lowercased() == "mp4" }
     public var isGIF: Bool { type == "gif" && !isVideo }
 
@@ -39,6 +44,15 @@ public struct Post: Equatable, Sendable {
         smiles = max(0, value["num"]["smiles"].integer ?? value["smiles"].integer ?? 0)
         comments = max(0, value["num"]["comments"].integer ?? value["comments"].integer ?? 0)
         isSmiled = value["is"]["smiled"].flag ?? value["is_smiled"].flag ?? false
+        isUnsmiled = value["is"]["unsmiled"].flag ?? value["is_unsmiled"].flag ?? false
+        isRepublished = value["is"]["republished"].flag ?? value["is_republished"].flag ?? false
+        date = ProfileMedia.date(value["date_create"].number ?? value["date"].number)
+        views = max(0, value["num"]["views"].integer ?? 0)
+        republishes = max(0, value["num"]["republishes"].integer ?? 0)
+        tags = value["tags"].items.compactMap { $0.string ?? $0["name"].string }
+        let original = value["source"]["creator"]
+        originalAuthor = original["nick"].string
+        originalAuthorID = original["id"].string.flatMap { Wire.validID($0) ? $0 : nil }
     }
 }
 
@@ -68,6 +82,7 @@ public struct Comment: Sendable {
     public let authorID: String?, authorAvatarURL: URL?, date: Date?
     public let attachments: [Post]
     public let replies: Int
+    public let smiles: Int, isSmiled: Bool, isUnsmiled: Bool
     public init(_ value: JSON) throws {
         id = try Wire.requireID(value["id"].string ?? "")
         text = value["text"].string ?? ""
@@ -79,10 +94,16 @@ public struct Comment: Sendable {
         date = timestamp.flatMap { $0.isFinite && $0 > 0 && $0 < 32_503_680_000 ? Date(timeIntervalSince1970: $0) : nil }
         attachments = value["attachments"]["content"].items.compactMap { try? Post($0) }
         replies = max(0, value["num"]["replies"].integer ?? 0)
+        smiles = max(0, value["num"]["smiles"].integer ?? 0)
+        isSmiled = value["is_smiled"].flag ?? value["is"]["smiled"].flag ?? false
+        isUnsmiled = value["is_unsmiled"].flag ?? value["is"]["unsmiled"].flag ?? false
     }
 }
 
 private enum ProfileMedia {
+    static func date(_ seconds: Double?) -> Date? {
+        seconds.flatMap { $0.isFinite && $0 > 0 && $0 < 32_503_680_000 ? Date(timeIntervalSince1970: $0) : nil }
+    }
     static func avatar(_ user: JSON) -> URL? {
         Wire.https(user["avatar"]["s"].string)
             ?? Wire.https(user["photo"]["thumb"]["small_url"].string)
@@ -121,8 +142,8 @@ public struct FeedPages: Sendable {
 }
 
 public enum Feed: String, CaseIterable, Sendable {
-    case featured, subscriptions
-    public var title: String { self == .featured ? "Featured" : "Subscriptions" }
-    public var path: String { self == .featured ? "feeds/featured" : "timelines/home" }
-    public var source: String { self == .featured ? "feat" : "subs" }
+    case featured, collective, subscriptions
+    public var title: String { switch self { case .featured: return "Featured"; case .collective: return "Collective"; case .subscriptions: return "Subscriptions" } }
+    public var path: String { switch self { case .featured: return "feeds/featured"; case .collective: return "feeds/collective"; case .subscriptions: return "timelines/home" } }
+    public var source: String { switch self { case .featured: return "feat"; case .collective: return "coll"; case .subscriptions: return "subs" } }
 }
