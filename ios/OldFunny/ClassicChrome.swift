@@ -48,11 +48,11 @@ final class ClassicNavigationController: UINavigationController {
 final class ClassicBar: UIView {
     let leading = ClassicTheme.button(.back, label: "Back")
     let trailing = ClassicTheme.button(.refresh, label: "Refresh")
-    let center = UIView()
+    let centerContent = UIView()
     var onLeading: (() -> Void)?, onTrailing: (() -> Void)?
     override init(frame: CGRect = .zero) {
         super.init(frame: frame); backgroundColor = ClassicTheme.bar
-        let row = UIStackView(arrangedSubviews: [leading, center, trailing]); row.spacing = 6
+        let row = UIStackView(arrangedSubviews: [leading, centerContent, trailing]); row.spacing = 6
         row.translatesAutoresizingMaskIntoConstraints = false; addSubview(row)
         NSLayoutConstraint.activate([
             row.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 3), row.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -3),
@@ -65,9 +65,9 @@ final class ClassicBar: UIView {
     @objc private func leftTapped() { onLeading?() }
     @objc private func rightTapped() { onTrailing?() }
     func setCenter(_ view: UIView) {
-        center.subviews.forEach { $0.removeFromSuperview() }; center.addSubview(view)
+        centerContent.subviews.forEach { $0.removeFromSuperview() }; centerContent.addSubview(view)
         view.translatesAutoresizingMaskIntoConstraints = false
-        NSLayoutConstraint.activate([view.leadingAnchor.constraint(equalTo: center.leadingAnchor), view.trailingAnchor.constraint(equalTo: center.trailingAnchor), view.topAnchor.constraint(equalTo: center.topAnchor), view.bottomAnchor.constraint(equalTo: center.bottomAnchor)])
+        NSLayoutConstraint.activate([view.leadingAnchor.constraint(equalTo: centerContent.leadingAnchor), view.trailingAnchor.constraint(equalTo: centerContent.trailingAnchor), view.topAnchor.constraint(equalTo: centerContent.topAnchor), view.bottomAnchor.constraint(equalTo: centerContent.bottomAnchor)])
     }
     func setTitle(_ title: String) {
         let label = UILabel(); label.text = title; label.textColor = .white
