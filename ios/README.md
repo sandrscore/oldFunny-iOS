@@ -4,7 +4,7 @@ New Swift/UIKit implementation of oldFunny, targeting ARM64 and iOS 16 or later.
 The intended test device is iPhone 16 / iOS 27.0.1. This is a source port, not
 a converted APK or a modification of iFunny's encrypted executable.
 
-**First native implementation prepared; no iOS build or device run yet.**
+**First unsigned ARM64 IPA built; iPhone installation and runtime testing pending.**
 See [feature status](PORT_STATUS.md) before treating this as a replacement.
 The Android implementation, original archives and existing accounts are preserved.
 The new app uses its own `mobi.oldfunny.ios` bundle and Keychain data.
@@ -48,12 +48,35 @@ The workflow refuses private repositories to avoid potentially paid minutes.
 It keeps artifacts seven days, needs no Apple secrets, and does not publish a
 GitHub release or install anything on a device.
 
-1. Publish only the exported native source bundle to an approved public repo.
-   No source upload has been made by preparing this workflow.
+1. The scoped source is published at https://github.com/sandrscore/oldFunny-iOS.
+   Keep future uploads limited to native source and the reviewed asset subset.
 2. Open Actions → Build oldFunny iOS → Run workflow (or push native sources).
 3. After the job passes, download `oldFunny-ios-unsigned` from its artifacts.
 4. Extract and sign/install the IPA through Zeus, preserving the existing
    iFunny app. Record launch, fresh sign-in and feed results separately.
+
+## First build: 0.1.0 (1)
+
+[Successful Mac build](https://github.com/sandrscore/oldFunny-iOS/actions/runs/39478438577)
+from commit `64b4439b2a6b0147bed4a513cc71ecde2a5de4f0` passed all 13 core tests,
+compiled with Xcode 16.4 / iOS SDK 18.5, and produced the unsigned IPA.
+[Download the artifact ZIP](https://github.com/sandrscore/oldFunny-iOS/actions/runs/39478438577/artifacts/12291131063)
+while retained (expires October 27, 2026). Extract the IPA from the ZIP for Zeus.
+
+IPA SHA-256: `0faaff10a27b38025f6f3fd8f260b89a22c5fbfcb9ab38cd2e2e752c46c87c76`.
+Independent local inspection confirmed bundle `mobi.oldfunny.ios`, version 0.1.0,
+build 1, minimum iOS 16.0, ARM64, `cryptid=0`, no FairPlay resources and no
+embedded extension/framework requiring additional architecture review.
+This executable was compiled from source; it is not a decrypted original iFunny.
+The ZIP and IPA hashes both matched the downloaded artifact. No device was used.
+
+Initial phone checks: sign the IPA with Zeus, install it, check launch, then check
+Featured, fresh password sign-in, Subscriptions and media/comments navigation.
+Report failures without sharing passwords, tokens or authentication transcripts.
+This is a partial prototype: Chats, Studio/publishing, push and other parity work
+remain unfinished. A successful build is not evidence of iOS 27 runtime or live
+server compatibility. Anonymous server probes were inconclusive after connection
+failures; successful offline protocol tests do not resolve that limitation.
 
 ## Test on Linux
 

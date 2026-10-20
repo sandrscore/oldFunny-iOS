@@ -3,8 +3,9 @@
 Target: iPhone 16 / iOS 27.0.1. Bundle ID: `mobi.oldfunny.ios`.
 
 This is **an incomplete first implementation**, not a feature-complete APK
-conversion. A Mac build host is still required for UIKit compilation. No native
-IPA has been produced, signed or installed at this stage.
+conversion. The first unsigned ARM64 IPA compiled successfully on the public Mac
+runner; [build and download details](README.md#first-build-010-1). It has not been
+signed, installed or run on an iPhone.
 
 | Area | Source implemented | Validation and remaining work |
 | --- | --- | --- |
@@ -18,7 +19,7 @@ IPA has been produced, signed or installed at this stage.
 | Reactions/share | Explicit smile toggle and public-link share sheet | No live social writes; device checks pending; unsmile/repub features pending |
 | Read tracking | Bounded read-acknowledgement API method | Exposure timers, durable per-account read queues/filtering and subscription badges not connected yet |
 | Classic appearance | Dark/yellow chrome, staged original icons and approved Android launcher | Partial styling; original full screen layouts not recreated or visually verified |
-| Build/signing | Generated Xcode project, Mac build script, unsigned IPA packaging/inspection, public-repo CI | Local script tests; first Xcode build and Zeus install still require a build host |
+| Build/signing | Generated Xcode project, Mac build script, unsigned IPA packaging/inspection, public-repo CI | Local script tests; Xcode 16.4 build and 13 Mac core tests passed; downloaded IPA hashes and ARM64/cryptid=0 verified; Zeus install pending |
 | Studio/publishing | Not implemented yet | Caption/comics/GIF/video editing, drafts, uploads/task polling and publishing need native implementations |
 | Chats/groups | Not implemented yet | REST/WAMP state machine, attachments, groups/discovery/drafts/read receipts pending |
 | Notifications | Not implemented yet | APNs requires independent signing/entitlement/server registration; sockets do not establish background push parity |
@@ -29,6 +30,6 @@ No user credentials or existing sessions are embedded in source or export. The
 app does not modify or sign out the existing iFunny app. Android implementation
 changes are excluded from this port.
 
-Next required milestone: a real Mac compile and target-phone launch/sign-in/feed
-check. Resolve those failures before claiming an Android replacement or testing
+Next required milestone: target-phone Zeus signing, installation, launch and
+fresh sign-in/feed checks. Resolve those failures before claiming an Android replacement or testing
 live publishing/chat writes.

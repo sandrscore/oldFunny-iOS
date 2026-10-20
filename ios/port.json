@@ -13,8 +13,14 @@
   "android_reference": "oldfunny-4.6.7-optional-google-01.apk",
   "ui_reference": "iFunny iOS 4.6.8 build 4121 resources",
   "feature_parity_complete": false,
-  "ios_compiled": false,
-  "ipa_produced": false,
+  "ios_compiled": true,
+  "ipa_produced": true,
   "runtime_tested": false,
-  "cloud_source_published": true
+  "cloud_source_published": true,
+  "verified_build_source_commit": "64b4439b2a6b0147bed4a513cc71ecde2a5de4f0",
+  "verified_build_url": "https://github.com/sandrscore/oldFunny-iOS/actions/runs/39478438577",
+  "ipa_sha256": "0faaff10a27b38025f6f3fd8f260b89a22c5fbfcb9ab38cd2e2e752c46c87c76",
+  "contains_arm64": true,
+  "main_executable_cryptid": 0,
+  "signed": false
 }
