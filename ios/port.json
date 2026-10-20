@@ -6,12 +6,15 @@
   "version": "0.1.0",
   "build": "1",
   "minimum_ios": "16.0",
-  "target": {"device": "iPhone 16", "ios": "27.0.1"},
+  "target": {
+    "device": "iPhone 16",
+    "ios": "27.0.1"
+  },
   "android_reference": "oldfunny-4.6.7-optional-google-01.apk",
   "ui_reference": "iFunny iOS 4.6.8 build 4121 resources",
   "feature_parity_complete": false,
   "ios_compiled": false,
   "ipa_produced": false,
   "runtime_tested": false,
-  "cloud_source_published": false
+  "cloud_source_published": true
 }
