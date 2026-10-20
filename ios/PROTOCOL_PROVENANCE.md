@@ -33,3 +33,24 @@ and builds make no live social actions.
 Classic icons come from the hash-checked recovery catalog. The Android launcher
 provides the approved oldFunny eyepatch artwork. Staging records each PNG hash;
 executables, Apple account metadata, provisioning and DRM are excluded.
+
+## Connection correction (0.1.1)
+
+The first native build incorrectly sent `iFunny/4.6.8(4121)` as its server-facing
+User-Agent. A controlled comparison held the generated installation, public
+Basic signature, host, routes and other headers constant. Legacy requests to
+`feeds/featured` and `app/features` disconnected before an HTTP response; the
+observed modern iOS profile `iFunny/10.45.1(25370)` returned HTTP 200 for both.
+That profile was already recorded in this workspace's approved modern-iPhone
+request investigation (`docs/organic-login.md`,
+`tools/capture_client_eligibility.py`). A follow-up verified the generic actual
+`UIDevice.model` form. The corrected Swift transport/model pipeline decoded five
+Featured posts with usable media URLs. No user sessions, sign-in attempts or
+social writes were used. Sanitized host evidence is under ignored
+`.ios-work/ios-port/connection-fix/`.
+
+`Wire.apiUserAgent` now supplies that server protocol profile to the native app
+and probe. The independent oldFunny app version remains in Info.plist.
+Connection failures preserve only Foundation's numeric URLError code and a
+fixed explanation; raw error userInfo, URLs, headers and bodies remain excluded.
+This does not establish fresh-login, visibility classification or feature parity.

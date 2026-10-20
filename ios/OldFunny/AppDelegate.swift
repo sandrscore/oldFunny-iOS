@@ -48,7 +48,7 @@ final class AppContext {
     init() throws {
         let installation = try KeychainStore.installation()
         api = try APIClient(installation: installation,
-            userAgent: "iFunny/4.6.8(4121) iPhone/\(UIDevice.current.systemVersion) (oldFunny; native port)",
+            userAgent: Wire.apiUserAgent(systemVersion: UIDevice.current.systemVersion, model: UIDevice.current.model),
             store: KeychainStore())
     }
     func signIn(from controller: UIViewController, completion: (() -> Void)? = nil) {

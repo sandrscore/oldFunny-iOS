@@ -5,7 +5,13 @@ import FoundationNetworking
 
 public enum ClientError: Error, Equatable, LocalizedError {
     case invalidInput, malformedResponse, sessionChanged, signInRequired, transport
-    case http(Int), captcha(URL), unsupportedMedia
+    case http(Int), network(Int), captcha(URL), unsupportedMedia
+
+    /// Keep only a numeric Foundation error code, never its URL, body or userInfo.
+    public static func networkFailure(_ error: Error) -> ClientError {
+        if let error = error as? URLError { return .network(error.code.rawValue) }
+        return .transport
+    }
 
     public var errorDescription: String? {
         switch self {
@@ -14,6 +20,21 @@ public enum ClientError: Error, Equatable, LocalizedError {
         case .sessionChanged: return "Your account changed. Please refresh."
         case .signInRequired: return "Please sign in to continue."
         case .transport: return "Could not connect. Please try again."
+        case .network(let code):
+            let reason: String
+            switch URLError.Code(rawValue: code) {
+            case .notConnectedToInternet: reason = "The internet connection is offline."
+            case .cannotFindHost, .dnsLookupFailed: reason = "Could not resolve iFunny’s server."
+            case .cannotConnectToHost: reason = "Could not reach iFunny’s server."
+            case .networkConnectionLost: reason = "The server connection was closed."
+            case .timedOut: reason = "The connection timed out."
+            case .secureConnectionFailed, .serverCertificateUntrusted, .serverCertificateHasBadDate,
+                 .serverCertificateHasUnknownRoot, .serverCertificateNotYetValid:
+                reason = "Could not establish a secure connection."
+            case .dataNotAllowed: reason = "Network access is disabled for this app."
+            default: reason = "Could not connect."
+            }
+            return "\(reason) (Network \(code).) Please try again."
         case .http(let status): return "iFunny returned HTTP \(status). Please try again."
         case .captcha: return "iFunny requires verification before you can sign in."
         case .unsupportedMedia: return "This media format is not supported yet."
@@ -57,6 +78,12 @@ public enum JSON: Decodable, Equatable, Sendable {
 
 public enum Wire {
     public static let base = URL(string: "https://api.ifnapp.com/v4/")!
+    /// Server-facing protocol profile observed in the modern iOS app. The app's
+    /// own version is in Info.plist; classic 4.6.8 requests are disconnected by
+    /// the current service even with an otherwise valid public Basic signature.
+    public static func apiUserAgent(systemVersion: String, model: String) -> String {
+        "iFunny/10.45.1(25370) iPhone/\(systemVersion) (Apple; \(model))"
+    }
     // Public application client identifiers, not a user's Apple/iFunny credentials.
     // Provenance: docs/organic-login.md and android-diagnostics/revival/OrganicLoginProbe.java.
     public static let client = "JuiUH&3822"

@@ -4,7 +4,12 @@ New Swift/UIKit implementation of oldFunny, targeting ARM64 and iOS 16 or later.
 The intended test device is iPhone 16 / iOS 27.0.1. This is a source port, not
 a converted APK or a modification of iFunny's encrypted executable.
 
-**First unsigned ARM64 IPA built; iPhone installation and runtime testing pending.**
+**0.1.1 connection fix prepared; updated iPhone testing pending.**
+Version 0.1.0 installed and launched on the target phone, but all server requests
+failed. Controlled checks reproduced server disconnects for its legacy User-Agent.
+The modern iOS request profile returned HTTP 200 for Featured and app/features;
+the corrected Swift client decoded five Featured posts. This validates anonymous
+host requests, not fresh phone sign-in or complete server compatibility.
 See [feature status](PORT_STATUS.md) before treating this as a replacement.
 The Android implementation, original archives and existing accounts are preserved.
 The new app uses its own `mobi.oldfunny.ios` bundle and Keychain data.
@@ -30,9 +35,9 @@ python3 tools/build_ios_native.py
 Output after a successful build:
 
 ```text
-.ios-work/ios-port/dist/oldFunny-ios-0.1.0-unsigned.ipa
-.ios-work/ios-port/dist/oldFunny-ios-0.1.0-unsigned.inspection.json
-.ios-work/ios-port/dist/oldFunny-ios-0.1.0-unsigned.sha256
+.ios-work/ios-port/dist/oldFunny-ios-0.1.1-unsigned.ipa
+.ios-work/ios-port/dist/oldFunny-ios-0.1.1-unsigned.inspection.json
+.ios-work/ios-port/dist/oldFunny-ios-0.1.1-unsigned.sha256
 ```
 
 The build uses no Apple account, signing certificate, provisioning profile,
@@ -68,15 +73,17 @@ Independent local inspection confirmed bundle `mobi.oldfunny.ios`, version 0.1.0
 build 1, minimum iOS 16.0, ARM64, `cryptid=0`, no FairPlay resources and no
 embedded extension/framework requiring additional architecture review.
 This executable was compiled from source; it is not a decrypted original iFunny.
-The ZIP and IPA hashes both matched the downloaded artifact. No device was used.
+The ZIP and IPA hashes both matched the downloaded artifact. The build used no device. The user subsequently installed and launched 0.1.0;
+network requests failed, so use the 0.1.1 correction instead.
 
 Initial phone checks: sign the IPA with Zeus, install it, check launch, then check
 Featured, fresh password sign-in, Subscriptions and media/comments navigation.
 Report failures without sharing passwords, tokens or authentication transcripts.
 This is a partial prototype: Chats, Studio/publishing, push and other parity work
 remain unfinished. A successful build is not evidence of iOS 27 runtime or live
-server compatibility. Anonymous server probes were inconclusive after connection
-failures; successful offline protocol tests do not resolve that limitation.
+server compatibility. The initial anonymous probes failed with the legacy request profile. Correcting
+the User-Agent resolved anonymous Featured access in a controlled host test;
+authenticated requests and target-phone behavior still require validation.
 
 ## Test on Linux
 

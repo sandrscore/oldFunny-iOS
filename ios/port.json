@@ -3,8 +3,8 @@
   "apk_binary_conversion": false,
   "product": "oldFunny",
   "bundle_identifier": "mobi.oldfunny.ios",
-  "version": "0.1.0",
-  "build": "1",
+  "version": "0.1.1",
+  "build": "2",
   "minimum_ios": "16.0",
   "target": {
     "device": "iPhone 16",
@@ -13,14 +13,20 @@
   "android_reference": "oldfunny-4.6.7-optional-google-01.apk",
   "ui_reference": "iFunny iOS 4.6.8 build 4121 resources",
   "feature_parity_complete": false,
-  "ios_compiled": true,
-  "ipa_produced": true,
+  "ios_compiled": false,
+  "ipa_produced": false,
   "runtime_tested": false,
   "cloud_source_published": true,
-  "verified_build_source_commit": "64b4439b2a6b0147bed4a513cc71ecde2a5de4f0",
-  "verified_build_url": "https://github.com/sandrscore/oldFunny-iOS/actions/runs/39478438577",
-  "ipa_sha256": "0faaff10a27b38025f6f3fd8f260b89a22c5fbfcb9ab38cd2e2e752c46c87c76",
-  "contains_arm64": true,
-  "main_executable_cryptid": 0,
-  "signed": false
+  "signed": false,
+  "previous_verified_build": {
+    "verified_build_source_commit": "64b4439b2a6b0147bed4a513cc71ecde2a5de4f0",
+    "verified_build_url": "https://github.com/sandrscore/oldFunny-iOS/actions/runs/39478438577",
+    "ipa_sha256": "0faaff10a27b38025f6f3fd8f260b89a22c5fbfcb9ab38cd2e2e752c46c87c76",
+    "contains_arm64": true,
+    "main_executable_cryptid": 0
+  },
+  "previous_device_result": "0.1.0 installed and launched; user reported connection failures everywhere",
+  "api_protocol_profile": "iFunny/10.45.1(25370)",
+  "anonymous_swift_featured_probe": "success: 5 decoded posts and 5 usable media URLs; no personal session",
+  "connection_fix": "Replace legacy 4.6.8 User-Agent rejected by server; preserve sanitized network error codes"
 }

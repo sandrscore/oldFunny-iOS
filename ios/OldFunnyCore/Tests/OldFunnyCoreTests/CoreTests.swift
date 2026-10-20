@@ -34,6 +34,29 @@ private func token(_ name: String = "fixtureAccess", refresh: String? = "fixture
 }
 
 final class CoreTests: XCTestCase {
+    func testModernProtocolProfileIsUsedOnActualRequests() async throws {
+        let agent = Wire.apiUserAgent(systemVersion: "27.0.1", model: "iPhone")
+        XCTAssertEqual(agent, "iFunny/10.45.1(25370) iPhone/27.0.1 (Apple; iPhone)")
+        let transport = ScriptedTransport([reply(emptyPage), reply("{}"), reply("{}", status: 403)])
+        let client = try APIClient(installation: installation, userAgent: agent, store: MemoryStore(), transport: transport)
+        _ = try await client.feed(.featured)
+        do { try await client.signIn(username: "fixture", password: "fixture"); XCTFail("Expected fixture rejection") }
+        catch { XCTAssertEqual(error as? ClientError, .http(403)) }
+        let requests = await transport.recorded()
+        XCTAssertEqual(requests.map { $0.url!.path }, ["/v4/feeds/featured", "/v4/app/features", "/v4/oauth2/token"])
+        XCTAssertTrue(requests.allSatisfy { $0.value(forHTTPHeaderField: "User-Agent") == agent })
+    }
+    func testNetworkErrorsKeepOnlySafeNumericCodes() {
+        let error = URLError(.networkConnectionLost, userInfo: [NSURLErrorFailingURLStringErrorKey: "https://private.invalid/?token=fixture-secret", NSLocalizedDescriptionKey: "fixture-private-description"])
+        let sanitized = ClientError.networkFailure(error)
+        XCTAssertEqual(sanitized, .network(-1005))
+        XCTAssertTrue(sanitized.localizedDescription.contains("server connection was closed"))
+        XCTAssertTrue(sanitized.localizedDescription.contains("-1005"))
+        XCTAssertFalse(sanitized.localizedDescription.contains("private"))
+        XCTAssertFalse(sanitized.localizedDescription.contains("secret"))
+        XCTAssertEqual(ClientError.networkFailure(NSError(domain: "private-domain", code: 1)), .transport)
+        XCTAssertTrue(ClientError.network(URLError.notConnectedToInternet.rawValue).localizedDescription.contains("offline"))
+    }
     func testSHA1AndPublicBasicProtocol() throws {
         XCTAssertEqual(SHA1.hex(Data()), "da39a3ee5e6b4b0d3255bfef95601890afd80709")
         XCTAssertEqual(SHA1.hex(Data("abc".utf8)), "a9993e364706816aba3e25717850c26c9cd0d89d")

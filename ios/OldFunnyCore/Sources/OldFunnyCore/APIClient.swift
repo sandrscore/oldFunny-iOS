@@ -56,7 +56,8 @@ public final class URLTransport: NSObject, HTTPTransport, URLSessionTaskDelegate
             return HTTPResult(status: http.statusCode, body: body)
         } catch is CancellationError { throw CancellationError() }
         catch let error as ClientError { throw error }
-        catch { throw ClientError.transport }
+        catch let error as URLError where error.code == .cancelled { throw CancellationError() }
+        catch { throw ClientError.networkFailure(error) }
     }
     public func urlSession(_ session: URLSession, task: URLSessionTask, willPerformHTTPRedirection response: HTTPURLResponse,
                            newRequest request: URLRequest, completionHandler: @escaping (URLRequest?) -> Void) {

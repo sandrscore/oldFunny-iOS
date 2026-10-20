@@ -18,7 +18,7 @@ struct Probe {
         let id = (UUID().uuidString + UUID().uuidString).replacingOccurrences(of: "-", with: "").lowercased()
         do {
             let client = try APIClient(installation: id,
-                userAgent: "iFunny/4.6.8(4121) iPhone/27.0.1 (oldFunny; read-only protocol probe)", store: NoCredentialStore())
+                userAgent: Wire.apiUserAgent(systemVersion: "27.0.1", model: "iPhone"), store: NoCredentialStore())
             let page = try await client.feed(.featured)
             let output: [String: Any] = ["request": "GET /v4/feeds/featured", "authenticated": false,
                 "decoded_posts": page.posts.count, "continuation_present": page.paging.next != nil,
