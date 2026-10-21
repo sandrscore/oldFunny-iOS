@@ -7,7 +7,7 @@ final class UserListController: ClassicScreenController, UITableViewDataSource, 
     private let userID: String?, kind: UserListKind?
     private let choose: ((UserProfile) -> Void)?
     private let table = UITableView(frame: .zero, style: .plain), query = ClassicTextField(), status = StatusView()
-    private var users = [UserProfile](), next: String?, cursors = Set<String>()
+    private var users = [UserProfile](), nextCursor: String?, cursors = Set<String>()
     private var generation = UUID(), loading = false, failed = false
     private var task: Task<Void, Never>?, debounce: Task<Void, Never>?
     private var observer: NSObjectProtocol?, needsReload = false
@@ -45,7 +45,7 @@ final class UserListController: ClassicScreenController, UITableViewDataSource, 
         observer = NotificationCenter.default.addObserver(forName: .oldFunnyAccountChanged, object: nil, queue: .main) { [weak self] _ in
             Task { @MainActor [weak self] in
                 guard let self else { return }; self.task?.cancel(); self.debounce?.cancel(); self.generation = UUID()
-                self.users = []; self.next = nil; self.cursors = []; self.loading = false; self.failed = false
+                self.users = []; self.nextCursor = nil; self.cursors = []; self.loading = false; self.failed = false
                 self.table.reloadData(); self.needsReload = true
                 if self.navigationController?.topViewController === self { self.reloadAfterAccountChange() }
             }
@@ -60,12 +60,12 @@ final class UserListController: ClassicScreenController, UITableViewDataSource, 
             let raw = JSON.object(["id": .string(value["id"] ?? ""), "nick": .string(value["nick"] ?? ""), "avatar": .object(["s": .string(value["avatar"] ?? "")])])
             return try? UserProfile(raw)
         }
-        next = nil; table.reloadData()
+        nextCursor = nil; table.reloadData()
         if users.isEmpty { status.message("Search for a user.", canRetry: false) } else { status.isHidden = true }
         classicBar.trailing.setImage(UIImage(systemName: "trash"), for: .normal); classicBar.trailing.accessibilityLabel = "Clear recent users"
     }
     @objc private func queryChanged() {
-        debounce?.cancel(); task?.cancel(); generation = UUID(); loading = false; failed = false; users = []; next = nil; cursors = []
+        debounce?.cancel(); task?.cancel(); generation = UUID(); loading = false; failed = false; users = []; nextCursor = nil; cursors = []
         table.reloadData()
         if (query.text ?? "").trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { showRecent(); return }
         status.loading()
@@ -76,12 +76,12 @@ final class UserListController: ClassicScreenController, UITableViewDataSource, 
     func textFieldShouldReturn(_ textField: UITextField) -> Bool { debounce?.cancel(); query.resignFirstResponder(); load(replacing: true, explicit: true); return true }
     @objc private func retry() { load(replacing: users.isEmpty, explicit: true) }
     private func load(replacing: Bool, explicit: Bool = false) {
-        guard !loading, explicit || !failed, replacing || next != nil else { return }
+        guard !loading, explicit || !failed, replacing || nextCursor != nil else { return }
         let text = (query.text ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
         if kind == nil && text.isEmpty { showRecent(); return }
         loading = true; failed = false; if users.isEmpty { status.loading() }
         classicBar.trailing.setImage(ClassicGlyph.refresh.image, for: .normal); classicBar.trailing.accessibilityLabel = "Refresh"
-        let owner = generation, cursor = replacing ? nil : next
+        let owner = generation, cursor = replacing ? nil : nextCursor
         task = Task { [weak self] in
             guard let self else { return }; defer { if owner == generation { loading = false; task = nil } }
             do {
@@ -89,12 +89,12 @@ final class UserListController: ClassicScreenController, UITableViewDataSource, 
                 if let kind, let userID { result = try await app.api.users(userID: userID, kind: kind, next: cursor) }
                 else { result = try await app.api.searchUsers(text, next: cursor) }
                 try Task.checkCancellation(); guard owner == generation else { return }
-                if let candidate = result.paging.next, !replacing && (candidate == next || cursors.contains(candidate)) { throw ProfileActionError.cursorLoop }
+                if let candidate = result.paging.next, !replacing && (candidate == nextCursor || cursors.contains(candidate)) { throw ProfileActionError.cursorLoop }
                 if replacing { users = []; cursors = [] }
                 var seen = Set(users.map(\.id)); users += result.users.filter { seen.insert($0.id).inserted }
-                next = result.paging.next; if let next { cursors.insert(next) }
+                nextCursor = result.paging.next; if let nextCursor { cursors.insert(nextCursor) }
                 table.reloadData()
-                if users.isEmpty { status.message("No users found.", canRetry: next != nil) } else { status.isHidden = true }
+                if users.isEmpty { status.message("No users found.", canRetry: nextCursor != nil) } else { status.isHidden = true }
             } catch {
                 if owner == generation {
                     failed = true

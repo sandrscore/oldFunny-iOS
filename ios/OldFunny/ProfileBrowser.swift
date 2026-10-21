@@ -92,7 +92,7 @@ final class ProfileBrowser {
                 try pages.apply(result, replacing: replacing, featuredOwner: featured ? userID : nil)
                 if replacing { posts = [] }
                 let new = pages.posts.filter { !oldIDs.contains($0.id) }
-                posts += criteria.map { query in new.filter { query.matches($0, profileID: userID) } } ?? new
+                posts += criteria.map { query in new.filter { query.matches($0, profileID: self.userID) } } ?? new
                 revision &+= 1
                 // Entirely filtered/empty intermediate pages are not a clean end.
                 if posts.isEmpty && pages.next != nil && criteria == nil {
