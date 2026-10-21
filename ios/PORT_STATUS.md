@@ -1,15 +1,13 @@
-> Candidate16 compiled with42 Mac core tests and6 packaging checks passing;
-> 12/13 UIKit tests passed; the remaining repub-toggle assertion contradicted Android
-> semantics (author predicate is suspended). Build17 corrects it to18 direct matches. Independently inspected IPA SHA256:
-> `d4166bafd0f8a94c79edca890fcf50c4512218d6f697188534ffbc22389de8e5`.
-> It contains custom video/seek controls and native profile/grid/featured/filter/
-> subscriber/pin/subscribe source. Newer tag-editor source is awaiting the next
-> candidate; its12 portable profile tests pass. Build11 below remains the fully
-> verified offline checkpoint until the new UIKit suite passes.
->
-> Five bounded anonymous GETs verified current public profile/timeline/featured/
-> tag-suggestion schemas, with no credentials or social/read writes. No new
-> target-phone validation has been performed.
+> Candidate18 adds bounded per-frame GIF playback, static previews, wrapping tags
+> and total-grid accessibility/count checks. It is not Mac/UI verified yet.
+> Build17 compiled with44 Mac core and6 packaging checks;14 UIKit tests executed,
+>13passed/1gridcount assertion failed. Tag editor/suggestions/5-tag limit/removal/
+>pending Back/recent clearing all passed, alongside custom video and profile
+>grid/featured/pin/subscribe flows. Total-item/visible-cell diagnostics are in18.
+> Build17 IPA independently verified ARM64,cryptid0,fixture-free, SHA256:
+> `ef95e0b5550a81bf5a21db7d2e6269770b64e6b4fd3ae4edd49b7124a10b8fee`.
+> All48 local portable tests and6 packaging checks pass. Build11 below remains
+>the last fully green offline checkpoint; no current target-phone/live-write test.
 
 # Native iOS port status
 

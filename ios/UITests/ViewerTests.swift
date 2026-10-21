@@ -5,14 +5,45 @@ final class ViewerTests: XCTestCase {
     private func capture(_ name: String, app: XCUIApplication) {
         let picture = XCTAttachment(screenshot: app.screenshot()); picture.name = name; picture.lifetime = .keepAlways; add(picture)
     }
-    private func waitUntil(_ message: String, timeout: TimeInterval = 8, _ condition: @escaping () -> Bool) {
+    private func waitUntil(_ message: String, timeout: TimeInterval = 8, details: (() -> String)? = nil, _ condition: @escaping () -> Bool) {
         let expectation = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in condition() }, object: nil)
-        XCTAssertEqual(XCTWaiter.wait(for: [expectation], timeout: timeout), .completed, message)
+        let result = XCTWaiter.wait(for: [expectation], timeout: timeout)
+        XCTAssertEqual(result, .completed, message + (result == .completed ? "" : "\n" + (details?() ?? "")))
     }
     private func videoTime(_ scrubber: XCUIElement) -> (position: Int, duration: Int, idle: Bool) {
         let text = scrubber.value as? String ?? ""
         let fields = text.components(separatedBy: ";")[0].components(separatedBy: "/")
         return (Int(fields.first ?? "") ?? -1, fields.count > 1 ? Int(fields[1]) ?? -1 : -1, text.contains("; idle;"))
+    }
+    private func gifFields(_ image: XCUIElement) -> [String: String] {
+        (image.value as? String ?? "").components(separatedBy: "; ").reduce(into: [:]) { result, field in
+            let parts = field.split(separator: "=", maxSplits: 1).map(String.init)
+            if parts.count == 2 { result[parts[0]] = parts[1] }
+        }
+    }
+    func testLongGIFUsesDecodedPixelsUnevenTimingLoopAndRetainedPhase() {
+        let app = XCUIApplication(); app.launchArguments = ["--ui-tests", "--ui-tests-gif"]; app.launch()
+        let gif = app.descendants(matching: .any)["post-gif"].firstMatch
+        XCTAssertTrue(gif.waitForExistence(timeout: 10))
+        waitUntil("The 82nd GIF frame must actually decode; a long GIF must not become a still", timeout: 12) {
+            let fields = self.gifFields(gif), rgb = (fields["pixel"] ?? "").split(separator: ",").compactMap { Int($0) }
+            let phase = Double(fields["elapsed"] ?? "-1")?.truncatingRemainder(dividingBy: 7580) ?? -1
+            return fields["frame"] == "81" && phase >= 5080 && phase < 7580 && rgb.count == 3 && rgb[2] > 150 && rgb[0] < 100 && rgb[1] < 100
+        }
+        var fields = gifFields(gif)
+        XCTAssertEqual(fields["count"], "82"); XCTAssertEqual(Int(fields["duration"] ?? "") ?? -1, 7580, accuracy: 5)
+        capture("long-gif-decoded-last-frame", app: app)
+        waitUntil("GIF must loop to its long green second frame", timeout: 12) {
+            let fields = self.gifFields(gif), rgb = (fields["pixel"] ?? "").split(separator: ",").compactMap { Int($0) }
+            return fields["frame"] == "1" && rgb.count == 3 && rgb[1] > 150 && rgb[0] < 100 && rgb[2] < 100
+        }
+        fields = gifFields(gif); let before = Int(fields["elapsed"] ?? "") ?? -1
+        app.buttons["3 comments"].tap(); XCTAssertTrue(app.textFields["comment-draft"].waitForExistence(timeout: 5))
+        Thread.sleep(forTimeInterval: 3)
+        app.buttons["Back"].tap(); XCTAssertTrue(gif.waitForExistence(timeout: 5))
+        let after = Int(gifFields(gif)["elapsed"] ?? "") ?? -1
+        XCTAssertGreaterThanOrEqual(after, before); XCTAssertLessThan(after - before, 2500, "The three inactive seconds must not advance retained GIF phase")
+        capture("gif-retained-after-comments", app: app)
     }
     private func openOfflineProfile(_ app: XCUIApplication, writes: Bool = false) {
         app.launchArguments = ["--ui-tests", "--ui-tests-account", "--ui-tests-profile"] + (writes ? ["--ui-tests-profile-writes"] : [])
@@ -48,19 +79,25 @@ final class ViewerTests: XCTestCase {
         let search = app.textFields["user-search"]; XCTAssertTrue(search.waitForExistence(timeout: 5)); search.tap(); search.typeText("Writer")
         let writer = app.tables.cells["user-row-Writer"]; XCTAssertTrue(writer.waitForExistence(timeout: 5)); writer.tap()
         let collection = app.collectionViews["profile-grid"]
-        waitUntil("The profile search must find all four source-backed Writer posts") { collection.cells.count == 4 }
+        waitUntil("The profile search must find all four source-backed Writer posts", details: { collection.debugDescription }) { collection.value as? String == "4 posts" }
         XCTAssertTrue(collection.cells["grid-post-GridPost5"].exists)
         app.buttons["Include republished posts"].tap()
         // Android suspends the retained author predicate with repubs disabled.
         // The fixture has 22 dog-tagged posts, four backed by source objects.
-        waitUntil("Repubs off must retain 18 direct dog posts and suspend the author filter") { collection.cells.count == 18 }
+        waitUntil("Repubs off must retain 18 direct dog posts and suspend the author filter", details: { collection.debugDescription }) { collection.value as? String == "18 posts" }
+        print("Offline filtered grid: data source=\(collection.value as? String ?? "missing"), accessibility cells=\(collection.cells.count)")
         XCTAssertTrue(collection.cells["grid-post-GridPost1"].exists)
         XCTAssertFalse(collection.cells["grid-post-GridPost5"].exists)
         XCTAssertFalse(app.buttons["profile-author-filter"].isEnabled)
+        let lastDirect = collection.cells["grid-post-GridPost43"]
+        for _ in 0..<4 { if lastDirect.isHittable { break }; collection.swipeUp() }
+        XCTAssertTrue(lastDirect.isHittable, "All direct results must remain reachable in the actual grid")
         app.buttons["Include republished posts"].tap()
-        waitUntil("Author selection and matches must return with repubs") { collection.cells.count == 4 }
+        waitUntil("Author selection and matches must return with repubs", details: { collection.debugDescription }) { collection.value as? String == "4 posts" }
+        XCTAssertTrue(collection.cells["grid-post-GridPost5"].isHittable, "Changed filters reset to the beginning")
         app.buttons["Search options"].tap(); app.buttons["Clear filters"].tap()
-        waitUntil("Clearing filters reuses already-scanned timeline pages") { collection.cells.count == 44 }
+        waitUntil("Clearing filters reuses already-scanned timeline pages", details: { collection.debugDescription }) { collection.value as? String == "44 posts" }
+        XCTAssertTrue(collection.cells["grid-post-GridPost0"].isHittable)
         capture("profile-search-restored-results", app: app)
     }
     func testProfileTagSuggestionsLimitRemovalAndPendingBackCommit() {
@@ -77,6 +114,8 @@ final class ViewerTests: XCTestCase {
         XCTAssertEqual(app.staticTexts["profile-tags-remaining"].label, "1 tags remaining")
         app.buttons["Back"].tap()
         XCTAssertTrue(app.buttons["Remove tag pending"].waitForExistence(timeout: 5)); XCTAssertFalse(app.buttons["Remove tag fun"].exists)
+        XCTAssertTrue(app.buttons["Remove tag pending"].isHittable, "Wrapped selected tags must expand the search header")
+        XCTAssertTrue(app.buttons["Add tags"].isHittable, "The repub button must not clamp the wrapping tag row to its own height")
         app.buttons["Add tags"].tap(); app.buttons["Clear recent tags"].tap()
         XCTAssertTrue(app.buttons["Remove tag pending"].exists, "Clearing recent tags must preserve the current filter")
         app.buttons["Back"].tap(); capture("profile-tag-chips-after-back", app: app)

@@ -4,7 +4,7 @@
   "product": "oldFunny",
   "bundle_identifier": "mobi.oldfunny.ios",
   "version": "0.3.0",
-  "build": "17",
+  "build": "18",
   "minimum_ios": "16.0",
   "target": {
     "device": "iPhone 16",
@@ -39,7 +39,7 @@
     "captcha_handoff": true,
     "session_survives_relaunch": "unverified"
   },
-  "ui_phase": "Candidate 17: profile grids, featured/search, tag chips/editor/suggestions/recents, confirmed pins/subscriptions and custom video; awaiting Mac/UIKit verification",
+  "ui_phase": "Candidate18: bounded timed GIF playback, static previews, wrapped tag rows, accessible total grid counts and filter scroll reset; awaiting Mac/UIKit verification",
   "simulator_previews": "Offline fixtures compiled only with CLASSIC_UI_PREVIEW; absent from Release",
   "simulator_ui": {
     "device": "iPhone 16",
@@ -185,5 +185,22 @@
     "tag_suggestions_decoded": true,
     "real_writes": false,
     "runtime_tested": false
+  },
+  "compiled_candidate_build17": {
+    "source_commit": "c8fd6925d1dc34e3206aa190b38b95b02c8c5ed2",
+    "run_url": "https://github.com/sandrscore/oldFunny-iOS/actions/runs/39523039241",
+    "version": "0.3.0",
+    "build": "17",
+    "sha256": "ef95e0b5550a81bf5a21db7d2e6269770b64e6b4fd3ae4edd49b7124a10b8fee",
+    "contains_arm64": true,
+    "main_executable_cryptid": 0,
+    "fixture_code_absent": true,
+    "ui_gesture_tests": {
+      "executed": 14,
+      "passed": 13,
+      "failed": 1,
+      "failure": "Repubs-off grid count assertion; checking total data-source items versus accessible visible cells"
+    },
+    "phone_tested": false
   }
 }

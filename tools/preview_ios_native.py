@@ -42,6 +42,9 @@ def main():
         fixture = output / "fixture-video.mp4"
         run("swift", str(ROOT / "tools/render_ios_video_fixture.swift"), str(fixture), str(audio), timeout=180)
         report["generated_video_fixture"] = {"duration_ms": 12400, "audio": True, "source": "synthetic CI output"}
+        gif_fixture = output / "fixture-animation.gif"
+        run("swift", str(ROOT / "tools/render_ios_gif_fixture.swift"), str(gif_fixture), timeout=120)
+        report["generated_gif_fixture"] = {"frames": 82, "uneven_delays": True, "source": "synthetic CI output"}
         stage = "build"
         generate(IOS / "OldFunny.xcodeproj")
         work = ROOT / ".ios-work/ios-port/preview-build"
@@ -94,6 +97,7 @@ def main():
             subprocess.run(test_command, stdout=log, stderr=subprocess.STDOUT, check=True, timeout=600)
             import shutil
             shutil.copyfile(fixture, app / fixture.name)
+            shutil.copyfile(gif_fixture, app / gif_fixture.name)
             test_command[-1:] = ["-resultBundlePath", str(output / "ViewerTests.xcresult"), "test-without-building"]
             subprocess.run(test_command, stdout=log, stderr=subprocess.STDOUT, check=True, timeout=600)
         report["ui_gesture_tests"] = verify_gesture_tests((output / "ui-tests.log").read_text(), (IOS / "UITests/ViewerTests.swift").read_text())

@@ -241,3 +241,28 @@ tags,2–100 UTF16 chars; removable chips preserve pending text, Back commits it
 recent history holds10, and suggestions use GET `/tags/suggested?q=...` with
 `data.tags.items[].tag`. The native tag-editor source follows this contract;
 its new UI test and two portable contracts require the next candidate build.
+
+### Candidate17 results and candidate18 GIF work
+
+Build17 source `c8fd6925d1dc34e3206aa190b38b95b02c8c5ed2` compiled with44Mac
+core/6Python checks passing. All14UIKit tests executed;13passed. New tag editor
+suggestions/limit/chip removal/pending Back/recent clearing passed; retained
+video/seek/pixels/zoom/mute/paging, Collective triple classifier, profiles/featured/
+grid return/pin/subscribe passed. One combined-search assertion still failed
+expecting18accessiblecells. Candidate18 exposes actual collection item count,
+checks specific direct/source-backed IDs and scroll reachability, and logs both
+counts to resolve viewport accessibility versus source results. Full UI gate
+remains red until all expected tests pass; do not certify search parity early.
+
+Candidate18 source replaces main-post GIF arrays with ImageIO actor/3-frameLRU,
+per-frame cumulative timing and CADisplayLink, retained active phase and lifecycle
+fences. Android video/c$h uses readFrameLooped and max20ms timestamp-delta delay;
+the new schedule follows that floor and loops. Static avatar/grid/comment previews
+match Android PictureComments Bitmap decoding and cannot poison main GIF cache.
+Limits:30MiBcompressed,10000frames,2Mpx/frame,2048longestdimension. Full original
+resolution and special transparent/disposal/malformed-GIF edges remain checks.
+A generated82-frame Debug-only GIF test checks actual decoded RGB, uneven-delay
+phase, last frame81, looping and paused panel return. All48 portable tests pass,
+but native GIF compile/UI test has not yet run. Source files and fixtures remain
+separate from the independently inspected build17IPA. No Android changes or live
+social writes were made.

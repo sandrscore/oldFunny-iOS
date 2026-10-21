@@ -146,10 +146,15 @@ enum PreviewFixtures {
     static let post = #"{"id":"PreviewPost","type":"picture","url":"https://preview.invalid/post","size":{"w":640,"h":760},"creator":{"id":"PreviewUser","nick":"ClassicFan","avatar":{"s":"https://preview.invalid/avatar"}},"num":{"smiles":128,"comments":3}}"#
     static var feed: String {
         let second = post.replacingOccurrences(of: "PreviewPost", with: "NextPost").replacingOccurrences(of: "ClassicFan", with: "NextFan")
-        let first = ProcessInfo.processInfo.arguments.contains("--ui-tests-video")
+        var first = ProcessInfo.processInfo.arguments.contains("--ui-tests-video")
             ? post.replacingOccurrences(of: "\"type\":\"picture\"", with: "\"type\":\"video\"")
                 .replacingOccurrences(of: "https://preview.invalid/post", with: "https://preview.invalid/fixture-video.mp4")
                 .replacingOccurrences(of: "\"h\":760", with: "\"h\":360") : post
+        if ProcessInfo.processInfo.arguments.contains("--ui-tests-gif") {
+            first = post.replacingOccurrences(of: "\"type\":\"picture\"", with: "\"type\":\"gif\"")
+                .replacingOccurrences(of: "https://preview.invalid/post", with: "https://preview.invalid/fixture-animation.gif")
+                .replacingOccurrences(of: "\"h\":760", with: "\"h\":640")
+        }
         return "{\"status\":200,\"data\":{\"content\":{\"items\":[\(first),\(second)],\"paging\":{\"hasNext\":false}}}}"
     }
     static var comments: String {

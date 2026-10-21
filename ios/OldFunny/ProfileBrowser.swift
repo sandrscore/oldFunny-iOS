@@ -12,6 +12,7 @@ final class ProfileBrowser {
     private(set) var criteria: ProfileSearchCriteria?
     private(set) var loading = false, filtering = false
     private(set) var revision: UInt64 = 0
+    private(set) var queryRevision: UInt64 = 0
     private(set) var error: Error?
     var needsRefresh = false
     var onGridUpdate: (() -> Void)?, onViewerUpdate: (() -> Void)?
@@ -41,7 +42,7 @@ final class ProfileBrowser {
     }
     private func resetAccount() {
         task?.cancel(); filterTask?.cancel(); filterWork?.cancel(); generation = UUID()
-        readGeneration = UUID(); pages = ProfilePages(); posts = []; revision &+= 1; loading = false; filtering = false; error = nil
+        readGeneration = UUID(); pages = ProfilePages(); posts = []; revision &+= 1; queryRevision &+= 1; loading = false; filtering = false; error = nil
         notify(); if active { load(replacing: true) }
     }
     func refresh() { load(replacing: true, explicit: true) }
@@ -50,7 +51,7 @@ final class ProfileBrowser {
     func setCriteria(_ value: ProfileSearchCriteria) {
         guard criteria != value else { return }
         task?.cancel(); filterTask?.cancel(); filterWork?.cancel(); generation = UUID(); readGeneration = UUID(); loading = false
-        criteria = value; error = nil; posts = []; revision &+= 1; filtering = true; notify()
+        criteria = value; error = nil; posts = []; revision &+= 1; queryRevision &+= 1; filtering = true; notify()
         let snapshot = pages.posts, owner = generation, profile = userID
         let work = Task.detached(priority: .userInitiated) { () throws -> [Post] in
             var result = [Post]()

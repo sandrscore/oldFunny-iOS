@@ -19,6 +19,7 @@ final class PostMediaController: UIViewController, UIScrollViewDelegate, UIGestu
     private let status = StatusView()
     private var mediaHeight: NSLayoutConstraint!
     private var video: ClassicVideo?
+    private var gif: GIFPlayback?
     private weak var controlsHost: UIView?, footerView: UIView?
     private var barView: ClassicBar?
     private var chromeVisible = true
@@ -139,9 +140,9 @@ final class PostMediaController: UIViewController, UIScrollViewDelegate, UIGestu
         let bottom = max(top, outer.contentSize.height - outer.bounds.height + outer.adjustedContentInset.bottom)
         return down ? outer.contentOffset.y > top + 1 : outer.contentOffset.y < bottom - 1
     }
-    @objc private func pause() { video?.suspend(); image.stopAnimating() }
-    override func viewDidAppear(_ animated: Bool) { super.viewDidAppear(animated); if !obscured { image.startAnimating(); video?.refresh() } }
-    func setObscured(_ value: Bool) { obscured = value; if value { pause() } else if isViewLoaded && view.window != nil { image.startAnimating(); video?.refresh() } }
+    @objc private func pause() { video?.suspend(); gif?.suspend(); image.stopAnimating() }
+    override func viewDidAppear(_ animated: Bool) { super.viewDidAppear(animated); if !obscured { image.startAnimating(); video?.refresh(); gif?.refresh() } }
+    func setObscured(_ value: Bool) { obscured = value; if value { pause() } else if isViewLoaded && view.window != nil { image.startAnimating(); video?.refresh(); gif?.refresh() } }
     func viewForZooming(in scrollView: UIScrollView) -> UIView? { video?.surface ?? image }
     func scrollViewWillBeginZooming(_ scrollView: UIScrollView, with view: UIView?) { video?.setZoomed(true) }
     func scrollViewDidZoom(_ scrollView: UIScrollView) { video?.setZoomed(scrollView.isZooming || scrollView.zoomScale > scrollView.minimumZoomScale * 1.01) }
@@ -162,20 +163,12 @@ final class PostMediaController: UIViewController, UIScrollViewDelegate, UIGestu
     }
     @objc private func loadMedia() {
         mediaTask?.cancel()
+        gif?.suspend(); gif = nil
         if post.isVideo {
             guard let url = post.mediaURL, let holder = controlsHost, let footer = footerView else { status.message("Video is unavailable.", canRetry: false); return }
             video?.suspend(); video?.surface.removeFromSuperview(); video?.sound.removeFromSuperview(); video?.scrubber.removeFromSuperview()
             let clip = ClassicVideo(app: app, url: url); video = clip
-            clip.isCurrent = { [weak self] in
-                guard let self, !obscured, view.window != nil else { return false }
-                var owner: UIViewController? = self
-                while let controller = owner {
-                    if controller.presentedViewController != nil || controller.isBeingDismissed || controller.isMovingFromParent { return false }
-                    owner = controller.parent
-                }
-                if let navigationController, let top = navigationController.topViewController, !isDescendant(of: top) { return false }
-                return true
-            }
+            clip.isCurrent = { [weak self] in self?.canPlayMedia() == true }
             clip.onFailure = { [weak self] in self?.status.message("Could not load this video.") }
             image.isHidden = true; zoom.addSubview(clip.surface); zoom.fittedContent = clip.surface
             zoom.setZoomScale(zoom.minimumZoomScale, animated: false); zoom.setNeedsLayout()
@@ -194,10 +187,28 @@ final class PostMediaController: UIViewController, UIScrollViewDelegate, UIGestu
         mediaTask = Task { [weak self] in
             guard let self else { return }
             do {
-                let loaded = try await app.media.image(url); try Task.checkCancellation()
-                image.image = loaded; status.isHidden = true; if obscured { image.stopAnimating() }
+                let loaded = try await app.media.playableImage(url); try Task.checkCancellation()
+                switch loaded {
+                case .still(let bitmap): image.image = bitmap
+                case .gif(let asset):
+                    let playback = GIFPlayback(asset: asset, image: image); gif = playback
+                    playback.isCurrent = { [weak self] in self?.canPlayMedia() == true }
+                    playback.onFailure = { [weak self] in self?.status.message("Could not load this animation.") }
+                    playback.refresh()
+                }
+                status.isHidden = true; if obscured { image.stopAnimating() }
             } catch { if !Task.isCancelled { status.message("Could not load this image.") } }
         }
+    }
+    private func canPlayMedia() -> Bool {
+        guard !obscured, isViewLoaded, view.window != nil else { return false }
+        var owner: UIViewController? = self
+        while let controller = owner {
+            if controller.presentedViewController != nil || controller.isBeingDismissed || controller.isMovingFromParent { return false }
+            owner = controller.parent
+        }
+        if let navigationController, let top = navigationController.topViewController, !isDescendant(of: top) { return false }
+        return true
     }
     private func isDescendant(of controller: UIViewController) -> Bool {
         var owner: UIViewController? = self

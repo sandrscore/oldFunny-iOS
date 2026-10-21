@@ -11,6 +11,7 @@ final class ProfilePostsController: ClassicScreenController, UICollectionViewDat
     private var selectedAuthorAvatar: URL?
     private var gridTop: NSLayoutYAxisAnchor!
     private var renderedRevision: UInt64?
+    private var renderedQueryRevision: UInt64?
     private var tagOrder = [String]()
     init(browser: ProfileBrowser, embedded: Bool = false) { self.browser = browser; self.embedded = embedded; super.init(nibName: nil, bundle: nil) }
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
@@ -50,6 +51,11 @@ final class ProfilePostsController: ClassicScreenController, UICollectionViewDat
     private func render() {
         guard isViewLoaded else { return }
         if renderedRevision != browser.revision { renderedRevision = browser.revision; grid.reloadData() }
+        if renderedQueryRevision != browser.queryRevision {
+            renderedQueryRevision = browser.queryRevision
+            grid.setContentOffset(CGPoint(x: 0, y: -grid.adjustedContentInset.top), animated: false)
+        }
+        grid.accessibilityValue = "\(grid.numberOfItems(inSection: 0)) posts"
         classicBar.trailing.isEnabled = browser.criteria != nil || !browser.loading
         retryBanner.isHidden = browser.error == nil || browser.posts.isEmpty
         if browser.posts.isEmpty {
@@ -84,7 +90,7 @@ final class ProfilePostsController: ClassicScreenController, UICollectionViewDat
         authorChoice.addTarget(self, action: #selector(selectAuthor), for: .touchUpInside); authorChoice.accessibilityIdentifier = "profile-author-filter"
         clearAuthor.setTitle("×", for: .normal); clearAuthor.accessibilityLabel = "Clear author filter"; let clearWidth = clearAuthor.widthAnchor.constraint(equalToConstant: 32); clearWidth.priority = .init(999); clearWidth.isActive = true
         clearAuthor.addTarget(self, action: #selector(removeAuthor), for: .touchUpInside)
-        let top = UIStackView(arrangedSubviews: [tags, repubs]); top.spacing = 6
+        let top = UIStackView(arrangedSubviews: [tags, repubs]); top.spacing = 6; top.alignment = .top
         let avatarWidth = authorAvatar.widthAnchor.constraint(equalToConstant: 28); avatarWidth.priority = .init(999); avatarWidth.isActive = true; authorAvatar.heightAnchor.constraint(equalToConstant: 28).isActive = true
         let lower = UIStackView(arrangedSubviews: [mediaChoice, authorAvatar, authorChoice, clearAuthor]); lower.spacing = 8; lower.alignment = .center
         mediaChoice.widthAnchor.constraint(equalToConstant: 145).isActive = true

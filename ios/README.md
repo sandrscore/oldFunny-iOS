@@ -1,4 +1,4 @@
-> Build17 adds native profile grids, featured browsing, combined search with tag chips/editor, subscriber lists, and confirmed pin/subscribe actions, alongside custom video controls. Mac/UIKit verification is pending. Build16 compiled and passed12/13 UIKit checks; the remaining test expected an empty result despite Android suspending the author predicate when repubs are off. Build17 asserts18 direct matches for that fixture. Build11 below remains the verified fallback. Five bounded anonymous GETs verified current public profile/timeline/featured/tag schemas; no real writes or phone checks were performed.
+> Build18 is under verification: timed GIF playback with a three-frame decode cache, static thumbnails, wrapping tags, and profile grid count/scroll fixes. Build17 compiled with44 core checks and passed13/14 UIKit tests, including tag suggestions/limits/pending-input Back; its remaining grid-count assertion needs verification across visible and total items. Its IPA is ARM64, cryptid0 and fixture-free. Full Android parity, live writes and target-phone checks remain incomplete.
 
 # oldFunny iOS
 

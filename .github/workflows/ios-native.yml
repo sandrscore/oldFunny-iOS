@@ -10,6 +10,7 @@ on:
       - 'tools/preview_ios_native.py'
       - 'tools/render_ios_icon.swift'
       - 'tools/render_ios_video_fixture.swift'
+      - 'tools/render_ios_gif_fixture.swift'
       - 'tools/inspect_ipa.py'
       - '.github/workflows/ios-native.yml'
 
