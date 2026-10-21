@@ -45,8 +45,10 @@ final class ViewerTests: XCTestCase {
         XCTAssertFalse(app.buttons["Mute video"].exists)
         XCTAssertEqual(video.value as? String, "Paused")
         capture("paused-video-zoomed-mark", app: app)
-        media.pinch(withScale: 0.5, velocity: -2)
-        XCTAssertTrue(app.buttons["Mute video"].waitForExistence(timeout: 5))
+        // XCTest pinch scale is approximate; deliberately clamp to the fitted
+        // minimum instead of assuming two generated gestures are exact inverses.
+        media.pinch(withScale: 0.1, velocity: -4)
+        XCTAssertTrue(app.buttons["Mute video"].waitForExistence(timeout: 5), "Zoom trace: \(String(describing: media.value))")
         app.buttons["3 comments"].tap(); XCTAssertTrue(app.textFields["comment-draft"].waitForExistence(timeout: 5))
         app.buttons["Back"].tap(); XCTAssertTrue(video.waitForExistence(timeout: 5))
         XCTAssertEqual(video.value as? String, "Paused")

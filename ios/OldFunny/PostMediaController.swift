@@ -1,7 +1,8 @@
 import UIKit
 
 final class PostMediaController: UIViewController, UIScrollViewDelegate, UIGestureRecognizerDelegate {
-    var onComments: (() -> Void)?, onLeading: (() -> Void)?, onRefresh: (() -> Void)?
+    var onComments: (() -> Void)?, onRefresh: (() -> Void)?
+    var onLeading: (() -> Void)? { didSet { updateLeading() } }
     let index: Int
     private let app: AppContext
     private let post: Post
@@ -17,7 +18,7 @@ final class PostMediaController: UIViewController, UIScrollViewDelegate, UIGestu
     private var mediaHeight: NSLayoutConstraint!
     private var video: ClassicVideo?
     private weak var controlsHost: UIView?, footerView: UIView?
-    private var barView: UIView?
+    private var barView: ClassicBar?
     private var chromeVisible = true
     private var mediaTask: Task<Void, Never>?
     private var smiled: Bool
@@ -47,7 +48,7 @@ final class PostMediaController: UIViewController, UIScrollViewDelegate, UIGestu
             bar.onLeading = { [weak self] in
                 guard let self else { return }; if let onLeading { onLeading() } else { navigationController?.popViewController(animated: true) }
             }
-            if onLeading != nil { bar.leading.setImage(ClassicGlyph.menu.image, for: .normal); bar.leading.accessibilityLabel = "Open menu" }
+            updateLeading()
             bar.onTrailing = { [weak self] in
                 guard let self else { return }; if let onRefresh { onRefresh() } else { loadMedia() }
             }
@@ -135,11 +136,20 @@ final class PostMediaController: UIViewController, UIScrollViewDelegate, UIGestu
     }
     @objc private func pause() { video?.suspend(); image.stopAnimating() }
     override func viewDidAppear(_ animated: Bool) { super.viewDidAppear(animated); if !obscured { image.startAnimating(); video?.refresh() } }
-    func setObscured(_ value: Bool) { obscured = value; if value { pause() } else if view.window != nil { image.startAnimating(); video?.refresh() } }
+    func setObscured(_ value: Bool) { obscured = value; if value { pause() } else if isViewLoaded && view.window != nil { image.startAnimating(); video?.refresh() } }
     func viewForZooming(in scrollView: UIScrollView) -> UIView? { video?.surface ?? image }
     func scrollViewWillBeginZooming(_ scrollView: UIScrollView, with view: UIView?) { video?.setZoomed(true) }
     func scrollViewDidZoom(_ scrollView: UIScrollView) { video?.setZoomed(scrollView.isZooming || scrollView.zoomScale > scrollView.minimumZoomScale * 1.01) }
-    func scrollViewDidEndZooming(_ scrollView: UIScrollView, with view: UIView?, atScale scale: CGFloat) { video?.setZoomed(scale > scrollView.minimumZoomScale * 1.01) }
+    func scrollViewDidEndZooming(_ scrollView: UIScrollView, with view: UIView?, atScale scale: CGFloat) {
+        video?.setZoomed(scale > scrollView.minimumZoomScale * 1.01)
+        #if CLASSIC_UI_PREVIEW
+        if video != nil { self.view.accessibilityValue = "zoom=\(scale); minimum=\(scrollView.minimumZoomScale); pinching=\(scrollView.isZooming)" }
+        #endif
+    }
+    private func updateLeading() {
+        barView?.leading.setImage(onLeading == nil ? ClassicGlyph.back.image : ClassicGlyph.menu.image, for: .normal)
+        barView?.leading.accessibilityLabel = onLeading == nil ? "Back" : "Open menu"
+    }
     @objc private func mediaTap(_ gesture: UITapGestureRecognizer) {
         if let video, video.tap(at: gesture.location(in: video.surface)) { return }
         chromeVisible.toggle(); barView?.alpha = chromeVisible ? 1 : 0
