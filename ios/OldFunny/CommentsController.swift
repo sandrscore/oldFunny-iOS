@@ -202,7 +202,7 @@ final class CommentsController: ClassicScreenController, UITableViewDataSource, 
         }
         cell.onAuthor = { [weak self] in
             guard let self, !consumeEditingTap(), let id = comment.authorID else { return }
-            navigationController?.pushViewController(FeedController(app: app, feed: .featured, timelineID: id, profileName: comment.author), animated: true)
+            navigationController?.pushViewController(ProfileController(app: app, userID: id, nickname: comment.author), animated: true)
         }
         return cell
     }

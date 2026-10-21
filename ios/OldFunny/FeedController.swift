@@ -63,8 +63,13 @@ final class FeedController: ClassicScreenController, UIPageViewControllerDataSou
     @objc private func retryLoad() { load(replacing: pages.next == nil || !pages.posts.isEmpty) }
     private func refresh() { closeSidebar(); load(replacing: true) }
     private func resetAndLoad() {
-        closeSidebar(); task?.cancel(); generation = UUID(); loading = false; pages = FeedPages(); selected = 0
-        pager.setViewControllers(nil, direction: .forward, animated: false); retained = [:]; updateHeader()
+        closeSidebar(); task?.cancel(); generation = UUID(); loading = false
+        // A scroll-style page controller requires one displayed controller.
+        // Detach its data source before invalidating the old index snapshot.
+        pager.dataSource = nil
+        retained.values.forEach { $0.setObscured(true) }
+        pager.setViewControllers([UIViewController()], direction: .forward, animated: false)
+        pages = FeedPages(); selected = 0; retained = [:]; updateHeader()
         load(replacing: true)
     }
     private func toggleMenu() {
@@ -99,13 +104,13 @@ final class FeedController: ClassicScreenController, UIPageViewControllerDataSou
     }
     private func openAuthor() {
         guard let post = currentPost, let id = post.authorID else { return }
-        navigationController?.pushViewController(FeedController(app: app, feed: .featured, timelineID: id, profileName: post.author), animated: true)
+        navigationController?.pushViewController(ProfileController(app: app, userID: id, nickname: post.author), animated: true)
     }
     private func openProfile() {
         Task { [weak self] in
             guard let self else { return }
             guard let account = await app.api.account() else { app.signIn(from: self); return }
-            navigationController?.pushViewController(FeedController(app: app, feed: .featured, timelineID: account.accountID, profileName: account.nickname), animated: true)
+            navigationController?.pushViewController(ProfileController(app: app, userID: account.accountID, nickname: account.nickname), animated: true)
         }
     }
     private func accountMenu() {
@@ -169,7 +174,7 @@ final class FeedController: ClassicScreenController, UIPageViewControllerDataSou
         return controller
     }
     func pageViewController(_ pageViewController: UIPageViewController, viewControllerBefore viewController: UIViewController) -> UIViewController? {
-        guard let post = viewController as? PostController, post.index > 0 else { return nil }; return controller(at: post.index - 1)
+        guard let post = viewController as? PostController, post.index > 0, post.index <= pages.posts.count else { return nil }; return controller(at: post.index - 1)
     }
     func pageViewController(_ pageViewController: UIPageViewController, viewControllerAfter viewController: UIViewController) -> UIViewController? {
         guard let post = viewController as? PostController else { return nil }

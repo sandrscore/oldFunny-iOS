@@ -47,7 +47,7 @@ enum ClassicTheme {
 extension UIViewController {
     func showError(_ error: Error) {
         if error is CancellationError { return }
-        let message = (error as? ClientError)?.errorDescription ?? "Something went wrong. Please try again."
+        let message = (error as? ClientError)?.errorDescription ?? (error as? ProfileActionError)?.errorDescription ?? "Something went wrong. Please try again."
         let alert = UIAlertController(title: "oldFunny", message: message, preferredStyle: .alert)
         alert.addAction(UIAlertAction(title: "OK", style: .default))
         if presentedViewController == nil { present(alert, animated: true) }

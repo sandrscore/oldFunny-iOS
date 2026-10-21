@@ -2,6 +2,7 @@ import UIKit
 
 final class PostMediaController: UIViewController, UIScrollViewDelegate, UIGestureRecognizerDelegate {
     var onComments: (() -> Void)?, onRefresh: (() -> Void)?
+    var onProfilePinsChanged: (() -> Void)?
     var onLeading: (() -> Void)? { didSet { updateLeading() } }
     let index: Int
     private let app: AppContext
@@ -9,6 +10,7 @@ final class PostMediaController: UIViewController, UIScrollViewDelegate, UIGestu
     private let source: String
     private let section: String
     private let embedded: Bool
+    private let profileOwnerID: String?
     private let outer = MediaViewportScrollView(), zoom = FittedMediaScrollView(), image = UIImageView()
     private let media = UIView(), titlePanel = UIView(), bodyPanel = UIView()
     private let smile = ClassicCounterButton(), comments = ClassicCounterButton()
@@ -24,9 +26,11 @@ final class PostMediaController: UIViewController, UIScrollViewDelegate, UIGestu
     private var smiled: Bool
     private var unsmiled: Bool, republished: Bool, changingReaction = false, changingRepublish = false
     private var obscured = false
-    init(app: AppContext, post: Post, index: Int, source: String, section: String = "Post", embedded: Bool = false) {
+    private var pinned: Bool, changingPin = false
+    init(app: AppContext, post: Post, index: Int, source: String, section: String = "Post", embedded: Bool = false, profileOwnerID: String? = nil) {
         self.app = app; self.post = post; self.index = index; self.source = source; self.embedded = embedded; smiled = post.isSmiled
         self.section = section
+        self.profileOwnerID = profileOwnerID; pinned = post.isPinned
         unsmiled = post.isUnsmiled; republished = post.isRepublished
         super.init(nibName: nil, bundle: nil)
     }
@@ -75,6 +79,7 @@ final class PostMediaController: UIViewController, UIScrollViewDelegate, UIGestu
             stack.bottomAnchor.constraint(lessThanOrEqualTo: container.bottomAnchor), mediaHeight
         ])
         zoom.delegate = self; zoom.minimumZoomScale = 1; zoom.maximumZoomScale = 6
+        zoom.accessibilityIdentifier = "post-media-zoom"
         zoom.backgroundColor = .black; zoom.showsVerticalScrollIndicator = false; zoom.showsHorizontalScrollIndicator = false
         image.contentMode = .scaleAspectFit; zoom.addSubview(image); zoom.fittedContent = image
         image.isAccessibilityElement = true; image.accessibilityLabel = "Post image"; image.accessibilityIdentifier = "post-image"
@@ -204,7 +209,7 @@ final class PostMediaController: UIViewController, UIScrollViewDelegate, UIGestu
     }
     @objc private func profile() {
         guard let id = post.authorID else { return }; pause()
-        navigationController?.pushViewController(FeedController(app: app, feed: .featured, timelineID: id, profileName: post.author), animated: true)
+        navigationController?.pushViewController(ProfileController(app: app, userID: id, nickname: post.author), animated: true)
     }
     private func updateSmile() {
         let count = max(0, post.smiles + (smiled == post.isSmiled ? 0 : (smiled ? 1 : -1)))
@@ -259,14 +264,40 @@ final class PostMediaController: UIViewController, UIScrollViewDelegate, UIGestu
     }
     @objc private func postOptions(_ gesture: UILongPressGestureRecognizer) {
         guard gesture.state == .began, presentedViewController == nil else { return }; pause()
+        let point = gesture.location(in: outer)
+        Task { [weak self] in
+            guard let self else { return }
+            let account = await app.api.account()
+            guard view.window != nil, presentedViewController == nil, !obscured else { return }
+            let eligible = profileOwnerID != nil && profileOwnerID == account?.accountID && post.state == "published" && !post.isAbused
+            presentOptions(at: point, showPin: eligible)
+        }
+    }
+    private func presentOptions(at point: CGPoint, showPin: Bool) {
         let sheet = UIAlertController(title: nil, message: nil, preferredStyle: .actionSheet)
         sheet.addAction(UIAlertAction(title: republished ? "Remove republish" : "Republish", style: .default) { [weak self] _ in self?.confirmRepublish() })
         sheet.addAction(UIAlertAction(title: "Copy link", style: .default) { [weak self] _ in UIPasteboard.general.url = self?.postURL })
         sheet.addAction(UIAlertAction(title: "Share", style: .default) { [weak self] _ in self?.sharePost() })
         sheet.addAction(UIAlertAction(title: post.isVideo ? "Save video to Photos" : "Save image to Photos", style: .default) { [weak self] _ in self?.saveMedia() })
+        if showPin { sheet.addAction(UIAlertAction(title: pinned ? "Pinned" : "Pin", style: .default) { [weak self] _ in self?.changePin() }) }
         sheet.addAction(UIAlertAction(title: "Cancel", style: .cancel))
-        sheet.popoverPresentationController?.sourceView = outer; sheet.popoverPresentationController?.sourceRect = CGRect(origin: gesture.location(in: outer), size: .zero)
+        sheet.popoverPresentationController?.sourceView = outer; sheet.popoverPresentationController?.sourceRect = CGRect(origin: point, size: .zero)
         present(sheet, animated: true)
+    }
+    private func changePin() {
+        guard let profileOwnerID, !changingPin else { return }; changingPin = true
+        Task { [weak self] in
+            guard let self else { return }; defer { changingPin = false }
+            let session = await app.api.sessionEpoch()
+            do {
+                _ = try await app.api.setProfilePin(userID: profileOwnerID, postID: post.id, enabled: !pinned, session: session)
+                guard session == (await app.api.sessionEpoch()) else { return }
+                pinned.toggle(); onProfilePinsChanged?()
+            } catch {
+                onProfilePinsChanged?()
+                if view.window != nil { showError(error) }
+            }
+        }
     }
     private var postURL: URL { URL(string: "https://ifunny.co/\(post.isVideo ? "video" : "picture")/\(post.id)")! }
     private func confirmRepublish() {

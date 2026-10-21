@@ -10,6 +10,7 @@ final class ClassicVideo: NSObject {
     var isCurrent: (() -> Bool)?, onFailure: (() -> Void)?
     private let app: AppContext, player: AVPlayer, item: AVPlayerItem
     private var seeks = VideoSeekState(), manuallyPaused = false, active = false
+    private var startWhenReady = false
     private var hasAudio = false, chromeVisible = true, zoomed = false
     private var timer: Timer?, timeObserver: Any?, endObserver: NSObjectProtocol?
     private var lifecycleObservers = [NSObjectProtocol]()
@@ -84,7 +85,7 @@ final class ClassicVideo: NSObject {
         return Int64(seconds * 1000)
     }
     func suspend() {
-        active = false; seeks.suspend(); scrubber.cancelTracking(with: nil)
+        active = false; startWhenReady = false; seeks.suspend(); scrubber.cancelTracking(with: nil)
         player.pause(); refreshControls()
     }
     func refresh() {
@@ -92,11 +93,12 @@ final class ClassicVideo: NSObject {
         if !visible { if active || playing || seeks.dragging { suspend() }; return }
         if !active {
             active = true; seeks.returned(manuallyPaused: manuallyPaused)
+            startWhenReady = !manuallyPaused
             player.isMuted = !app.videoSoundOn
-            if ready && !manuallyPaused && !seeks.blocksStart { player.play() }
-        } else if ready && !manuallyPaused && !seeks.blocksStart && player.timeControlStatus == .paused {
-            player.play()
         }
+        // Readiness can arrive later than page activation. Start once for that
+        // activation; an arbitrary paused player or failed seek is not play intent.
+        if startWhenReady && ready && !manuallyPaused && !seeks.blocksStart { startWhenReady = false; player.play() }
         duration = millis(item.duration)
         if !seeks.dragging && seeks.inFlight == nil { position = millis(player.currentTime()) }
         if item.status == .failed && !reportedFailure { reportedFailure = true; onFailure?() }
@@ -112,6 +114,7 @@ final class ClassicVideo: NSObject {
     private func tapInside() -> Bool {
         guard current, ready else { return false }
         if seeks.blocksStart { return true }
+        startWhenReady = false
         if playing { manuallyPaused = true; player.pause() }
         else { manuallyPaused = false; player.play() }
         refreshControls(); return true
@@ -133,11 +136,12 @@ final class ClassicVideo: NSObject {
         for command in commands {
             switch command {
             case .pause: player.pause()
-            case .play: if current && ready && !manuallyPaused && !seeks.blocksStart { player.play() }
+            case .play: if current && ready && !manuallyPaused && !seeks.blocksStart { startWhenReady = false; player.play() }
             case .seek(let request):
                 player.seek(to: CMTime(value: request.milliseconds, timescale: 1000), toleranceBefore: .zero, toleranceAfter: .zero) { [weak self] finished in
                     Task { @MainActor [weak self] in
                         guard let self else { return }
+                        if self.seeks.inFlight?.id == request.id && !finished { self.startWhenReady = false }
                         self.execute(self.seeks.completed(request.id, finished: finished, current: self.current, ready: self.ready, manuallyPaused: self.manuallyPaused))
                         self.refreshControls()
                     }

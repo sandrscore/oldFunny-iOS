@@ -25,7 +25,7 @@ final class PostInfoController: ClassicScreenController {
             button.isEnabled = id != nil; button.heightAnchor.constraint(greaterThanOrEqualToConstant: 44).isActive = true
             button.addAction(UIAction { [weak self] _ in
                 guard let self, let id else { return }
-                navigationController?.pushViewController(FeedController(app: app, feed: .featured, timelineID: id, profileName: name), animated: true)
+                navigationController?.pushViewController(ProfileController(app: app, userID: id, nickname: name), animated: true)
             }, for: .touchUpInside); rows.addArrangedSubview(button)
         }
         func line(_ text: String) {

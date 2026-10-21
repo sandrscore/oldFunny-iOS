@@ -14,6 +14,69 @@ final class ViewerTests: XCTestCase {
         let fields = text.components(separatedBy: ";")[0].components(separatedBy: "/")
         return (Int(fields.first ?? "") ?? -1, fields.count > 1 ? Int(fields[1]) ?? -1 : -1, text.contains("; idle;"))
     }
+    private func openOfflineProfile(_ app: XCUIApplication, writes: Bool = false) {
+        app.launchArguments = ["--ui-tests", "--ui-tests-account", "--ui-tests-profile"] + (writes ? ["--ui-tests-profile-writes"] : [])
+        app.launch(); XCTAssertTrue(app.buttons["Open menu"].waitForExistence(timeout: 10))
+        app.buttons["Open menu"].tap(); app.buttons["Profile"].tap()
+        XCTAssertTrue(app.collectionViews.cells["grid-post-GridPost0"].waitForExistence(timeout: 10))
+    }
+    func testProfileGridViewerRetainsScrollAndFeaturedUsesSeparateSource() {
+        let app = XCUIApplication(); openOfflineProfile(app)
+        let collection = app.collectionViews["profile-grid"], tile = collection.cells["grid-post-GridPost20"]
+        for _ in 0..<4 { if tile.isHittable { break }; collection.swipeUp() }
+        XCTAssertTrue(tile.isHittable); let before = tile.frame.minY; tile.tap()
+        XCTAssertTrue(app.buttons["21 smiles, smile"].waitForExistence(timeout: 5)); app.swipeLeft(velocity: .fast)
+        XCTAssertTrue(app.buttons["22 smiles, smile"].waitForExistence(timeout: 5)); app.buttons["Back"].tap()
+        XCTAssertTrue(tile.waitForExistence(timeout: 5)); XCTAssertEqual(tile.frame.minY, before, accuracy: 3)
+        app.buttons["Profile information"].tap(); app.buttons["5 featured"].tap()
+        XCTAssertTrue(app.otherElements["profile-featured-grid"].waitForExistence(timeout: 5))
+        XCTAssertEqual(collection.cells.count, 5)
+        collection.cells["grid-post-GridPost10"].tap(); XCTAssertTrue(app.buttons["11 smiles, smile"].waitForExistence(timeout: 5))
+        app.swipeLeft(velocity: .fast); XCTAssertTrue(app.buttons["21 smiles, smile"].waitForExistence(timeout: 5))
+        app.buttons["Back"].tap(); XCTAssertEqual(collection.cells.count, 5)
+        app.buttons["Back"].tap(); XCTAssertTrue(app.buttons["5 featured"].waitForExistence(timeout: 5))
+        capture("profile-information-and-featured-return", app: app)
+    }
+    func testProfileSearchCombinesTagsOriginalAuthorAndRepubToggle() {
+        let app = XCUIApplication(); openOfflineProfile(app)
+        app.buttons["Advanced Search"].tap()
+        let tags = app.textFields["profile-tags"]; XCTAssertTrue(tags.waitForExistence(timeout: 5)); tags.tap(); tags.typeText("dogs\n")
+        app.buttons["profile-media-filter"].tap(); app.buttons["Images"].tap()
+        app.buttons["profile-author-filter"].tap()
+        let search = app.textFields["user-search"]; XCTAssertTrue(search.waitForExistence(timeout: 5)); search.tap(); search.typeText("Writer")
+        let writer = app.tables.cells["user-row-Writer"]; XCTAssertTrue(writer.waitForExistence(timeout: 5)); writer.tap()
+        let collection = app.collectionViews["profile-grid"]
+        waitUntil("The profile search must find all four source-backed Writer posts") { collection.cells.count == 4 }
+        XCTAssertTrue(collection.cells["grid-post-GridPost5"].exists)
+        app.buttons["Include republished posts"].tap()
+        XCTAssertTrue(app.staticTexts["No matching posts."].waitForExistence(timeout: 5)); XCTAssertFalse(app.buttons["profile-author-filter"].isEnabled)
+        app.buttons["Include republished posts"].tap()
+        waitUntil("Author selection and matches must return with repubs") { collection.cells.count == 4 }
+        app.buttons["Search options"].tap(); app.buttons["Clear filters"].tap()
+        waitUntil("Clearing filters reuses already-scanned timeline pages") { collection.cells.count == 44 }
+        capture("profile-search-restored-results", app: app)
+    }
+    func testOwnProfilePinReadbackAndGridBadge() {
+        let app = XCUIApplication(); openOfflineProfile(app, writes: true)
+        let tile = app.collectionViews.cells["grid-post-GridPost0"]; tile.tap()
+        let media = app.otherElements["post-media"]; XCTAssertTrue(app.buttons["1 smiles, smile"].waitForExistence(timeout: 5))
+        media.press(forDuration: 1); app.buttons["Pin"].tap()
+        media.press(forDuration: 1); XCTAssertTrue(app.buttons["Pinned"].waitForExistence(timeout: 5)); app.buttons["Cancel"].tap()
+        app.buttons["Back"].tap()
+        waitUntil("Only confirmed pin readback updates the grid badge") { tile.value as? String == "Pinned" }
+        capture("profile-confirmed-pin-badge", app: app)
+        tile.tap(); media.press(forDuration: 1); app.buttons["Pinned"].tap(); app.buttons["Back"].tap()
+        waitUntil("Unpin readback removes the badge") { tile.exists && tile.value as? String != "Pinned" }
+    }
+    func testProfileSubscriberListAndConfirmedSubscribeToggle() {
+        let app = XCUIApplication(); openOfflineProfile(app, writes: true)
+        app.buttons["Profile information"].tap(); app.buttons["2 subscribers"].tap()
+        let user = app.tables.cells["user-row-Reader1"]; XCTAssertTrue(user.waitForExistence(timeout: 5)); user.tap()
+        let subscribe = app.buttons["Subscribe"]; XCTAssertTrue(subscribe.waitForExistence(timeout: 5)); subscribe.tap()
+        XCTAssertTrue(app.buttons["Subscribed"].waitForExistence(timeout: 5)); app.buttons["Subscribed"].tap()
+        XCTAssertTrue(subscribe.waitForExistence(timeout: 5))
+        capture("other-profile-subscribe-confirmed", app: app)
+    }
     func testVideoPausedSeekMuteZoomAndPageReturnUseActualPlayer() {
         let app = XCUIApplication(); app.launchArguments = ["--ui-tests", "--ui-tests-video"]; app.launch()
         let video = app.descendants(matching: .any)["post-video"].firstMatch
@@ -41,13 +104,16 @@ final class ViewerTests: XCTestCase {
         XCTAssertTrue(app.buttons["Mute video"].exists)
         XCTAssertEqual(videoTime(bar).position, paused, accuracy: 150, "Unmuting a paused clip must not restart it")
         let media = app.otherElements["post-media"]
-        media.pinch(withScale: 2, velocity: 2)
+        // The actual video viewport is shorter than the entire post scene;
+        // root-scene pinch endpoints can land outside this scroll view.
+        let zoom = app.scrollViews["post-media-zoom"]
+        XCTAssertTrue(zoom.exists); zoom.pinch(withScale: 2, velocity: 2)
         XCTAssertFalse(app.buttons["Mute video"].exists)
         XCTAssertEqual(video.value as? String, "Paused")
         capture("paused-video-zoomed-mark", app: app)
         // XCTest pinch scale is approximate; deliberately clamp to the fitted
         // minimum instead of assuming two generated gestures are exact inverses.
-        media.pinch(withScale: 0.1, velocity: -4)
+        zoom.pinch(withScale: 0.1, velocity: -4)
         XCTAssertTrue(app.buttons["Mute video"].waitForExistence(timeout: 5), "Zoom trace: \(String(describing: media.value))")
         app.buttons["3 comments"].tap(); XCTAssertTrue(app.textFields["comment-draft"].waitForExistence(timeout: 5))
         app.buttons["Back"].tap(); XCTAssertTrue(video.waitForExistence(timeout: 5))

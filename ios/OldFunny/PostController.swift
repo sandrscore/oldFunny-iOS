@@ -18,11 +18,12 @@ final class PostController: UIViewController, UIGestureRecognizerDelegate {
     var onMenu: (() -> Void)? { didSet { media.onLeading = onMenu } }
     var onRefresh: (() -> Void)? { didSet { media.onRefresh = onRefresh } }
     var onPanelChange: ((ViewerPanel) -> Void)?
+    var onProfilePinsChanged: (() -> Void)? { didSet { media.onProfilePinsChanged = onProfilePinsChanged } }
 
-    init(app: AppContext, post: Post, index: Int, source: String, section: String = "Post", selected: Bool = true) {
+    init(app: AppContext, post: Post, index: Int, source: String, section: String = "Post", selected: Bool = true, profileOwnerID: String? = nil) {
         self.app = app; self.post = post; self.index = index; self.source = source
         self.selected = selected
-        media = PostMediaController(app: app, post: post, index: index, source: source, section: section)
+        media = PostMediaController(app: app, post: post, index: index, source: source, section: section, profileOwnerID: profileOwnerID)
         current = media
         super.init(nibName: nil, bundle: nil)
         media.setObscured(!selected)

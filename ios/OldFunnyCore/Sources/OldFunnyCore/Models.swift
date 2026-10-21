@@ -10,6 +10,7 @@ public struct Post: Equatable, Sendable {
     public let body: String
     public let mediaURL: URL?
     public let posterURL: URL?
+    public let gridThumbnailURL: URL?
     public let width: Double
     public let height: Double
     public let smiles: Int
@@ -20,6 +21,8 @@ public struct Post: Equatable, Sendable {
     public let views: Int, republishes: Int
     public let tags: [String]
     public let originalAuthor: String?, originalAuthorID: String?
+    public let hasSource: Bool, isFeatured: Bool, isPinned: Bool, isAbused: Bool
+    public let state: String
     public var isVideo: Bool { type == "video" || type == "text_video" || mediaURL?.pathExtension.lowercased() == "mp4" }
     public var isGIF: Bool { type == "gif" && !isVideo }
 
@@ -39,6 +42,11 @@ public struct Post: Equatable, Sendable {
             ?? Wire.https(value["thumb"]["p"].string)
             ?? Wire.https(value["thumb"]["large_url"].string)
             ?? Wire.https(value["thumb"]["l"].string)
+        gridThumbnailURL = Wire.https(value["thumb"]["large_url"].string)
+            ?? Wire.https(value["thumb"]["l"].string)
+            ?? Wire.https(value["thumb"]["small_url"].string)
+            ?? Wire.https(value["thumb"]["s"].string)
+            ?? posterURL
         width = max(1, min(30000, value["size"]["w"].number ?? 640))
         height = max(1, min(100000, value["size"]["h"].number ?? 640))
         smiles = max(0, value["num"]["smiles"].integer ?? value["smiles"].integer ?? 0)
@@ -53,6 +61,11 @@ public struct Post: Equatable, Sendable {
         let original = value["source"]["creator"]
         originalAuthor = original["nick"].string
         originalAuthorID = original["id"].string.flatMap { Wire.validID($0) ? $0 : nil }
+        if case .object = value["source"] { hasSource = true } else { hasSource = false }
+        isFeatured = value["is_featured"].flag ?? value["is"]["featured"].flag ?? false
+        isPinned = value["is_pinned"].flag ?? false
+        isAbused = value["is_abused"].flag ?? false
+        state = value["state"].string ?? "published"
     }
 }
 

@@ -15,9 +15,13 @@ private struct PreviewStore: CredentialStore {
 
 private actor PreviewTransport: HTTPTransport {
     private var sentReplies = [[String: Any]](), deleted = Set<String>()
+    private var profilePins = Set<String>(), subscriptions = Set<String>()
     private var replyCount: Int { 2 + sentReplies.count - deleted.filter { $0.hasPrefix("PreviewReply") || $0.hasPrefix("FixtureSentReply") }.count }
     func send(_ request: URLRequest) async throws -> HTTPResult {
         let path = request.url?.path ?? "", method = request.httpMethod ?? "GET"
+        if ProcessInfo.processInfo.arguments.contains("--ui-tests-profile") || ProcessInfo.processInfo.arguments.contains("--preview-profile") {
+            if let result = try profileRequest(request) { return result }
+        }
         if ProcessInfo.processInfo.arguments.contains("--ui-tests-reactions"), ["PUT", "DELETE"].contains(method), path == "/v4/content/PreviewPost/smiles" || path == "/v4/content/PreviewPost/unsmiles" {
             await MainActor.run { PreviewFixtures.reactionEvents.append(request.url!.lastPathComponent) }
             return HTTPResult(status: 204, body: Data())
@@ -73,6 +77,59 @@ private actor PreviewTransport: HTTPTransport {
         }
         else { throw ClientError.invalidInput }
         return HTTPResult(status: 200, body: Data(value.utf8))
+    }
+    private func profileRequest(_ request: URLRequest) throws -> HTTPResult? {
+        let path = request.url!.path, method = request.httpMethod ?? "GET"
+        let query = URLComponents(url: request.url!, resolvingAgainstBaseURL: false)?.queryItems ?? []
+        func response(_ data: [String: Any]) throws -> HTTPResult { HTTPResult(status: 200, body: try JSONSerialization.data(withJSONObject: ["status": 200, "data": data])) }
+        func user(_ id: String) -> [String: Any] {
+            ["id": id, "nick": id == "PreviewUser" ? "ClassicFan" : id == "Writer" ? "Writer" : "ReaderOne", "about": "Offline profile fixture.", "avatar": ["s": "https://preview.invalid/avatar"], "cover_url": "https://preview.invalid/cover", "num": ["created": 44, "featured": 5, "subscribers": 2, "subscriptions": 3], "is_in_subscriptions": subscriptions.contains(id)]
+        }
+        if method != "GET" {
+            guard ProcessInfo.processInfo.arguments.contains("--ui-tests-profile-writes") else { return nil }
+            if path.hasPrefix("/v4/content/GridPost"), path.hasSuffix("/pinned"), ["PUT", "DELETE"].contains(method) {
+                let id = request.url!.deletingLastPathComponent().lastPathComponent
+                guard (0..<44).map({ "GridPost\($0)" }).contains(id) else { throw ClientError.invalidInput }
+                if method == "PUT" { guard profilePins.count < 3 || profilePins.contains(id) else { throw ClientError.http(409) }; profilePins.insert(id) }
+                else { profilePins.remove(id) }
+                return HTTPResult(status: 204, body: Data())
+            }
+            if path.hasPrefix("/v4/users/"), path.hasSuffix("/subscribers"), ["PUT", "DELETE"].contains(method) {
+                let id = request.url!.deletingLastPathComponent().lastPathComponent
+                if method == "PUT" { subscriptions.insert(id) } else { subscriptions.remove(id) }
+                return HTTPResult(status: 204, body: Data())
+            }
+            return nil
+        }
+        if path.hasPrefix("/v4/timelines/users/") {
+            let featured = path.hasSuffix("/featured")
+            let owner = request.url!.pathComponents[4], ownerName = user(request.url!.pathComponents[4])["nick"] as! String
+            var rows = (0..<44).map { index -> [String: Any] in
+                var row: [String: Any] = ["id": "GridPost\(index)", "type": "pic", "url": "https://preview.invalid/post", "thumb": ["large_url": "https://preview.invalid/thumb/GridPost\(index)"], "size": ["w": 640, "h": 760], "state": "published", "creator": ["id": owner, "nick": ownerName], "is_featured": index % 10 == 0, "is_pinned": profilePins.contains("GridPost\(index)"), "tags": index % 2 == 0 ? ["cats", "fun"] : ["dogs"], "num": ["smiles": index + 1, "comments": 0]]
+                if index % 5 == 0 && index % 10 != 0 { row["source"] = ["creator": ["id": "Writer", "nick": "Writer"]] }
+                return row
+            }
+            rows.sort { lhs, rhs in
+                let a = lhs["is_pinned"] as! Bool, b = rhs["is_pinned"] as! Bool
+                if a != b { return a }
+                return Int(String((lhs["id"] as! String).dropFirst(8)))! < Int(String((rhs["id"] as! String).dropFirst(8)))!
+            }
+            if featured { rows = rows.filter { $0["is_featured"] as! Bool } }
+            let offset = query.first { $0.name == "next" }?.value == "profile-next" ? 30 : 0
+            let slice = Array(rows.dropFirst(offset).prefix(30)), more = rows.count > offset + slice.count
+            return try response(["content": ["items": slice, "paging": ["hasNext": more, "cursors": more ? ["next": "profile-next"] : [:]]]])
+        }
+        if path == "/v4/search/users" {
+            let text = (query.first { $0.name == "q" }?.value ?? "").lowercased()
+            let rows = [user("Writer"), user("Reader1")].filter { ($0["nick"] as! String).lowercased().contains(text) }
+            return try response(["users": ["items": rows, "paging": ["hasNext": false]]])
+        }
+        if path.hasPrefix("/v4/users/") {
+            let component = request.url!.lastPathComponent
+            if ["subscribers", "subscriptions"].contains(component) { return try response(["users": ["items": [user("Writer"), user("Reader1")], "paging": ["hasNext": false]]]) }
+            return try response(user(component))
+        }
+        return nil
     }
 }
 

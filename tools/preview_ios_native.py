@@ -74,7 +74,7 @@ def main():
         run("xcrun", "simctl", "install", device, str(app))
         report.update(simulator_device=kind["name"], simulator_ios=runtime["version"])
         stage = "screenshots"
-        for name, args in [("feed", []), ("sidebar", ["--preview-sidebar"]), ("comments", ["--preview-comments"]), ("information", ["--preview-information"])]:
+        for name, args in [("feed", []), ("sidebar", ["--preview-sidebar"]), ("comments", ["--preview-comments"]), ("information", ["--preview-information"]), ("profile", ["--preview-profile"])]:
             run("xcrun", "simctl", "launch", "--terminate-running-process", device, "mobi.oldfunny.ios", *args)
             time.sleep(3)
             path = output / (name + ".png")
@@ -107,6 +107,11 @@ def main():
     finally:
         (output / "preview.json").write_text(json.dumps(report, indent=2) + "\n")
         if device:
+            # This disposable simulator only runs fabricated offline fixtures.
+            # Preserve app fault details before deleting it, including when an
+            # XCTest element timeout is really an app termination.
+            with (output / "simulator-app.log").open("w") as log:
+                subprocess.run(["xcrun", "simctl", "spawn", device, "log", "show", "--style", "compact", "--last", "15m", "--predicate", 'process == "OldFunny"'], stdout=log, stderr=subprocess.STDOUT, timeout=60)
             subprocess.run(["xcrun", "simctl", "shutdown", device], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=60)
             subprocess.run(["xcrun", "simctl", "delete", device], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=60)
     print(json.dumps(report, indent=2))

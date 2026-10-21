@@ -276,4 +276,56 @@ public actor APIClient {
         let path = "content/" + (try Wire.requireID(postID)) + "/comments/" + (try Wire.requireID(commentID)) + "/abuses"
         _ = try await call(path: path, method: "PUT", authenticated: true)
     }
+
+    public func profile(userID: String) async throws -> UserProfile {
+        let data = try await call(path: "users/" + Wire.requireID(userID))["data"]
+        let user = try UserProfile(data["user"] == .null ? data : data["user"])
+        guard user.id == userID else { throw ClientError.malformedResponse }; return user
+    }
+    public func profileTimeline(userID: String, featured: Bool = false, next: String? = nil) async throws -> PostPage {
+        if let next, next.utf8.count > 8192 { throw ClientError.invalidInput }
+        var query = [("limit", "30")]; if let next { query.append(("next", next)) }
+        let path = "timelines/users/" + (try Wire.requireID(userID)) + (featured ? "/featured" : "")
+        let data = try await call(path: path, query: query)["data"]
+        guard case .object = data["content"]["paging"] else { throw ClientError.malformedResponse }
+        return try PostPage(data)
+    }
+    public func users(userID: String, kind: UserListKind, next: String? = nil) async throws -> UserPage {
+        if let next, next.utf8.count > 8192 { throw ClientError.invalidInput }
+        var query = [("limit", "30")]; if let next { query.append(("next", next)) }
+        return try UserPage(await call(path: "users/" + Wire.requireID(userID) + "/" + kind.rawValue, query: query)["data"])
+    }
+    public func searchUsers(_ text: String, next: String? = nil) async throws -> UserPage {
+        guard text.utf8.count <= 1024, next == nil || next!.utf8.count <= 8192 else { throw ClientError.invalidInput }
+        var query = [("q", text), ("limit", "30")]; if let next { query.append(("next", next)) }
+        return try UserPage(await call(path: "search/users", query: query)["data"])
+    }
+    public func setSubscribed(userID: String, enabled: Bool, session: UUID) async throws -> UserProfile {
+        guard session == epoch else { throw ClientError.sessionChanged }
+        guard let credential else { throw ClientError.signInRequired }
+        guard credential.accountID != userID else { throw ClientError.invalidInput }
+        _ = try await call(path: "users/" + Wire.requireID(userID) + "/subscribers", method: enabled ? "PUT" : "DELETE", authenticated: true)
+        let user = try await profile(userID: userID)
+        guard session == epoch else { throw ClientError.sessionChanged }
+        guard user.isSubscribed == enabled else { throw ProfileActionError.unconfirmed }; return user
+    }
+    private var pinFlights = Set<String>()
+    public func setProfilePin(userID: String, postID: String, enabled: Bool, session: UUID) async throws -> PostPage {
+        guard session == epoch else { throw ClientError.sessionChanged }
+        guard credential?.accountID == userID else { throw ClientError.signInRequired }
+        _ = try Wire.requireID(postID)
+        guard pinFlights.insert(userID).inserted else { throw ProfileActionError.unconfirmed }
+        defer { pinFlights.remove(userID) }
+        let before = try await profileTimeline(userID: userID)
+        guard session == epoch else { throw ClientError.sessionChanged }
+        let pins = Set(before.posts.filter(\.isPinned).map(\.id))
+        if pins.contains(postID) == enabled { return before }
+        guard !enabled || pins.count < 3 else { throw ProfileActionError.pinLimit }
+        _ = try await call(path: "content/" + Wire.requireID(postID) + "/pinned", method: enabled ? "PUT" : "DELETE", authenticated: true)
+        let after = try await profileTimeline(userID: userID)
+        guard session == epoch else { throw ClientError.sessionChanged }
+        let confirmed = Set(after.posts.filter(\.isPinned).map(\.id))
+        guard confirmed.contains(postID) == enabled, confirmed.count <= 3 else { throw ProfileActionError.unconfirmed }
+        return after
+    }
 }
