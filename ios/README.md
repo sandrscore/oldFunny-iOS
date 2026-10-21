@@ -1,6 +1,6 @@
 # oldFunny iOS
 
-**Verified checkpoint: 0.3.0/build 19. Candidate build 20 adds comment mentions;
+**Verified checkpoint: 0.3.0/build 19. Candidate build 21 verifies comment mentions;
 its Mac compilation and UIKit tests are pending. Full Android parity is incomplete.**
 
 [Download the build 19 unsigned IPA artifact ZIP](https://github.com/sandrscore/oldFunny-iOS/actions/runs/39526685353/artifacts/12313263187),
@@ -21,9 +21,11 @@ fixtures on iPhone 16 / iOS 18.5, separate from server and target-phone validati
 
 Build 20 source adds authenticated mention suggestions, exact selected user IDs
 and UTF-16 edit ranges, colored draft names and incoming profile links, and the
-`user_mentions` send field. Two added UIKit tests exercise selection/pagination,
-attachment and Back retention, uncertain receipts, link taps and confirmed reply
-forms. 58 portable core tests pass locally; current Mac/UIKit verification is
+`user_mentions` send field. Build 20 compiled with 58 Mac core tests and 6 packaging checks. Its 17 UIKit
+tests executed: 15 passed and both mention tests stopped because interactive
+labels were queried as static text. The hierarchy shows the accepted reply and
+colored incoming link as buttons. Build 21 corrects those queries and keeps all
+remaining form, link, draft and attachment assertions. Mac/UIKit verification is
 pending. No live comments or mention notifications were sent.
 
 Remaining work includes full comment state/depth/bulk handling, suggestion panel

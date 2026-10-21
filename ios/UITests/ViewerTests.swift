@@ -47,7 +47,7 @@ final class ViewerTests: XCTestCase {
         XCTAssertEqual(draft.value as? String, "Hi ReaderTwo ")
         XCTAssertTrue((screen.value as? String ?? "").hasPrefix("mentions=Reader2:3:11;"))
         draft.tap()
-        let body = app.staticTexts["comment-body-PreviewComment1"]
+        let body = app.descendants(matching: .any)["comment-body-PreviewComment1"].firstMatch
         XCTAssertTrue(body.waitForExistence(timeout: 5))
         let link = body.coordinate(withNormalizedOffset: .zero).withOffset(CGVector(dx: 20, dy: 8))
         link.tap(); XCTAssertEqual(app.keyboards.count, 0); XCTAssertFalse(app.otherElements["user-profile"].exists)
@@ -74,7 +74,9 @@ final class ViewerTests: XCTestCase {
         app.buttons["Attach one of your posts"].tap()
         let tile = app.collectionViews.cells.firstMatch; XCTAssertTrue(tile.waitForExistence(timeout: 5)); tile.tap()
         app.buttons["Send comment"].tap()
-        XCTAssertTrue(app.staticTexts["Hello ReaderTwo"].waitForExistence(timeout: 5), app.debugDescription)
+        let sent = app.descendants(matching: .any)["comment-body-FixtureSentReply1"].firstMatch
+        XCTAssertTrue(sent.waitForExistence(timeout: 5), app.debugDescription)
+        XCTAssertEqual(sent.label, "Hello ReaderTwo")
         XCTAssertTrue((app.otherElements["comments-screen"].value as? String ?? "").contains("request=1|/v4/content/PreviewPost/comments/PreviewReply1/replies|text=Hello ReaderTwo|mentions=Reader2:6:14|content=PreviewPost"))
         XCTAssertFalse(app.staticTexts["reply-recipient"].exists); XCTAssertFalse(app.buttons["remove-comment-attachment"].exists)
         XCTAssertEqual(app.textFields["comment-draft"].value as? String, "Say something funny…")

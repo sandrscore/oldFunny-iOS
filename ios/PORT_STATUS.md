@@ -11,9 +11,9 @@ Target: iPhone 16 / user-reported iOS 27.0.1. Bundle: `mobi.oldfunny.ios`.
 | Media checks | Actual decoded video seeking and long GIF pixels, uneven timing, loop and retained phase passed |
 | Profile checks | Grid/featured return, combined filters and result reachability, tag editor, pin readback and subscriptions passed |
 | IPA | Independently verified ARM64, cryptid=0, unsigned and fixture-free; SHA-256 `86fe2202410f483ee52fe45791d019eedc672aa4dff7be019967b775b0af84c5` |
-| New candidate | Build 20: mention suggestions/identity/edit ranges/link taps/send forms; 58 Linux core tests pass, Mac/UIKit pending |
+| New candidate | Build 21: focused mention UI query correction; build 20 compiled with 58 Mac tests and 17 UIKit tests executed, 15 passed and 2 query-type failures |
 | Server | Earlier bounded anonymous profile/feed/schema reads succeeded; no live social writes used for validation |
-| Phone | User confirmed earlier 0.1.2 sign-in/CAPTCHA; build 19/20 saved session, codecs, gestures and Photos untested on target |
+| Phone | User confirmed earlier 0.1.2 sign-in/CAPTCHA; build 19/21 saved session, codecs, gestures and Photos untested on target |
 
 [Build 19 CI/artifacts](https://github.com/sandrscore/oldFunny-iOS/actions/runs/39526685353). Downloaded reports and per-test logs were
 checked. Profile and search screenshots were reviewed. Full scope includes

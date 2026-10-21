@@ -314,3 +314,21 @@ tests verify actual choice/pagination, link navigation, rejected root form with
 retained draft/attachment, identity removal after an interior edit, and accepted
 selected-recipient reply with exact mention/attachment fields. These native/UI
 additions are pending Mac verification; no real comment/notification is sent.
+
+### Build 20 results and focused candidate 21
+
+Source `3d0f2d0238cda5bf9201ee7ee1a52f7cb5c05876`, run 39537778581,
+compiled with 58 Mac core and 6 Python checks passing. All 17 UIKit tests ran:
+15 passed, 2 mention tests failed on static-text queries. The actual accessibility
+hierarchy exposes interactive mention bodies as buttons. It contains the accepted
+`Hello ReaderTwo` reply, and the incoming blue/bold link is visible in the reviewed
+screenshot. Link navigation, uncertain receipt and subsequent assertions still
+require execution; an earlier lookup failure does not verify them.
+Downloaded build 20 IPA independently verifies ARM64/cryptid0/fixture exclusion,
+SHA-256 `97bf3f9efd8506509e23529464d4de2a45b79a6ae225f9863b5ddc99f00a9b44`.
+
+Candidate 21 changes only the two queries to locate the known body identifiers
+across accessibility types and still asserts the exact reply text. App/core source
+matches build 20. The new bulk selection prototype in the original workspace is
+excluded from this focused candidate. All 17 tests remain mandatory; target phone,
+server notifications and live social writes remain untested.

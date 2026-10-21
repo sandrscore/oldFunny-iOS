@@ -4,7 +4,7 @@
   "product": "oldFunny",
   "bundle_identifier": "mobi.oldfunny.ios",
   "version": "0.3.0",
-  "build": "20",
+  "build": "21",
   "minimum_ios": "16.0",
   "target": {
     "device": "iPhone 16",
@@ -39,7 +39,7 @@
     "captcha_handoff": true,
     "session_survives_relaunch": "unverified"
   },
-  "ui_phase": "Build 20 source: native mentions; verified checkpoint 19 passed all 15 UIKit tests",
+  "ui_phase": "Build 21 focused mention query correction; verified checkpoint 19 remains all-green",
   "simulator_previews": "Offline fixtures compiled only with CLASSIC_UI_PREVIEW; absent from Release",
   "simulator_ui": {
     "device": "iPhone 16",
@@ -243,6 +243,26 @@
       "executed": 15,
       "passed": 15,
       "failed": 0
+    },
+    "phone_tested": false
+  },
+  "compiled_candidate_build20": {
+    "source_commit": "3d0f2d0238cda5bf9201ee7ee1a52f7cb5c05876",
+    "run_url": "https://github.com/sandrscore/oldFunny-iOS/actions/runs/39537778581",
+    "version": "0.3.0",
+    "build": "20",
+    "sha256": "97bf3f9efd8506509e23529464d4de2a45b79a6ae225f9863b5ddc99f00a9b44",
+    "contains_arm64": true,
+    "main_executable_cryptid": 0,
+    "fixture_code_absent": true,
+    "ui_gesture_tests": {
+      "executed": 17,
+      "passed": 15,
+      "failed": 2,
+      "failures": [
+        "Interactive mention body queried as static text",
+        "Accepted mention reply queried as static text"
+      ]
     },
     "phone_tested": false
   }
