@@ -11,7 +11,7 @@ Target: iPhone 16 / user-reported iOS 27.0.1. Bundle: `mobi.oldfunny.ios`.
 | Mentions | Actual suggestion selection, pagination, profile link, uncertain receipt and exact accepted reply fields passed |
 | Media/profile | Prior decoded video/GIF, panels/drafts, search/tags/pins/subscription cases passed again |
 | IPA | Independently verified ARM64, cryptid=0, unsigned and fixture-free; SHA-256 `e6f1731005e4f8660bebc288f1c11b3e15f7ff6c21c14b915b51f79b0c661aff` |
-| New candidate | Build 23: corrects bulk test compilation and actual root-delete close/cascade behavior; build 22 app compiled with 63 Mac core/six packaging checks, but zero UIKit cases executed |
+| New candidate | Build 24: corrects bulk test compilation and actual root-delete close/cascade behavior; build 22 app compiled with 63 Mac core/six packaging checks, but zero UIKit cases executed |
 | Server | Earlier bounded anonymous profile/feed/schema reads succeeded; no live social writes used for validation |
 | Phone | Earlier 0.1.2 sign-in/CAPTCHA confirmed by user; build 21/23 saved session, codecs, gestures and Photos untested on target |
 
@@ -24,3 +24,7 @@ Valid iOS client setup is required for APNs and alternate OAuth.
 Authentication algorithms, Android sources and the same 16 reviewed bitmap assets
 are preserved. No credentials, personal sessions, original binaries or generated
 test media are included in public source exports or Release IPAs.
+
+Build 23 stopped during app compilation on a remaining read-refresh call to the
+removed deleted-context helper; no IPA or UI test execution resulted. Build 24
+restores that read helper separately from confirmed root deletion.

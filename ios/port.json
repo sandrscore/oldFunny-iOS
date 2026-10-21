@@ -4,7 +4,7 @@
   "product": "oldFunny",
   "bundle_identifier": "mobi.oldfunny.ios",
   "version": "0.3.0",
-  "build": "23",
+  "build": "24",
   "minimum_ios": "16.0",
   "target": {
     "device": "iPhone 16",
@@ -39,7 +39,7 @@
     "captcha_handoff": true,
     "session_survives_relaunch": "unverified"
   },
-  "ui_phase": "Build 23: fix bulk test compilation and native root deletion close/cascade; verified21 remains checkpoint",
+  "ui_phase": "Build 24 restores read-side deleted-context helper; confirmed root delete closes/cascades; verified21 checkpoint",
   "simulator_previews": "Offline fixtures compiled only with CLASSIC_UI_PREVIEW; absent from Release",
   "simulator_ui": {
     "device": "iPhone 16",
@@ -299,5 +299,13 @@
       "failure": "Duplicate placeholder count used XCUIElement instead of XCUIElementQuery"
     },
     "phone_tested": false
+  },
+  "candidate_build23_failure": {
+    "source_commit": "0e6a0cb8abade38ef60648b8e148ab580962f0d1",
+    "run_url": "https://github.com/sandrscore/oldFunny-iOS/actions/runs/39542985465",
+    "app_compiled": false,
+    "ipa_produced": false,
+    "ui_executed": 0,
+    "error": "Read-refresh call still needs markRootDeleted helper"
   }
 }

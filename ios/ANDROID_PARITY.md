@@ -393,3 +393,13 @@ The frozen candidate includes these native/fixture changes and test compilation
 fixes; the separate local menu/depth/dot/page40 policy prototype is excluded.
 All 20 actual UI tests remain required; Mac/UI execution is pending. No live
 social write, new phone test or complete-parity claim is made.
+
+### Candidate 24: retain the read-side root helper
+
+Build 23 source `0e6a0cb8abade38ef60648b8e148ab580962f0d1`, run 39542985465,
+passed 63 Mac core/six packaging checks, then app compilation failed because
+read refresh still called the removed markRootDeleted helper. No IPA or UI test
+execution resulted. Candidate 24 restores the read-side helper for pre-existing
+deleted root context; confirmed deletion continues through the separate complete
+thread-removal/return path. All 20 UI cases remain required. The local menu/depth/
+page40 prototype stays excluded from this focused build.

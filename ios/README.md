@@ -1,6 +1,6 @@
 # oldFunny iOS
 
-**Verified checkpoint: 0.3.0/build 21. Candidate build 23 verifies bulk selection
+**Verified checkpoint: 0.3.0/build 21. Candidate build 24 verifies bulk selection
 and corrects root-deletion return/counts; its Mac/UIKit checks are pending. Full parity is incomplete.**
 
 [Download the build 21 unsigned IPA artifact ZIP](https://github.com/sandrscore/oldFunny-iOS/actions/runs/39539381754/artifacts/12318721806),
@@ -28,7 +28,7 @@ removal retains deleted positions and root context. An uncertain receipt locks
 selection until a replacement read succeeds, including after a failed refresh.
 The app compiled with 63 Mac core tests and six packaging checks passing. The
 new test target failed to compile because duplicate-placeholder counts used an
-element instead of a query; none of the 20 UIKit cases executed. Candidate 23
+element instead of a query; none of the 20 UIKit cases executed. Candidate 24
 corrects those queries and the traced root-deletion behavior: deleting a root
 closes its reply screen and removes root plus replies from the post total. The
 old retained-thread fixture expectation is replaced with the actual Android
@@ -108,3 +108,7 @@ asset catalogs, local tools and build work remain ignored.
 The original recovery under .ios-work/restoration/4.6.8 and baseline.json retain
 iFunny iOS 4.6.8's identity/resources. Its executable stays encrypted and is not
 part of the native source build. The Android implementation remains unchanged.
+
+Build 23 stopped during app compilation on a remaining read-refresh call to the
+removed deleted-context helper; no IPA or UI test execution resulted. Build 24
+restores that read helper separately from confirmed root deletion.

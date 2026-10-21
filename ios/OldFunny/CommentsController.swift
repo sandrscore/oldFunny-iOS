@@ -289,6 +289,11 @@ final class CommentsController: ClassicScreenController, UITableViewDataSource, 
         }
         navigationController?.pushViewController(child, animated: true)
     }
+    private func markRootDeleted() {
+        // Read-side refresh may retain an already-deleted root as context.
+        // A confirmed root DELETE uses removeMainRoot and closes the thread.
+        rootComment?.markDeleted(); if isViewLoaded { table.reloadData() }
+    }
     private func removeMainRoot(id: String, replies: Int) {
         if let count { self.count = max(0, count - min(count, max(0, replies)) - 1) }
         comments.removeAll { $0.id == id }; replyCounts[id] = nil; replyThreads[id] = nil
