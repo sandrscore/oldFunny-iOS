@@ -78,12 +78,12 @@ post panels. Process-death restoration and every gesture edge case remain checks
 | Image fit | Native fit/centering, tall images and title/body alignment; `ContentBehavior`, `ModernPostText` | Partial: width/fit/scroll/pinch; full-resolution tall-image fidelity pending |
 | Pinch/pan bounds | Image-style scale/pan with pager handoff at bounds; `ContentBehavior` | Partial: still-image zoom, no full edge handoff parity |
 | Double tap | Native smile toggle; `GalleryFragment.b(View)` | Source added; no live reaction used during checks |
-| Triple tap | Content a$3.c(MotionEvent) → GalleryFragment.c(View); resumed, not-abused, signed-in and r() eligibility | Missing. All GalleryFragment descendants were checked: CollectiveFragment and TagGalleryFragment override r() to true; base/Featured/Profile remain false. Native footer currently exposes unsmile too broadly and needs the same context gate |
+| Triple tap | Content a$3.c(MotionEvent) → GalleryFragment.c(View); resumed, not-abused, signed-in and r() eligibility | Source: classified single/double/triple recognizers defer competing taps; downvote limited to Collective/Tag context and signed-in current non-abused media. Collective switch/real gesture verification pending; Tag destination and BR signed-out double-tap exception remain gaps. |
 | Smile/unsmile | Toggle mutually exclusive state, counts and signed-out route; original Retrofit methods | Source; request tests, live/device checks pending |
-| Video/GIF zoom | Same transformed content as images; `VideoControls` and native behavior | Missing: video still uses AVPlayer controls |
-| Tap playback | Pause/resume only in video; margins hide chrome; paused triangle scales with video | Partial: native AVPlayer controls, Android tap/chrome rules missing |
-| Scrubber | Only >10s, transparent 24dp hit area, elapsed/total during drag, coalesced accurate seek, retained play state; `VideoControls` | Partial: native player provides seeking; exact control/behavior pending |
-| Mute | Hide while pinching/zoomed, retain audio state; `VideoControls` | Partial: native player audio controls only |
+| Video/GIF zoom | Same transformed content as images; `VideoControls` and native behavior | Source: custom retained AVPlayer surface shares image transform; MP4/GIF media classification and full format/timing behavior remain partial. New UIKit verification pending. |
+| Tap playback | Pause/resume only in video; margins hide chrome; paused triangle scales with video | Source: full transformed video hit testing, manual pause, margin chrome and transformed pause indicator; inactive/failed seeks cannot auto-start. New UIKit verification pending. |
+| Scrubber | Only >10s, transparent 24dp hit area, elapsed/total during drag, coalesced accurate seek, retained play state; `VideoControls` | Source: actual duration >10s, 24pt transparent hit region, tracking timestamps, serialized latest seek and zero-tolerance AVPlayer seek. Build13/14 decoded sparse-keyframe target checks passed; full lifecycle test still pending. |
+| Mute | Hide while pinching/zoomed, retain audio state; `VideoControls` | Source: application sound state starts off, resets after >10min background, zoom/pinch hides sound control. Return-to-fit synthetic gesture still under verification. |
 | GIF rendering | Timing/loop/dimensions, MP4-backed GIF support; `VideoCompatibility` | Partial: bounded UIImage animation and native MP4, full timing parity pending |
 | Post hold menu | Share/Save/Chat/Pin/More with ownership and format eligibility; gallery menu patches | Partial: link/copy/share/Save/repub added; Chat/Pin/More missing |
 | Republish | POST `/content/{cid}/republished?from=...`, DELETE to remove; original Retrofit methods | Source added, explicit confirmation and no replay; live checks pending |
@@ -104,15 +104,15 @@ post panels. Process-death restoration and every gesture edge case remain checks
 | Send retries | Never replay an uncertain social write; `comment-send-01`, `CommentComposer` | Existing single-attempt API retained; refresh-only GET retry preserved |
 | Mentions | Unicode offsets, exact IDs, suggestions/recent users/avatars, chips/colors and notification fields; `CommentMentions`, `MentionComments` | Missing |
 | Keyboard dismissal | First outside tap dismisses and preserves text/attachment/recipient, next tap normal | Source basic text/attachment behavior; recipient/mention parts missing |
-| User profile | Information header, posts/reposts grid, subscriptions/subscribers, actions; profile fragments | Partial: timeline viewer only |
-| Own profile | Account identity, editing, cover/avatar, counters, settings | Missing beyond account/session screen and own timeline |
-| Featured profile count | Dedicated `/timelines/users/{uid}/featured`, 3-column grid; `ProfileFeatured` | Missing |
-| Grid viewer return | Swipe full snapshot, continue same endpoint, Back to retained grid | Missing general grid/viewer handoff |
-| Profile pinning | Own profile only, max3, server readback, pinned menu/grid mark; `ProfilePins` | Missing |
-| Advanced profile search | Combined media, all tags (AND), original author, repub toggle; `ProfileSearch*` | Missing |
-| Search state | Progressive bounded history scan, cancel stale filters, retain results/scroll, clear on exit | Missing |
+| User profile | Information header, posts/reposts grid, subscriptions/subscribers, actions; profile fragments | Source: native cover/avatar/header, grid/info tabs, public counters, real subscriber/subscription lists, subscribe actions. Basic public-profile schemas verified anonymously; new UIKit/phone validation pending. |
+| Own profile | Account identity, editing, cover/avatar, counters, settings | Partial: account identity, posts/info/featured/counters and own pin context implemented; editing, cover/avatar uploads and full settings still missing. |
+| Featured profile count | Dedicated `/timelines/users/{uid}/featured`, 3-column grid; `ProfileFeatured` | Source: dedicated featured endpoint, owner+flag filtering, 3-column grid/shared gallery. Anonymous server read decoded10 matching-owner featured entries; full navigation UI checks pending. |
+| Grid viewer return | Swipe full snapshot, continue same endpoint, Back to retained grid | Source: shared snapshot/cursor, retained grid, bounded gallery scene cache and same-source pagination. Actual Back/scroll test pending. |
+| Profile pinning | Own profile only, max3, server readback, pinned menu/grid mark; `ProfilePins` | Source: own UserGallery contexts (ordinary/featured/search), max3 preflight, one PUT/DELETE and exact target/count readback, no replay/optimistic success. Contract tests pass; offline UI and live user-controlled write checks pending. |
+| Advanced profile search | Combined media, all tags (AND), original author, repub toggle; `ProfileSearch*` | Source: exact raw-media taxonomy, AND tags, original source author, retained author with repubs off, separate author picker. Tag chips/editor/suggestions/recent10 now implemented in source; UIKit/phone pending. |
+| Search state | Progressive bounded history scan, cancel stale filters, retain results/scroll, clear on exit | Partial: cancellable off-main rescans, query/account/read generations, sparse-page continuation, retained loaded results/cursor and failure retry. Full raw post history still in memory; disk-backed large-history index remains required. |
 | User/tag Explore | Real user/tag search, recent users/tags, tag galleries | Missing |
-| Subscribe/block | Confirmed subscribe/unsubscribe/block state with ownership rules | Missing |
+| Subscribe/block | Confirmed subscribe/unsubscribe/block state with ownership rules | Partial: subscribe/unsubscribe single-attempt write + profile readback and uncertain-state reconciliation. Offline tests pending; block UI/API and real user-controlled validation remain gaps. |
 | Profile social links | Public X/Facebook links as implemented; `ProfileSocialLinks` | Missing; cancelled account-linking experiments excluded |
 | Activity | Real events, unread state, mentions/chat filters and server settings | Missing |
 | Chats inbox | Real cached inbox/search, unread badge, long-hold/pencil selection; `ChatsActivity`, `ChatsRepository` | Missing |
@@ -216,3 +216,28 @@ logs were checked. Independently inspected build 11 is ARM64, cryptid=0, unsigne
 with fixtures absent. IPA SHA-256:
 `3c211f82d370d522f2f55f8762bb700ccfb12c81dfc4ef543b85b5dd68b5912c`.
 No real social action or new target-phone check was performed.
+
+### Profile and media candidates (verification in progress)
+
+Build16 compiled on Mac with42 core tests and6 packaging checks passing. Its
+unsigned ARM64 IPA was independently inspected, cryptid0 and fixture-free:
+SHA256 `d4166bafd0f8a94c79edca890fcf50c4512218d6f697188534ffbc22389de8e5`.
+UIKit13 tests executed,12passed/1failed: an incorrect test expected no results
+when repubs off suspends the author predicate. Build17 verifies18directmatches.
+Do not use this as a verified
+replacement for build11. Builds13/14 compiled but each failed2 of9 UIKit tests;
+video decoded-frame seek/pause checks passed before the failed reverse-pinch
+assertion. Build16 targets the actual video viewport and repairs feed reset.
+
+A bounded anonymous profile probe verified current public profile, timeline,
+featured and tag-suggestion schemas (5 GETs, no personal session, no writes).
+It decoded14 first-page timeline entries and10 matching-owner/featured entries.
+This is server read evidence, not verification of logged-in actions or iOS27.
+Reproduce with `swift run --package-path ios/OldFunnyCore OldFunnyProbe
+--anonymous-profile-read-only`; counts vary with the public feed.
+
+Android `ProfileSearchTagsActivity` reuses `TagsEditActivity`: tags.xml gives5
+tags,2–100 UTF16 chars; removable chips preserve pending text, Back commits it,
+recent history holds10, and suggestions use GET `/tags/suggested?q=...` with
+`data.tags.items[].tag`. The native tag-editor source follows this contract;
+its new UI test and two portable contracts require the next candidate build.

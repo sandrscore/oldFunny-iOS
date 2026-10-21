@@ -21,7 +21,7 @@ final class ProfileController: ClassicScreenController {
         search.setImage(UIImage(systemName: "magnifyingglass"), for: .normal); search.tintColor = .white; search.accessibilityLabel = "Advanced Search"
         search.widthAnchor.constraint(equalToConstant: 44).isActive = true; search.addTarget(self, action: #selector(openSearch), for: .touchUpInside)
         let titleRow = UIStackView(arrangedSubviews: [title, search]); titleRow.spacing = 8; classicBar.setCenter(titleRow)
-        classicBar.onTrailing = { [weak self] in self?.loadProfile() }
+        classicBar.onTrailing = { [weak self] in self?.refreshProfile() }
         gridTab.setImage(UIImage(systemName: "square.grid.3x3.fill"), for: .normal); gridTab.accessibilityLabel = "Profile posts"
         infoTab.setImage(UIImage(systemName: "info"), for: .normal); infoTab.accessibilityLabel = "Profile information"
         for button in [gridTab, infoTab] { button.tintColor = ClassicTheme.muted; button.addTarget(self, action: #selector(tabPressed(_:)), for: .touchUpInside); tabs.addArrangedSubview(button) }
@@ -54,6 +54,12 @@ final class ProfileController: ClassicScreenController {
     override func viewDidAppear(_ animated: Bool) { super.viewDidAppear(animated); browser.setActive(!showingInfo) }
     override func viewWillDisappear(_ animated: Bool) { super.viewWillDisappear(animated); browser.setActive(false) }
     @objc private func retryProfile() { loadProfile() }
+    private func refreshProfile() {
+        guard !busy else { return }
+        browser.needsRefresh = true
+        if !showingInfo && view.window != nil { browser.setActive(true) }
+        loadProfile()
+    }
     private func loadProfile() {
         guard !busy else { return }
         loadTask?.cancel(); generation = UUID(); let owner = generation

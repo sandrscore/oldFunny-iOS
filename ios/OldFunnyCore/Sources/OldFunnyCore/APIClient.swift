@@ -310,6 +310,11 @@ public actor APIClient {
         guard user.isSubscribed == enabled else { throw ProfileActionError.unconfirmed }; return user
     }
     private var pinFlights = Set<String>()
+    public func suggestedTags(_ query: String) async throws -> SuggestedTags {
+        let query = ProfileSearchCriteria.normalized(query)
+        guard (2...100).contains(query.utf16.count) else { throw ClientError.invalidInput }
+        return try SuggestedTags(await call(path: "tags/suggested", query: [("q", query)])["data"])
+    }
     public func setProfilePin(userID: String, postID: String, enabled: Bool, session: UUID) async throws -> PostPage {
         guard session == epoch else { throw ClientError.sessionChanged }
         guard credential?.accountID == userID else { throw ClientError.signInRequired }

@@ -1,4 +1,4 @@
-> Build 16 is a profile and media candidate awaiting verification. Build 14 compiled but failed two UIKit checks; build 11 remains the verified fallback.
+> Build17 adds native profile grids, featured browsing, combined search with tag chips/editor, subscriber lists, and confirmed pin/subscribe actions, alongside custom video controls. Mac/UIKit verification is pending. Build16 compiled and passed12/13 UIKit checks; the remaining test expected an empty result despite Android suspending the author predicate when repubs are off. Build17 asserts18 direct matches for that fixture. Build11 below remains the verified fallback. Five bounded anonymous GETs verified current public profile/timeline/featured/tag schemas; no real writes or phone checks were performed.
 
 # oldFunny iOS
 

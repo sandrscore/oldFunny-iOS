@@ -233,13 +233,14 @@ final class PostMediaController: UIViewController, UIScrollViewDelegate, UIGestu
     }
     @objc private func doubleTap() {
         // Android ignores signed-out double taps outside its BR exception.
+        guard !post.isAbused else { return }
         Task { [weak self] in
             guard let self, await app.api.account() != nil, view.window != nil, !obscured else { return }
             toggleSmile()
         }
     }
     @objc private func tripleTap() {
-        guard ViewerInteraction.allowsUnsmile(source: source) else { return }
+        guard !post.isAbused, ViewerInteraction.allowsUnsmile(source: source) else { return }
         Task { [weak self] in
             guard let self, await app.api.account() != nil, view.window != nil, !obscured else { return }
             toggleUnsmile()

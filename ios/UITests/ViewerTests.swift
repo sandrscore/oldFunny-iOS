@@ -40,7 +40,9 @@ final class ViewerTests: XCTestCase {
     func testProfileSearchCombinesTagsOriginalAuthorAndRepubToggle() {
         let app = XCUIApplication(); openOfflineProfile(app)
         app.buttons["Advanced Search"].tap()
-        let tags = app.textFields["profile-tags"]; XCTAssertTrue(tags.waitForExistence(timeout: 5)); tags.tap(); tags.typeText("dogs\n")
+        app.buttons["Add tags"].tap()
+        let tags = app.textFields["profile-tag-input"]; XCTAssertTrue(tags.waitForExistence(timeout: 5)); tags.tap(); tags.typeText("dogs\n")
+        app.buttons["Back"].tap(); XCTAssertTrue(app.buttons["Remove tag dogs"].waitForExistence(timeout: 5))
         app.buttons["profile-media-filter"].tap(); app.buttons["Images"].tap()
         app.buttons["profile-author-filter"].tap()
         let search = app.textFields["user-search"]; XCTAssertTrue(search.waitForExistence(timeout: 5)); search.tap(); search.typeText("Writer")
@@ -49,12 +51,35 @@ final class ViewerTests: XCTestCase {
         waitUntil("The profile search must find all four source-backed Writer posts") { collection.cells.count == 4 }
         XCTAssertTrue(collection.cells["grid-post-GridPost5"].exists)
         app.buttons["Include republished posts"].tap()
-        XCTAssertTrue(app.staticTexts["No matching posts."].waitForExistence(timeout: 5)); XCTAssertFalse(app.buttons["profile-author-filter"].isEnabled)
+        // Android suspends the retained author predicate with repubs disabled.
+        // The fixture has 22 dog-tagged posts, four backed by source objects.
+        waitUntil("Repubs off must retain 18 direct dog posts and suspend the author filter") { collection.cells.count == 18 }
+        XCTAssertTrue(collection.cells["grid-post-GridPost1"].exists)
+        XCTAssertFalse(collection.cells["grid-post-GridPost5"].exists)
+        XCTAssertFalse(app.buttons["profile-author-filter"].isEnabled)
         app.buttons["Include republished posts"].tap()
         waitUntil("Author selection and matches must return with repubs") { collection.cells.count == 4 }
         app.buttons["Search options"].tap(); app.buttons["Clear filters"].tap()
         waitUntil("Clearing filters reuses already-scanned timeline pages") { collection.cells.count == 44 }
         capture("profile-search-restored-results", app: app)
+    }
+    func testProfileTagSuggestionsLimitRemovalAndPendingBackCommit() {
+        let app = XCUIApplication(); openOfflineProfile(app)
+        app.buttons["Advanced Search"].tap(); app.buttons["Add tags"].tap()
+        let input = app.textFields["profile-tag-input"]
+        XCTAssertTrue(input.waitForExistence(timeout: 5)); input.typeText("do")
+        let dogs = app.tables.cells["suggested-tag-dogs"]
+        XCTAssertTrue(dogs.waitForExistence(timeout: 5)); dogs.tap()
+        input.tap(); input.typeText("cats fun extra fifth ")
+        XCTAssertEqual(app.staticTexts["profile-tags-remaining"].label, "0 tags remaining")
+        input.typeText("pending"); app.buttons["Remove tag fun"].tap()
+        XCTAssertEqual(input.value as? String, "pending", "Removing a chip must preserve unfinished input")
+        XCTAssertEqual(app.staticTexts["profile-tags-remaining"].label, "1 tags remaining")
+        app.buttons["Back"].tap()
+        XCTAssertTrue(app.buttons["Remove tag pending"].waitForExistence(timeout: 5)); XCTAssertFalse(app.buttons["Remove tag fun"].exists)
+        app.buttons["Add tags"].tap(); app.buttons["Clear recent tags"].tap()
+        XCTAssertTrue(app.buttons["Remove tag pending"].exists, "Clearing recent tags must preserve the current filter")
+        app.buttons["Back"].tap(); capture("profile-tag-chips-after-back", app: app)
     }
     func testOwnProfilePinReadbackAndGridBadge() {
         let app = XCUIApplication(); openOfflineProfile(app, writes: true)

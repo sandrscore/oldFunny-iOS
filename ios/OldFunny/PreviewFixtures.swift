@@ -19,7 +19,7 @@ private actor PreviewTransport: HTTPTransport {
     private var replyCount: Int { 2 + sentReplies.count - deleted.filter { $0.hasPrefix("PreviewReply") || $0.hasPrefix("FixtureSentReply") }.count }
     func send(_ request: URLRequest) async throws -> HTTPResult {
         let path = request.url?.path ?? "", method = request.httpMethod ?? "GET"
-        if ProcessInfo.processInfo.arguments.contains("--ui-tests-profile") || ProcessInfo.processInfo.arguments.contains("--preview-profile") {
+        if ProcessInfo.processInfo.arguments.contains("--ui-tests-profile") || ProcessInfo.processInfo.arguments.contains("--preview-profile") || ProcessInfo.processInfo.arguments.contains("--preview-profile-search") {
             if let result = try profileRequest(request) { return result }
         }
         if ProcessInfo.processInfo.arguments.contains("--ui-tests-reactions"), ["PUT", "DELETE"].contains(method), path == "/v4/content/PreviewPost/smiles" || path == "/v4/content/PreviewPost/unsmiles" {
@@ -82,6 +82,10 @@ private actor PreviewTransport: HTTPTransport {
         let path = request.url!.path, method = request.httpMethod ?? "GET"
         let query = URLComponents(url: request.url!, resolvingAgainstBaseURL: false)?.queryItems ?? []
         func response(_ data: [String: Any]) throws -> HTTPResult { HTTPResult(status: 200, body: try JSONSerialization.data(withJSONObject: ["status": 200, "data": data])) }
+        if method == "GET", path == "/v4/tags/suggested" {
+            let q = query.first { $0.name == "q" }?.value ?? ""
+            return try response(["tags": ["items": ["dogs", "cats", "fun", "cat_pictures"].filter { $0.hasPrefix(q) }.map { ["tag": $0] }, "paging": ["hasNext": false]]])
+        }
         func user(_ id: String) -> [String: Any] {
             ["id": id, "nick": id == "PreviewUser" ? "ClassicFan" : id == "Writer" ? "Writer" : "ReaderOne", "about": "Offline profile fixture.", "avatar": ["s": "https://preview.invalid/avatar"], "cover_url": "https://preview.invalid/cover", "num": ["created": 44, "featured": 5, "subscribers": 2, "subscriptions": 3], "is_in_subscriptions": subscriptions.contains(id)]
         }

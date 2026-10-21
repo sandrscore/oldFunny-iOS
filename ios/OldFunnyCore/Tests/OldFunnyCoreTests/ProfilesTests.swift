@@ -32,6 +32,25 @@ private func pinPage(_ ids: [String]) -> HTTPResult {
 private func parsedPost(_ source: String) throws -> Post { try Post(JSON.decode(Data(source.utf8))) }
 
 final class ProfilesTests: XCTestCase {
+    func testTagEditorKeepsOrderAndLimitsAcrossRemoval() {
+        var selection = ProfileTagSelection(["#Cats", "dogs", "CATS", "日本", "café", "under_score", "sixth"])
+        XCTAssertEqual(selection.tags, ["cats", "dogs", "日本", "café", "under_score"])
+        XCTAssertFalse(selection.add("sixth")); selection.remove("dogs"); XCTAssertTrue(selection.add("sixth"))
+        XCTAssertEqual(selection.tags.last, "sixth")
+        for invalid in ["a", String(repeating: "a", count: 101), "two words", "bad/tag", "😀😀"] { XCTAssertNil(ProfileTagSelection.valid(invalid)) }
+        XCTAssertEqual(ProfileTagSelection.valid(String(repeating: "é", count: 100))?.utf16.count, 100)
+    }
+    func testTagSuggestionsDecodeActualSchemaAndUseExactQueryEndpoint() async throws {
+        let transport = ProfileTransport([profileHTTP(#"{"status":200,"data":{"tags":{"items":[{"tag":"Cats"},{"tag":"cats"},{"tag":"cat_pictures"},{"tag":"bad/tag"}],"paging":{"hasNext":false}}}}"#)])
+        let api = try profileClient(transport)
+        let tags = try await api.suggestedTags("#Ca")
+        XCTAssertEqual(tags.tags, ["cats", "cat_pictures"])
+        let requests = await transport.recorded(); XCTAssertEqual(requests.count, 1)
+        XCTAssertEqual(requests[0].url!.path, "/v4/tags/suggested")
+        XCTAssertEqual(URLComponents(url: requests[0].url!, resolvingAgainstBaseURL: false)?.queryItems?.first?.value, "ca")
+        do { _ = try await api.suggestedTags("a"); XCTFail() } catch { XCTAssertEqual(error as? ClientError, .invalidInput) }
+        XCTAssertThrowsError(try SuggestedTags(JSON.decode(Data(#"{"tags":{}}"#.utf8))))
+    }
     func testProfileMediaTaxonomyMatchesAndroidRawTypes() {
         for type in ["pic", "text_pic", "caption", "mem", "dem", "comics", "old"] { XCTAssertEqual(ProfileMediaKind.category(type), .images) }
         for type in ["video", "video_clip", "text_video", "coub", "vine"] { XCTAssertEqual(ProfileMediaKind.category(type), .videos) }

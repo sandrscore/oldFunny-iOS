@@ -31,6 +31,11 @@ final class SceneDelegate: UIResponder, UIWindowSceneDelegate {
             if ProcessInfo.processInfo.arguments.contains("--preview-profile") {
                 navigation.setViewControllers([feed, ProfileController(app: app, userID: "PreviewUser", nickname: "ClassicFan")], animated: false)
             }
+            if ProcessInfo.processInfo.arguments.contains("--preview-profile-search") {
+                let browser = ProfileBrowser(app: app, userID: "PreviewUser", nickname: "ClassicFan", search: true)
+                var query = ProfileSearchCriteria(); query.setTags(["cats", "fun"]); browser.setCriteria(query)
+                navigation.setViewControllers([feed, ProfilePostsController(browser: browser)], animated: false)
+            }
             #endif
             window.rootViewController = navigation
         } catch {

@@ -74,7 +74,7 @@ def main():
         run("xcrun", "simctl", "install", device, str(app))
         report.update(simulator_device=kind["name"], simulator_ios=runtime["version"])
         stage = "screenshots"
-        for name, args in [("feed", []), ("sidebar", ["--preview-sidebar"]), ("comments", ["--preview-comments"]), ("information", ["--preview-information"]), ("profile", ["--preview-profile"])]:
+        for name, args in [("feed", []), ("sidebar", ["--preview-sidebar"]), ("comments", ["--preview-comments"]), ("information", ["--preview-information"]), ("profile", ["--preview-profile"]), ("profile-search", ["--preview-profile-search"])]:
             run("xcrun", "simctl", "launch", "--terminate-running-process", device, "mobi.oldfunny.ios", *args)
             time.sleep(3)
             path = output / (name + ".png")
@@ -106,6 +106,12 @@ def main():
         raise
     finally:
         (output / "preview.json").write_text(json.dumps(report, indent=2) + "\n")
+        result = output / "ViewerTests.xcresult"
+        if result.exists():
+            # The root includes issue summaries even when the app terminates
+            # before an XCTest assertion can describe the underlying exception.
+            with (output / "xcresult-summary.json").open("w") as summary, (output / "xcresult-export.log").open("w") as errors:
+                subprocess.run(["xcrun", "xcresulttool", "get", "object", "--legacy", "--format", "json", "--path", str(result)], stdout=summary, stderr=errors, timeout=60)
         if device:
             # This disposable simulator only runs fabricated offline fixtures.
             # Preserve app fault details before deleting it, including when an

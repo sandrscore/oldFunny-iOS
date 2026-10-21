@@ -1,14 +1,17 @@
 import UIKit
 
-final class ProfilePostsController: ClassicScreenController, UICollectionViewDataSource, UICollectionViewDelegateFlowLayout, UITextFieldDelegate {
+final class ProfilePostsController: ClassicScreenController, UICollectionViewDataSource, UICollectionViewDelegateFlowLayout {
     let browser: ProfileBrowser
     private let embedded: Bool
     private let grid = UICollectionView(frame: .zero, collectionViewLayout: UICollectionViewFlowLayout())
     private let status = StatusView(), retryBanner = UIButton(type: .custom)
-    private let tags = ClassicTextField(), mediaChoice = UIButton(type: .custom), authorChoice = UIButton(type: .custom)
+    private let tags = ProfileTagChips(), mediaChoice = UIButton(type: .custom), authorChoice = UIButton(type: .custom)
     private let repubs = UIButton(type: .custom), clearAuthor = UIButton(type: .custom)
+    private let authorAvatar = RemoteAvatarView()
+    private var selectedAuthorAvatar: URL?
     private var gridTop: NSLayoutYAxisAnchor!
     private var renderedRevision: UInt64?
+    private var tagOrder = [String]()
     init(browser: ProfileBrowser, embedded: Bool = false) { self.browser = browser; self.embedded = embedded; super.init(nibName: nil, bundle: nil) }
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
     override func viewDidLoad() {
@@ -17,6 +20,10 @@ final class ProfilePostsController: ClassicScreenController, UICollectionViewDat
         else { classicBar.setTitle(browser.criteria != nil ? "Advanced Search" : "\(browser.nickname) · Featured") }
         classicBar.onTrailing = { [weak self] in self?.browser.refresh() }
         if browser.criteria != nil {
+            let title = UILabel(), subtitle = UILabel()
+            title.text = "Advanced Search"; title.textColor = .white; title.font = ClassicTheme.font(18, bold: true)
+            subtitle.text = browser.nickname; subtitle.textColor = ClassicTheme.muted; subtitle.font = ClassicTheme.font(12)
+            let heading = UIStackView(arrangedSubviews: [title, subtitle]); heading.axis = .vertical; heading.spacing = 1; classicBar.setCenter(heading)
             classicBar.trailing.setImage(ClassicGlyph.account.image, for: .normal); classicBar.trailing.accessibilityLabel = "Search options"
             classicBar.onTrailing = { [weak self] in self?.searchOptions() }
         }
@@ -51,43 +58,53 @@ final class ProfilePostsController: ClassicScreenController, UICollectionViewDat
             else { status.message(browser.hasNext ? "Searching older posts…" : "No matching posts.", canRetry: browser.hasNext) }
         } else { status.isHidden = true }
         if let criteria = browser.criteria {
+            tagOrder = tagOrder.filter { criteria.tags.contains($0) }
+            tagOrder += criteria.tags.subtracting(Set(tagOrder)).sorted()
+            tags.show(tagOrder)
             mediaChoice.setTitle(criteria.media.title + " ▾", for: .normal)
             authorChoice.setTitle(criteria.authorID == nil ? "Any author ▾" : criteria.authorNickname, for: .normal)
             authorChoice.isEnabled = criteria.includeRepubs; clearAuthor.isEnabled = criteria.includeRepubs
             clearAuthor.isHidden = criteria.authorID == nil; authorChoice.alpha = criteria.includeRepubs ? 1 : 0.4
+            authorAvatar.isHidden = criteria.authorID == nil; authorAvatar.alpha = criteria.includeRepubs ? 1 : 0.4
             repubs.setTitleColor(criteria.includeRepubs ? .systemRed : ClassicTheme.muted, for: .normal)
             repubs.accessibilityValue = criteria.includeRepubs ? "Included" : "Excluded"
         }
     }
     private func addFilters() {
-        tags.attributedPlaceholder = NSAttributedString(string: "Search #tags", attributes: [.foregroundColor: ClassicTheme.muted])
-        tags.textColor = ClassicTheme.text; tags.backgroundColor = ClassicTheme.drawer; tags.font = ClassicTheme.font(14); tags.layer.cornerRadius = 4
-        tags.accessibilityIdentifier = "profile-tags"; tags.returnKeyType = .search; tags.delegate = self; tags.autocapitalizationType = .none
-        tags.addTarget(self, action: #selector(tagsChanged), for: .editingChanged)
+        tags.accessibilityIdentifier = "profile-tags"
+        tags.onAdd = { [weak self] in self?.chooseTags() }
+        tags.onRemove = { [weak self] tag in
+            guard let self, var query = browser.criteria else { return }
+            query.setTags(query.tags.filter { $0 != tag }); browser.setCriteria(query)
+        }
         for button in [mediaChoice, authorChoice, clearAuthor, repubs] { button.titleLabel?.font = ClassicTheme.font(14); button.setTitleColor(ClassicTheme.text, for: .normal); button.heightAnchor.constraint(equalToConstant: 40).isActive = true }
         repubs.setTitle("↻", for: .normal); repubs.titleLabel?.font = ClassicTheme.font(28); repubs.accessibilityLabel = "Include republished posts"
         repubs.widthAnchor.constraint(equalToConstant: 44).isActive = true; repubs.addTarget(self, action: #selector(toggleRepubs), for: .touchUpInside)
         mediaChoice.addTarget(self, action: #selector(selectMedia), for: .touchUpInside); mediaChoice.accessibilityIdentifier = "profile-media-filter"
         authorChoice.addTarget(self, action: #selector(selectAuthor), for: .touchUpInside); authorChoice.accessibilityIdentifier = "profile-author-filter"
-        clearAuthor.setTitle("×", for: .normal); clearAuthor.accessibilityLabel = "Clear author filter"; clearAuthor.widthAnchor.constraint(equalToConstant: 32).isActive = true
+        clearAuthor.setTitle("×", for: .normal); clearAuthor.accessibilityLabel = "Clear author filter"; let clearWidth = clearAuthor.widthAnchor.constraint(equalToConstant: 32); clearWidth.priority = .init(999); clearWidth.isActive = true
         clearAuthor.addTarget(self, action: #selector(removeAuthor), for: .touchUpInside)
         let top = UIStackView(arrangedSubviews: [tags, repubs]); top.spacing = 6
-        let lower = UIStackView(arrangedSubviews: [mediaChoice, authorChoice, clearAuthor]); lower.spacing = 12
+        let avatarWidth = authorAvatar.widthAnchor.constraint(equalToConstant: 28); avatarWidth.priority = .init(999); avatarWidth.isActive = true; authorAvatar.heightAnchor.constraint(equalToConstant: 28).isActive = true
+        let lower = UIStackView(arrangedSubviews: [mediaChoice, authorAvatar, authorChoice, clearAuthor]); lower.spacing = 8; lower.alignment = .center
         mediaChoice.widthAnchor.constraint(equalToConstant: 145).isActive = true
         let rows = UIStackView(arrangedSubviews: [top, lower]); rows.axis = .vertical; rows.spacing = 2
         rows.backgroundColor = ClassicTheme.bar; rows.isLayoutMarginsRelativeArrangement = true; rows.layoutMargins = UIEdgeInsets(top: 6, left: 10, bottom: 5, right: 6)
         rows.translatesAutoresizingMaskIntoConstraints = false; contentView.addSubview(rows)
-        NSLayoutConstraint.activate([rows.topAnchor.constraint(equalTo: contentView.topAnchor), rows.leadingAnchor.constraint(equalTo: contentView.leadingAnchor), rows.trailingAnchor.constraint(equalTo: contentView.trailingAnchor), tags.heightAnchor.constraint(equalToConstant: 36)])
+        NSLayoutConstraint.activate([rows.topAnchor.constraint(equalTo: contentView.topAnchor), rows.leadingAnchor.constraint(equalTo: contentView.leadingAnchor), rows.trailingAnchor.constraint(equalTo: contentView.trailingAnchor)])
         gridTop = rows.bottomAnchor
     }
-    @objc private func tagsChanged() {
-        guard var query = browser.criteria else { return }
-        query.setTags((tags.text ?? "").components(separatedBy: CharacterSet.whitespacesAndNewlines.union(CharacterSet(charactersIn: ",#"))))
-        browser.setCriteria(query)
+    private func chooseTags() {
+        guard browser.criteria != nil else { return }
+        let editor = ProfileTagEditor(app: browser.app, tags: tagOrder) { [weak self] values in
+            guard let self, var query = browser.criteria else { return }
+            tagOrder = values
+            query.setTags(values); browser.setCriteria(query)
+        }
+        navigationController?.pushViewController(editor, animated: true)
     }
-    func textFieldShouldReturn(_ textField: UITextField) -> Bool { textField.resignFirstResponder(); tagsChanged(); return true }
     @objc private func toggleRepubs() { guard var query = browser.criteria else { return }; query.includeRepubs.toggle(); browser.setCriteria(query) }
-    @objc private func removeAuthor() { guard var query = browser.criteria else { return }; query.authorID = nil; query.authorNickname = ""; browser.setCriteria(query) }
+    @objc private func removeAuthor() { guard var query = browser.criteria else { return }; query.authorID = nil; query.authorNickname = ""; selectedAuthorAvatar = nil; browser.setCriteria(query) }
     @objc private func selectMedia() {
         let sheet = UIAlertController(title: "Media", message: nil, preferredStyle: .actionSheet)
         for media in ProfileMediaKind.allCases { sheet.addAction(UIAlertAction(title: media.title, style: .default) { [weak self] _ in
@@ -98,14 +115,15 @@ final class ProfilePostsController: ClassicScreenController, UICollectionViewDat
     @objc private func selectAuthor() {
         view.endEditing(true)
         let picker = UserListController(app: browser.app, title: "Any author") { [weak self] user in
-            guard let self, var query = browser.criteria else { return }; query.authorID = user.id; query.authorNickname = user.nickname; browser.setCriteria(query)
+            guard let self, var query = browser.criteria else { return }; query.authorID = user.id; query.authorNickname = user.nickname
+            selectedAuthorAvatar = user.avatarURL; authorAvatar.set(selectedAuthorAvatar, loader: browser.app.media); browser.setCriteria(query)
         }
         navigationController?.pushViewController(picker, animated: true)
     }
     private func searchOptions() {
         let sheet = UIAlertController(title: nil, message: nil, preferredStyle: .actionSheet)
         if browser.criteria != ProfileSearchCriteria() { sheet.addAction(UIAlertAction(title: "Clear filters", style: .default) { [weak self] _ in
-            self?.tags.text = ""; self?.browser.setCriteria(ProfileSearchCriteria())
+            self?.selectedAuthorAvatar = nil; self?.browser.setCriteria(ProfileSearchCriteria())
         }) }
         sheet.addAction(UIAlertAction(title: "Cancel", style: .cancel)); sheet.popoverPresentationController?.sourceView = classicBar.trailing; present(sheet, animated: true)
     }

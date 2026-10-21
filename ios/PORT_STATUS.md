@@ -1,3 +1,16 @@
+> Candidate16 compiled with42 Mac core tests and6 packaging checks passing;
+> 12/13 UIKit tests passed; the remaining repub-toggle assertion contradicted Android
+> semantics (author predicate is suspended). Build17 corrects it to18 direct matches. Independently inspected IPA SHA256:
+> `d4166bafd0f8a94c79edca890fcf50c4512218d6f697188534ffbc22389de8e5`.
+> It contains custom video/seek controls and native profile/grid/featured/filter/
+> subscriber/pin/subscribe source. Newer tag-editor source is awaiting the next
+> candidate; its12 portable profile tests pass. Build11 below remains the fully
+> verified offline checkpoint until the new UIKit suite passes.
+>
+> Five bounded anonymous GETs verified current public profile/timeline/featured/
+> tag-suggestion schemas, with no credentials or social/read writes. No new
+> target-phone validation has been performed.
+
 # Native iOS port status
 
 Target: iPhone 16 / user-reported iOS 27.0.1. Bundle: `mobi.oldfunny.ios`.

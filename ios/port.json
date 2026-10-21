@@ -4,7 +4,7 @@
   "product": "oldFunny",
   "bundle_identifier": "mobi.oldfunny.ios",
   "version": "0.3.0",
-  "build": "16",
+  "build": "17",
   "minimum_ios": "16.0",
   "target": {
     "device": "iPhone 16",
@@ -39,7 +39,7 @@
     "captcha_handoff": true,
     "session_survives_relaunch": "unverified"
   },
-  "ui_phase": "Candidate 16: custom video/seek and source-aware profile grids, featured, filters, pins and subscriptions; awaiting Mac/UIKit verification",
+  "ui_phase": "Candidate 17: profile grids, featured/search, tag chips/editor/suggestions/recents, confirmed pins/subscriptions and custom video; awaiting Mac/UIKit verification",
   "simulator_previews": "Offline fixtures compiled only with CLASSIC_UI_PREVIEW; absent from Release",
   "simulator_ui": {
     "device": "iPhone 16",
@@ -174,5 +174,16 @@
       "failed": 0
     },
     "phone_tested": false
+  },
+  "anonymous_profile_probe": {
+    "date_utc": "2026-10-21",
+    "authenticated": false,
+    "requests": 5,
+    "public_profile_decoded": true,
+    "timeline_decoded": true,
+    "featured_decoded": true,
+    "tag_suggestions_decoded": true,
+    "real_writes": false,
+    "runtime_tested": false
   }
 }
