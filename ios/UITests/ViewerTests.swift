@@ -79,10 +79,10 @@ final class ViewerTests: XCTestCase {
         app.tables.cells["comment-row-PreviewReply1"].tap(); app.tables.cells["comment-row-PreviewReply2"].tap()
         XCTAssertTrue(app.staticTexts["2 selected"].exists); confirmBulkDelete(app, count: 2)
         XCTAssertTrue(app.staticTexts["0 replies"].waitForExistence(timeout: 5)); XCTAssertTrue(root.exists)
-        XCTAssertEqual(app.staticTexts["Comment deleted."].count, 2)
+        XCTAssertEqual(app.staticTexts.matching(NSPredicate(format: "label == %@", "Comment deleted.")).count, 2)
         XCTAssertEqual(app.otherElements["comments-screen"].value as? String, "selected=; request=1|POST|/v4/content/PreviewPost/comments?method=DELETE|id=PreviewReply1,PreviewReply2")
         XCTAssertEqual(app.textFields["comment-draft"].value as? String, "Reply draft"); XCTAssertTrue(app.buttons["remove-comment-attachment"].exists)
-        app.buttons["Refresh"].tap(); XCTAssertTrue(root.waitForExistence(timeout: 5)); XCTAssertEqual(app.staticTexts["Comment deleted."].count, 2)
+        app.buttons["Refresh"].tap(); XCTAssertTrue(root.waitForExistence(timeout: 5)); XCTAssertEqual(app.staticTexts.matching(NSPredicate(format: "label == %@", "Comment deleted.")).count, 2)
         capture("bulk-replies-root-and-deleted-placeholders", app: app)
         app.buttons["Back"].tap(); XCTAssertTrue(app.staticTexts["3 comments"].waitForExistence(timeout: 5))
         app.buttons["Back"].tap(); XCTAssertTrue(app.buttons["3 comments"].waitForExistence(timeout: 5))
@@ -343,7 +343,7 @@ final class ViewerTests: XCTestCase {
         waitUntil("A later double tap must send exactly one smile") { media.value as? String == "unsmiles,smiles" }
         XCTAssertTrue(app.buttons["129 smiles, remove smile"].exists)
     }
-    func testConfirmedReplyAndRootDeletionUpdatePostCountWithoutChangingReplyCountTwice() {
+    func testConfirmedReplyAndRootDeletionCloseThreadAndRemoveRepliesFromPostTotalOnce() {
         let app = XCUIApplication(); app.launchArguments = ["--ui-tests", "--ui-tests-account", "--ui-tests-accepted-comments"]; app.launch()
         XCTAssertTrue(app.buttons["5 comments"].waitForExistence(timeout: 10)); app.buttons["5 comments"].tap()
         let replies = app.staticTexts["2 replies"].firstMatch
@@ -361,14 +361,14 @@ final class ViewerTests: XCTestCase {
         XCTAssertTrue(root.waitForExistence(timeout: 5)); root.press(forDuration: 1)
         app.buttons["Delete"].tap()
         XCTAssertTrue(app.alerts["Delete this comment?"].waitForExistence(timeout: 5)); app.alerts.buttons["Delete"].tap()
-        XCTAssertTrue(app.staticTexts["Comment deleted."].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.staticTexts["3 replies"].firstMatch.exists)
-        capture("root-deleted-replies-retained", app: app)
+        XCTAssertTrue(app.staticTexts["2 comments"].waitForExistence(timeout: 5), "Deleting root plus three replies must close the reply screen and leave two comments")
+        XCTAssertFalse(root.exists); XCTAssertFalse(app.staticTexts["3 replies"].exists)
+        XCTAssertTrue(app.staticTexts["An attached post, right in the thread."].exists)
+        app.buttons["Refresh"].tap(); XCTAssertTrue(app.staticTexts["2 comments"].waitForExistence(timeout: 5))
+        XCTAssertFalse(root.exists)
+        capture("root-deletion-returns-and-removes-thread-total", app: app)
         app.buttons["Back"].tap()
-        XCTAssertTrue(app.staticTexts["5 comments"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.staticTexts["3 replies"].exists)
-        app.buttons["Back"].tap()
-        XCTAssertTrue(app.buttons["5 comments"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["2 comments"].waitForExistence(timeout: 5))
     }
     func testUnconfirmedInlineReactionKeepsThreadAndDraft() {
         let app = XCUIApplication(); app.launchArguments = ["--ui-tests", "--ui-tests-account"]; app.launch()

@@ -8,7 +8,7 @@ final class CommentsController: ClassicScreenController, UITableViewDataSource, 
     private let postAuthorID: String?
     var onClose: (() -> Void)?
     var onCountChange: ((Int) -> Void)?
-    private var onPostCountDelta: ((Int) -> Void)?, onRootDeleted: (() -> Void)?
+    private var onPostCountDelta: ((Int) -> Void)?, onRootDeleted: ((Int) -> Void)?
     var isEmbeddedPanel = false
     private let table = UITableView(frame: .zero, style: .plain)
     private let text = ClassicTextField(), send = ClassicTheme.button(.send, label: "Send comment")
@@ -281,17 +281,31 @@ final class CommentsController: ClassicScreenController, UITableViewDataSource, 
             child = CommentsController(app: app, postID: postID, parentID: comment.id, count: replyCounts[comment.id] ?? comment.replies, postAuthorID: postAuthorID, rootComment: comment)
             child.onCountChange = { [weak self] count in self?.replyCounts[comment.id] = count; self?.table.reloadData() }
             child.onPostCountDelta = { [weak self] delta in self?.applyPostCountDelta(delta) }
-            child.onRootDeleted = { [weak self] in
+            child.onRootDeleted = { [weak self] replies in
                 guard let self else { return }
-                if let index = comments.firstIndex(where: { $0.id == comment.id }) { comments[index].markDeleted() }
-                applyPostCountDelta(-1); table.reloadData()
+                removeMainRoot(id: comment.id, replies: replies)
             }
             replyThreads[comment.id] = child
         }
         navigationController?.pushViewController(child, animated: true)
     }
-    private func markRootDeleted() {
-        rootComment?.markDeleted(); if isViewLoaded { table.reloadData() }
+    private func removeMainRoot(id: String, replies: Int) {
+        if let count { self.count = max(0, count - min(count, max(0, replies)) - 1) }
+        comments.removeAll { $0.id == id }; replyCounts[id] = nil; replyThreads[id] = nil
+        updateCount(); table.reloadData()
+        if comments.isEmpty {
+            let empty = UILabel(); empty.text = "No comments yet."; empty.textColor = .lightGray; empty.textAlignment = .center
+            table.backgroundView = empty
+        }
+    }
+    private func returnAfterRootDeletion() {
+        let back: () -> Void = { [weak self] in self?.navigationController?.popViewController(animated: true) }
+        // An offline/fast receipt can arrive during the confirmation alert's
+        // dismissal. Finish that transition before popping its presenter.
+        if let transition = presentedViewController?.transitionCoordinator,
+           transition.animate(alongsideTransition: nil, completion: { _ in back() }) { return }
+        if presentedViewController != nil { dismiss(animated: false, completion: back) }
+        else { back() }
     }
     private var canSelectComments: Bool {
         accountID != nil && accountID == postAuthorID && (count ?? 0) > 0
@@ -441,14 +455,20 @@ final class CommentsController: ClassicScreenController, UITableViewDataSource, 
                 guard owner == generation else { return }
                 if kind == "delete" {
                     if comment.id == parentID {
-                        markRootDeleted(); onRootDeleted?()
+                        // AnswersFragment's successful root deletion removes
+                        // the complete thread, reports its total, and finishes
+                        // AnswersActivity. Keep late read callbacks detached.
+                        let replies = count ?? comment.replies
+                        onRootDeleted?(replies)
+                        onPostCountDelta = nil; onCountChange = nil; refreshWhenIdle = false
+                        returnAfterRootDeletion()
+                        return
+                    } else if parentID == nil {
+                        removeMainRoot(id: comment.id, replies: replyCounts[comment.id] ?? comment.replies)
                     } else {
-                        if parentID != nil || comment.replies > 0 {
-                            if let index = comments.firstIndex(where: { $0.id == comment.id }) { comments[index].markDeleted() }
-                        } else { comments.removeAll { $0.id == comment.id } }
+                        if let index = comments.firstIndex(where: { $0.id == comment.id }) { comments[index].markDeleted() }
                         if let count { self.count = max(0, count - 1); updateCount() }
-                        if parentID != nil { onPostCountDelta?(-1) }
-                        else { replyThreads[comment.id]?.markRootDeleted() }
+                        onPostCountDelta?(-1)
                     }
                     table.reloadData()
                 }

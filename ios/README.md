@@ -1,7 +1,7 @@
 # oldFunny iOS
 
-**Verified checkpoint: 0.3.0/build 21. Candidate build 22 adds comment selection
-and bulk deletion; its Mac/UIKit checks are pending. Full parity is incomplete.**
+**Verified checkpoint: 0.3.0/build 21. Candidate build 23 verifies bulk selection
+and corrects root-deletion return/counts; its Mac/UIKit checks are pending. Full parity is incomplete.**
 
 [Download the build 21 unsigned IPA artifact ZIP](https://github.com/sandrscore/oldFunny-iOS/actions/runs/39539381754/artifacts/12318721806),
 extract the IPA and update through Zeus. SHA-256:
@@ -21,13 +21,18 @@ first-tap keyboard dismissal, profile navigation, unconfirmed-draft retention an
 identity removal after editing the name. These are iPhone 16 / iOS 18.5 fixtures,
 separate from server notifications and actual target-phone validation.
 
-Candidate 22 adds original-post-author pencil/hold selection, stable row highlight,
+Candidate 22 added original-post-author pencil/hold selection, stable row highlight,
 ordered bulk requests and positional acknowledgments. Only confirmed rows affect
 counts; failed rows stay selected. Main-root removal counts its replies; reply
 removal retains deleted positions and root context. An uncertain receipt locks
 selection until a replacement read succeeds, including after a failed refresh.
-Three added UIKit cases exercise these paths and attachment holds. 63 Linux core
-tests and 6 packaging checks pass; native Mac/UIKit verification is pending.
+The app compiled with 63 Mac core tests and six packaging checks passing. The
+new test target failed to compile because duplicate-placeholder counts used an
+element instead of a query; none of the 20 UIKit cases executed. Candidate 23
+corrects those queries and the traced root-deletion behavior: deleting a root
+closes its reply screen and removes root plus replies from the post total. The
+old retained-thread fixture expectation is replaced with the actual Android
+contract. All 20 UIKit cases remain required; native verification is pending.
 
 Remaining work includes ordinary comment tap/options parity, reply-depth/state/
 layout rules, mention-panel physics, large-profile indexing/options, feeds/reads,

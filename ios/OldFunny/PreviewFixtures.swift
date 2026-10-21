@@ -71,7 +71,12 @@ private actor PreviewTransport: HTTPTransport {
                 let id = request.url!.lastPathComponent
                 let known = ["PreviewComment1", "PreviewComment2", "PreviewComment3", "PreviewReply1", "PreviewReply2"] + sentReplies.compactMap { $0["id"] as? String }
                 guard path.hasPrefix("/v4/content/PreviewPost/comments/"), known.contains(id), !deleted.contains(id) else { throw ClientError.invalidInput }
-                deleted.insert(id); return HTTPResult(status: 204, body: Data())
+                deleted.insert(id)
+                if id.hasPrefix("PreviewComment") { bulkRemovedRoots.insert(id) }
+                if id == "PreviewComment1" {
+                    deleted.formUnion(["PreviewReply1", "PreviewReply2"] + sentReplies.compactMap { $0["id"] as? String })
+                }
+                return HTTPResult(status: 204, body: Data())
             }
         }
         guard method == "GET" || (method == "POST" && path == "/v4/feeds/collective") else { throw ClientError.invalidInput }

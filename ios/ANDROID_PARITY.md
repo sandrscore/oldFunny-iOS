@@ -93,7 +93,7 @@ post panels. Process-death restoration and every gesture edge case remain checks
 | Post sharing | Public links, internal post navigation, platform share targets | Partial: iOS share sheet and copy link; in-app inbound link routing missing |
 | Comment layout | Blue author, round avatar, date, proportional preview, replies/smile counts; native CommentViews/PictureComments | Partial: basic rows/previews, inline net reactions and retained deleted context. Current final APK confirms ordinary row taps open options, while reply-count taps open threads; native direct row-to-reply behavior and depth30/display-depth10 rules still need correction. Exact abused/hidden/top/recent-count states remain gaps. |
 | Thread paging | Cursor continuation, dedupe, retry without losing loaded rows | Source, endpoint/server pagination checks pending |
-| Replies | Root parent context, recipient chip, mentions, retained thread; `AnswersFragment` | Build 19 offline UIKit verifies retained root, recipient, draft, separate root GET/recipient POST and root deletion retaining replies/counts. Mention UI checks continue in candidate 21; depth/full state/process cases remain gaps. |
+| Replies | Root parent context, recipient chip, mentions, retained thread; `AnswersFragment` | Build 21 verifies root/recipient/draft and send counts. Candidate 23 supersedes the earlier root-deletion fixture: actual Android success closes the reply screen and removes root plus replies from post total. Native result still pending; full state/depth/process rules remain gaps. |
 | Comment options | Copy, smile/unsmile, reply, report, owned deletion | Per-row and hold actions with serialized account-fenced writes. Build 19 verifies rejected reaction retains draft and confirmed fixture deletion/counts; server/device checks and broader error states remain. |
 | Comment selection | Pencil/hold multi-selection, permitted rows, immediate partial-success counts; `CommentDelete` | Candidate 22 source: original-author pencil/hold mode, stable selected IDs/highlights, root exclusion in replies, partial/uncertain receipts and root cascade counts. 63 Linux core tests and parser pass; three new UIKit cases are source only, Mac/UIKit verification pending. |
 | Comment delete ack | Empty successful bulk results mean success only with explicit outer status | Candidate 22 receipt parser follows explicit successful empty array and positional 2xx results, preserves failures/missing rows and rejects unknown envelopes. New bulk endpoint uses POST method=DELETE without replay. 5 bulk/owner tests pass; native integration awaits Mac/UIKit. |
@@ -364,3 +364,32 @@ native syntax parsing pass. Three added actual UI tests cover partial root count
 empty reply receipts, root exclusion, full attachment hold, uncertain write and
 failed/successful read recovery. The 20-case Mac/UIKit run is pending. Ordinary
 row tap/options and depth/state rules are explicitly still incomplete.
+
+### Build 22 results and candidate 23: compilation plus root-deletion correction
+
+Build 22 source `f73e27b4e190992d98ee4154812fd334d3f995f3`, run 39541214313,
+compiled Release/Debug app with 63 Mac core/six Python checks passing. The UI test
+target failed to compile on two XCUIElement.count uses, so **zero of 20 UI tests
+executed**. The downloaded IPA independently verifies ARM64/cryptid0/no fixtures,
+SHA `383e201c9d298708b9c6a88ed0ac7db9ae8014a54071928a248a0e4a22a49175`.
+Candidate 23 counts the matching label query, preserving the exact two-row checks.
+
+Further native tracing corrects a substantive earlier fixture assumption:
+CommentsFragment$h calls a(Comment) on start, b(Comment) on success. In Answers,
+a(root) shows progress (V is a progress dialog, not a close operation); b(root)
+subtracts replies+1, sets deleted and calls AnswersActivity.a(root), which finishes
+the reply screen. CommentsFragmentImpl's single-root deletion also subtracts its
+replies before the common -1/removal. Successful root deletion therefore removes
+the whole thread and returns to the main list. The old build-11/21 retained-root
+success expectation was a fixture implementation check and did not match this
+native contract. Pre-existing deleted-context rendering is a separate state case.
+
+Candidate 23 applies the complete root delta, evicts its cached thread, detaches
+obsolete child read/count callbacks and returns after confirmation dismissal.
+The offline receipt now cascades root/replies and the existing test verifies
+6 total -> delete root+3 replies -> 2 total, automatic return, Refresh and footer
+without double count. Reply-only deletion retains placeholders as before.
+The frozen candidate includes these native/fixture changes and test compilation
+fixes; the separate local menu/depth/dot/page40 policy prototype is excluded.
+All 20 actual UI tests remain required; Mac/UI execution is pending. No live
+social write, new phone test or complete-parity claim is made.

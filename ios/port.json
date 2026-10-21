@@ -4,7 +4,7 @@
   "product": "oldFunny",
   "bundle_identifier": "mobi.oldfunny.ios",
   "version": "0.3.0",
-  "build": "22",
+  "build": "23",
   "minimum_ios": "16.0",
   "target": {
     "device": "iPhone 16",
@@ -39,7 +39,7 @@
     "captcha_handoff": true,
     "session_survives_relaunch": "unverified"
   },
-  "ui_phase": "Build 22 bulk selection candidate; verified checkpoint 21 passed 17 UIKit tests",
+  "ui_phase": "Build 23: fix bulk test compilation and native root deletion close/cascade; verified21 remains checkpoint",
   "simulator_previews": "Offline fixtures compiled only with CLASSIC_UI_PREVIEW; absent from Release",
   "simulator_ui": {
     "device": "iPhone 16",
@@ -280,6 +280,23 @@
       "executed": 17,
       "passed": 17,
       "failed": 0
+    },
+    "phone_tested": false
+  },
+  "compiled_candidate_build22": {
+    "source_commit": "f73e27b4e190992d98ee4154812fd334d3f995f3",
+    "run_url": "https://github.com/sandrscore/oldFunny-iOS/actions/runs/39541214313",
+    "version": "0.3.0",
+    "build": "22",
+    "sha256": "383e201c9d298708b9c6a88ed0ac7db9ae8014a54071928a248a0e4a22a49175",
+    "contains_arm64": true,
+    "main_executable_cryptid": 0,
+    "fixture_code_absent": true,
+    "ui_gesture_tests": {
+      "expected": 20,
+      "executed": 0,
+      "test_target_compiled": false,
+      "failure": "Duplicate placeholder count used XCUIElement instead of XCUIElementQuery"
     },
     "phone_tested": false
   }
