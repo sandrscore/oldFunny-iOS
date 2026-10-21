@@ -1,13 +1,12 @@
-> Candidate18 adds bounded per-frame GIF playback, static previews, wrapping tags
-> and total-grid accessibility/count checks. It is not Mac/UI verified yet.
-> Build17 compiled with44 Mac core and6 packaging checks;14 UIKit tests executed,
->13passed/1gridcount assertion failed. Tag editor/suggestions/5-tag limit/removal/
->pending Back/recent clearing all passed, alongside custom video and profile
->grid/featured/pin/subscribe flows. Total-item/visible-cell diagnostics are in18.
-> Build17 IPA independently verified ARM64,cryptid0,fixture-free, SHA256:
-> `ef95e0b5550a81bf5a21db7d2e6269770b64e6b4fd3ae4edd49b7124a10b8fee`.
-> All48 local portable tests and6 packaging checks pass. Build11 below remains
->the last fully green offline checkpoint; no current target-phone/live-write test.
+> Candidate19 fixes GIF dimensions using per-frame metadata when global dimensions
+> are absent; the runtime result is still pending. Build18 compiled with48Mac
+> core/6Python checks and15UIKit tests executed,14passed/1GIFloadfailed. All profile/
+> search/tag/pin/subscribe, video and comment checks passed. The grid log confirms
+>18totalitems versus15accessiblecells, with first/last-ID and scroll checks.
+> Build18IPA independently verified ARM64/cryptid0/fixture-free, SHA256:
+> `b15f9a021c3557f073f9a0b2ef6c0c3e614017ece8096b2e3483f49b0657337a`.
+> No target-phone or live social write check. Build11 below remains last fully
+> green offline checkpoint until every expected current test passes.
 
 # Native iOS port status
 

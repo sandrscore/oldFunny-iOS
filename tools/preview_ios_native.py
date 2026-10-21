@@ -43,8 +43,8 @@ def main():
         run("swift", str(ROOT / "tools/render_ios_video_fixture.swift"), str(fixture), str(audio), timeout=180)
         report["generated_video_fixture"] = {"duration_ms": 12400, "audio": True, "source": "synthetic CI output"}
         gif_fixture = output / "fixture-animation.gif"
-        run("swift", str(ROOT / "tools/render_ios_gif_fixture.swift"), str(gif_fixture), timeout=120)
-        report["generated_gif_fixture"] = {"frames": 82, "uneven_delays": True, "source": "synthetic CI output"}
+        gif_metadata = json.loads(run("swift", str(ROOT / "tools/render_ios_gif_fixture.swift"), str(gif_fixture), timeout=120))
+        report["generated_gif_fixture"] = {**gif_metadata, "uneven_delays": True, "source": "synthetic CI output"}
         stage = "build"
         generate(IOS / "OldFunny.xcodeproj")
         work = ROOT / ".ios-work/ios-port/preview-build"

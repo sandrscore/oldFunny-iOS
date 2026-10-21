@@ -266,3 +266,21 @@ phase, last frame81, looping and paused panel return. All48 portable tests pass,
 but native GIF compile/UI test has not yet run. Source files and fixtures remain
 separate from the independently inspected build17IPA. No Android changes or live
 social writes were made.
+
+### Candidate18 results and focused19fix
+
+Build18 compiled with48Mac/6Python checks,15UIKit executed14pass/1GIFloadfailure.
+All profile/search/tag/pin/subscribe, retained video and comments tests passed.
+The actual trace is `data source=18 posts, accessibility cells=15`: prior failing
+search assertions counted viewport cells. New checks verify actual item counts,
+source/direct IDs, first/last reachability and query scroll reset. Wrapped tags
+remain tappable; selected-author retention/disable/restore and Clear filters pass.
+
+The GIF test failed before the animation view appeared. Candidate19 falls back
+to first-frame pixel dimensions when ImageIO global properties lack them and
+records generated fixture global/frame metadata. Native GIF runtime remains
+unverified until its complete pixel/timing/loop/pause test passes. 19 isolates
+this fix; unfinished mention prototypes in the original workspace are excluded.
+Build18IPA independently verified ARM64/cryptid0/no fixtures:
+`b15f9a021c3557f073f9a0b2ef6c0c3e614017ece8096b2e3483f49b0657337a`.
+No target-phone/live-social check and no Android changes.

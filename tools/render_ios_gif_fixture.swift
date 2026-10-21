@@ -23,4 +23,11 @@ for (index, expected) in [(0, 1.2), (1, 2.4), (81, 2.4)] {
     let delay = (gif?[kCGImagePropertyGIFUnclampedDelayTime] as? NSNumber)?.doubleValue ?? (gif?[kCGImagePropertyGIFDelayTime] as? NSNumber)?.doubleValue ?? 0
     guard abs(delay - expected) < 0.01 else { fatalError("GIF delay metadata changed") }
 }
-print("Generated and independently decoded 82-frame uneven-delay GIF fixture")
+let global = CGImageSourceCopyProperties(source, nil) as? [CFString: Any]
+let first = CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [CFString: Any]
+let metadata: [String: Any] = ["frames": CGImageSourceGetCount(source),
+    "global_width": (global?[kCGImagePropertyPixelWidth] as? NSNumber)?.intValue ?? 0,
+    "global_height": (global?[kCGImagePropertyPixelHeight] as? NSNumber)?.intValue ?? 0,
+    "first_width": (first?[kCGImagePropertyPixelWidth] as? NSNumber)?.intValue ?? 0,
+    "first_height": (first?[kCGImagePropertyPixelHeight] as? NSNumber)?.intValue ?? 0]
+print(String(decoding: try JSONSerialization.data(withJSONObject: metadata, options: [.sortedKeys]), as: UTF8.self))

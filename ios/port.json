@@ -4,7 +4,7 @@
   "product": "oldFunny",
   "bundle_identifier": "mobi.oldfunny.ios",
   "version": "0.3.0",
-  "build": "18",
+  "build": "19",
   "minimum_ios": "16.0",
   "target": {
     "device": "iPhone 16",
@@ -39,7 +39,7 @@
     "captcha_handoff": true,
     "session_survives_relaunch": "unverified"
   },
-  "ui_phase": "Candidate18: bounded timed GIF playback, static previews, wrapped tag rows, accessible total grid counts and filter scroll reset; awaiting Mac/UIKit verification",
+  "ui_phase": "Candidate19: focused ImageIO GIF dimension fallback; all14 non-GIF UIKit tests passed in18, GIF runtime remains unverified",
   "simulator_previews": "Offline fixtures compiled only with CLASSIC_UI_PREVIEW; absent from Release",
   "simulator_ui": {
     "device": "iPhone 16",
@@ -200,6 +200,27 @@
       "passed": 13,
       "failed": 1,
       "failure": "Repubs-off grid count assertion; checking total data-source items versus accessible visible cells"
+    },
+    "phone_tested": false
+  },
+  "compiled_candidate_build18": {
+    "source_commit": "d6116549475f80360e624b910f8b29fae33fc7b3",
+    "run_url": "https://github.com/sandrscore/oldFunny-iOS/actions/runs/39525162781",
+    "version": "0.3.0",
+    "build": "18",
+    "sha256": "b15f9a021c3557f073f9a0b2ef6c0c3e614017ece8096b2e3483f49b0657337a",
+    "contains_arm64": true,
+    "main_executable_cryptid": 0,
+    "fixture_code_absent": true,
+    "ui_gesture_tests": {
+      "executed": 15,
+      "passed": 14,
+      "failed": 1,
+      "failure": "GIF failed to load before first playback check"
+    },
+    "profile_result_counts": {
+      "actual_items": 18,
+      "accessible_cells": 15
     },
     "phone_tested": false
   }

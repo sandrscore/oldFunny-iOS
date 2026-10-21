@@ -1,4 +1,4 @@
-> Build18 is under verification: timed GIF playback with a three-frame decode cache, static thumbnails, wrapping tags, and profile grid count/scroll fixes. Build17 compiled with44 core checks and passed13/14 UIKit tests, including tag suggestions/limits/pending-input Back; its remaining grid-count assertion needs verification across visible and total items. Its IPA is ARM64, cryptid0 and fixture-free. Full Android parity, live writes and target-phone checks remain incomplete.
+> Build19 is under verification with a focused GIF metadata-dimension fix. Build18 passed48 core/6 packaging checks and14/15 UIKit tests: all profile/search/tag/pin/subscribe, video and comment tests passed. Its only failure was GIF loading before playback. The grid trace confirmed18totalresults versus15exposedcells; scroll/ID checks passed. No new target-phone or live-write validation; full parity remains incomplete.
 
 # oldFunny iOS
 

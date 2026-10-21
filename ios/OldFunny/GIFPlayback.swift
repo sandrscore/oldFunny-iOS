@@ -19,8 +19,11 @@ actor GIFFrames {
               CGImageSourceGetCount(source) > 1, CGImageSourceGetCount(source) <= 10000 else { throw ClientError.unsupportedMedia }
         self.source = source
         let properties = CGImageSourceCopyProperties(source, nil) as? [CFString: Any]
-        let width = (properties?[kCGImagePropertyPixelWidth] as? NSNumber)?.doubleValue ?? 0
-        let height = (properties?[kCGImagePropertyPixelHeight] as? NSNumber)?.doubleValue ?? 0
+        let first = CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [CFString: Any]
+        let width = (properties?[kCGImagePropertyPixelWidth] as? NSNumber)?.doubleValue
+            ?? (first?[kCGImagePropertyPixelWidth] as? NSNumber)?.doubleValue ?? 0
+        let height = (properties?[kCGImagePropertyPixelHeight] as? NSNumber)?.doubleValue
+            ?? (first?[kCGImagePropertyPixelHeight] as? NSNumber)?.doubleValue ?? 0
         guard width > 0, height > 0, width <= 30000, height <= 100000 else { throw ClientError.unsupportedMedia }
         maxPixels = max(1, Int(min(2048, max(width, height) * min(1, sqrt(2_000_000 / (width * height))))))
         var delays = [Double]()

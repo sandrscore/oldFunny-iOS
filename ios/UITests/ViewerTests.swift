@@ -24,7 +24,7 @@ final class ViewerTests: XCTestCase {
     func testLongGIFUsesDecodedPixelsUnevenTimingLoopAndRetainedPhase() {
         let app = XCUIApplication(); app.launchArguments = ["--ui-tests", "--ui-tests-gif"]; app.launch()
         let gif = app.descendants(matching: .any)["post-gif"].firstMatch
-        XCTAssertTrue(gif.waitForExistence(timeout: 10))
+        XCTAssertTrue(gif.waitForExistence(timeout: 10), app.debugDescription)
         waitUntil("The 82nd GIF frame must actually decode; a long GIF must not become a still", timeout: 12) {
             let fields = self.gifFields(gif), rgb = (fields["pixel"] ?? "").split(separator: ",").compactMap { Int($0) }
             let phase = Double(fields["elapsed"] ?? "-1")?.truncatingRemainder(dividingBy: 7580) ?? -1
