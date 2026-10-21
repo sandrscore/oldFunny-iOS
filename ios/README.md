@@ -1,42 +1,44 @@
 # oldFunny iOS
 
-**Verified checkpoint: 0.3.0/build 19. Candidate build 21 verifies comment mentions;
-its Mac compilation and UIKit tests are pending. Full Android parity is incomplete.**
+**Verified checkpoint: 0.3.0/build 21. Candidate build 22 adds comment selection
+and bulk deletion; its Mac/UIKit checks are pending. Full parity is incomplete.**
 
-[Download the build 19 unsigned IPA artifact ZIP](https://github.com/sandrscore/oldFunny-iOS/actions/runs/39526685353/artifacts/12313263187),
+[Download the build 21 unsigned IPA artifact ZIP](https://github.com/sandrscore/oldFunny-iOS/actions/runs/39539381754/artifacts/12318721806),
 extract the IPA and update through Zeus. SHA-256:
-`86fe2202410f483ee52fe45791d019eedc672aa4dff7be019967b775b0af84c5`.
+`e6f1731005e4f8660bebc288f1c11b3e15f7ff6c21c14b915b51f79b0c661aff`.
 Bundle `mobi.oldfunny.ios`; minimum iOS 16.0; ARM64, cryptid=0, unsigned.
-Artifacts expire October 28, 2026; an independently verified local copy and exact
-source archive are preserved in the original workspace.
+Artifact expires October 28, 2026; the independently inspected IPA and exact
+source archive are preserved locally in the original workspace.
 
-[Build 19 Mac CI](https://github.com/sandrscore/oldFunny-iOS/actions/runs/39526685353) for source `86394bb2f59dd7cd16e7593ee2ddcf1dea80b906` passed
-48 core tests, 6 packaging/test-verification checks and all 15 actual UIKit tests.
-The downloaded reports and logs confirm execution with zero failures. Tests cover
-vertical panels/drafts/replies/attachments, paging/zoom, confirmed comment counts,
-video decoded-frame seeking/pause/mute/zoom/return, long GIF decoded pixels/timing/
-loop/retained phase, context-gated triple taps, profiles/featured/grid return,
-combined search, tag editing, pin readback and subscriptions. These are offline
-fixtures on iPhone 16 / iOS 18.5, separate from server and target-phone validation.
+[Build 21 Mac CI](https://github.com/sandrscore/oldFunny-iOS/actions/runs/39539381754) for source `4c990a36420f8f9e2d5dfbb6c55ee603cdace6e1` passed
+58 core tests, 6 packaging checks and all 17 actual UIKit tests with zero failures.
+Downloaded reports and logs confirm each expected test executed. Offline tests
+cover retained panels/drafts/replies/attachments, counts, decoded video seeking,
+pause/mute/zoom/return, long GIF pixels/timing/loop/phase, classified triple taps,
+profiles/search/tags/pins/subscriptions, and mention choice/link/send/error flows.
+Mention tests verify exact selected IDs/UTF-16 offsets and attachment fields,
+first-tap keyboard dismissal, profile navigation, unconfirmed-draft retention and
+identity removal after editing the name. These are iPhone 16 / iOS 18.5 fixtures,
+separate from server notifications and actual target-phone validation.
 
-Build 20 source adds authenticated mention suggestions, exact selected user IDs
-and UTF-16 edit ranges, colored draft names and incoming profile links, and the
-`user_mentions` send field. Build 20 compiled with 58 Mac core tests and 6 packaging checks. Its 17 UIKit
-tests executed: 15 passed and both mention tests stopped because interactive
-labels were queried as static text. The hierarchy shows the accepted reply and
-colored incoming link as buttons. Build 21 corrects those queries and keeps all
-remaining form, link, draft and attachment assertions. Mac/UIKit verification is
-pending. No live comments or mention notifications were sent.
+Candidate 22 adds original-post-author pencil/hold selection, stable row highlight,
+ordered bulk requests and positional acknowledgments. Only confirmed rows affect
+counts; failed rows stay selected. Main-root removal counts its replies; reply
+removal retains deleted positions and root context. An uncertain receipt locks
+selection until a replacement read succeeds, including after a failed refresh.
+Three added UIKit cases exercise these paths and attachment holds. 63 Linux core
+tests and 6 packaging checks pass; native Mac/UIKit verification is pending.
 
-Remaining work includes full comment state/depth/bulk handling, suggestion panel
-physics, large-profile indexing and other profile options, feed/read queues,
-Explore/Activity/settings, Chats/groups and Studio/publishing. Special GIF/codec/
-Photos cases and new saved-session behavior still require phone checks. See the
-[behavioral ledger](ANDROID_PARITY.md) for the complete scope and gaps.
+Remaining work includes ordinary comment tap/options parity, reply-depth/state/
+layout rules, mention-panel physics, large-profile indexing/options, feeds/reads,
+Explore/Activity/settings, Chats/groups and Studio/publishing. Special media/Photos,
+saved-session and new interaction cases still need phone checks. See the complete
+[behavioral ledger](ANDROID_PARITY.md); fixture success does not establish parity.
 
-The user's last target-phone confirmation is 0.1.2 sign-in/CAPTCHA. Authentication
-algorithms and the same 16 reviewed bitmap assets are preserved; credentials,
-sessions and original binaries are excluded. Android remains unchanged.
+The user's last target-phone confirmation is earlier 0.1.2 sign-in/CAPTCHA.
+Authentication algorithms, Android sources and the same 16 reviewed bitmap assets
+are preserved. Public exports exclude credentials, personal sessions, original
+binaries and generated fixture media. No live social action was performed.
 
 ## Build and test
 

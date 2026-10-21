@@ -17,9 +17,33 @@ private actor PreviewTransport: HTTPTransport {
     private var sentReplies = [[String: Any]](), deleted = Set<String>()
     private var profilePins = Set<String>(), subscriptions = Set<String>()
     private var mentionSends = 0
+    private var bulkSends = 0, bulkRemovedRoots = Set<String>()
+    private var bulkReadFailures = 0
     private var replyCount: Int { 2 + sentReplies.count - deleted.filter { $0.hasPrefix("PreviewReply") || $0.hasPrefix("FixtureSentReply") }.count }
     func send(_ request: URLRequest) async throws -> HTTPResult {
         let path = request.url?.path ?? "", method = request.httpMethod ?? "GET"
+        if ProcessInfo.processInfo.arguments.contains("--ui-tests-bulk-delete"), method == "POST", path == "/v4/content/PreviewPost/comments",
+           URLComponents(url: request.url!, resolvingAgainstBaseURL: false)?.queryItems?.contains(URLQueryItem(name: "method", value: "DELETE")) == true {
+            let encoded = String(decoding: request.httpBody ?? Data(), as: UTF8.self).replacingOccurrences(of: "+", with: "%20")
+            let fields = URLComponents(string: "?" + encoded)?.queryItems ?? []
+            let csv = fields.first { $0.name == "id" }?.value ?? "", ids = csv.components(separatedBy: ",")
+            let known = ["PreviewComment1", "PreviewComment2", "PreviewComment3", "PreviewReply1", "PreviewReply2"]
+            guard !ids.isEmpty, Set(ids).count == ids.count, ids.allSatisfy({ known.contains($0) && !deleted.contains($0) }), fields.count == 1 else { throw ClientError.invalidInput }
+            bulkSends += 1; let record = "\(bulkSends)|POST|\(path)?method=DELETE|id=\(csv)"
+            await MainActor.run { PreviewFixtures.bulkRequest = record }
+            if ProcessInfo.processInfo.arguments.contains("--ui-tests-bulk-uncertain") { bulkReadFailures = 1; throw ClientError.transport }
+            var accepted = ids, responses = [[String: Any]]()
+            if ProcessInfo.processInfo.arguments.contains("--ui-tests-bulk-partial") {
+                guard ids == ["PreviewComment1", "PreviewComment2"] else { throw ClientError.invalidInput }
+                accepted = ["PreviewComment1"]; responses = [["status": 204], ["status": 403]]
+            }
+            for id in accepted {
+                deleted.insert(id)
+                if id.hasPrefix("PreviewComment") { bulkRemovedRoots.insert(id) }
+                if id == "PreviewComment1" { deleted.formUnion(["PreviewReply1", "PreviewReply2"]) }
+            }
+            return HTTPResult(status: 200, body: try JSONSerialization.data(withJSONObject: ["status": 200, "data": ["responses": responses]]))
+        }
         if ProcessInfo.processInfo.arguments.contains("--ui-tests-mentions"), let result = try await mentionRequest(request) { return result }
         let mentionedProfile = ProcessInfo.processInfo.arguments.contains("--ui-tests-mentions") && (path.hasPrefix("/v4/users/Reader2") || path.hasPrefix("/v4/timelines/users/Reader2"))
         if ProcessInfo.processInfo.arguments.contains("--ui-tests-profile") || ProcessInfo.processInfo.arguments.contains("--preview-profile") || ProcessInfo.processInfo.arguments.contains("--preview-profile-search") || mentionedProfile {
@@ -61,9 +85,10 @@ private actor PreviewTransport: HTTPTransport {
             return HTTPResult(status: 200, body: try JSONSerialization.data(withJSONObject: root))
         }
         else if path.contains("comments") {
+            if bulkReadFailures > 0 { bulkReadFailures -= 1; return HTTPResult(status: 503, body: Data()) }
             var root = try JSONSerialization.jsonObject(with: Data(PreviewFixtures.comments.utf8)) as! [String: Any]
             var data = root["data"] as! [String: Any], comments = data["comments"] as! [String: Any]
-            comments["items"] = (comments["items"] as! [[String: Any]]).map { row -> [String: Any] in
+            comments["items"] = (comments["items"] as! [[String: Any]]).filter { !bulkRemovedRoots.contains($0["id"] as! String) }.map { row -> [String: Any] in
                 var row = row
                 if row["id"] as? String == "PreviewComment1" { row["num"] = ["replies": replyCount] }
                 if ProcessInfo.processInfo.arguments.contains("--ui-tests-mentions"), row["id"] as? String == "PreviewComment1" {
@@ -181,6 +206,7 @@ private actor PreviewTransport: HTTPTransport {
 enum PreviewFixtures {
     @MainActor static var reactionEvents = [String]()
     @MainActor static var mentionRequest = ""
+    @MainActor static var bulkRequest = ""
     @MainActor static func makeApp() throws -> AppContext {
         let api = try APIClient(installation: String(repeating: "a", count: 64), userAgent: "Offline UI preview", store: PreviewStore(), transport: PreviewTransport())
         return AppContext(previewAPI: api)

@@ -5,22 +5,22 @@ Target: iPhone 16 / user-reported iOS 27.0.1. Bundle: `mobi.oldfunny.ios`.
 
 | Evidence | Current state |
 | --- | --- |
-| Verified source | 0.3.0/build 19, `86394bb2f59dd7cd16e7593ee2ddcf1dea80b906` |
-| Mac contracts | 48 Swift tests and 6 Python packaging/test-verification checks passed |
-| Actual UIKit | All 15 offline tests executed and passed; zero failures |
-| Media checks | Actual decoded video seeking and long GIF pixels, uneven timing, loop and retained phase passed |
-| Profile checks | Grid/featured return, combined filters and result reachability, tag editor, pin readback and subscriptions passed |
-| IPA | Independently verified ARM64, cryptid=0, unsigned and fixture-free; SHA-256 `86fe2202410f483ee52fe45791d019eedc672aa4dff7be019967b775b0af84c5` |
-| New candidate | Build 21: focused mention UI query correction; build 20 compiled with 58 Mac tests and 17 UIKit tests executed, 15 passed and 2 query-type failures |
+| Verified source | 0.3.0/build 21, `4c990a36420f8f9e2d5dfbb6c55ee603cdace6e1` |
+| Mac contracts | 58 Swift tests and 6 Python packaging/test-verification checks passed |
+| Actual UIKit | All 17 offline tests executed and passed, zero failures |
+| Mentions | Actual suggestion selection, pagination, profile link, uncertain receipt and exact accepted reply fields passed |
+| Media/profile | Prior decoded video/GIF, panels/drafts, search/tags/pins/subscription cases passed again |
+| IPA | Independently verified ARM64, cryptid=0, unsigned and fixture-free; SHA-256 `e6f1731005e4f8660bebc288f1c11b3e15f7ff6c21c14b915b51f79b0c661aff` |
+| New candidate | Build 22: original-author bulk selection/receipt/count/read-recovery source; 63 Linux core tests and 6 packaging checks pass, 20 UIKit tests pending |
 | Server | Earlier bounded anonymous profile/feed/schema reads succeeded; no live social writes used for validation |
-| Phone | User confirmed earlier 0.1.2 sign-in/CAPTCHA; build 19/21 saved session, codecs, gestures and Photos untested on target |
+| Phone | Earlier 0.1.2 sign-in/CAPTCHA confirmed by user; build 21/22 saved session, codecs, gestures and Photos untested on target |
 
-[Build 19 CI/artifacts](https://github.com/sandrscore/oldFunny-iOS/actions/runs/39526685353). Downloaded reports and per-test logs were
-checked. Profile and search screenshots were reviewed. Full scope includes
-remaining comment state/depth/bulk handling, mention panel physics, profile
-options/indexing, feeds/reads, Explore/Activity/preferences, Chats/groups and
-Studio/publishing. APNs/alternate OAuth require valid iOS client setup.
+[Build 21 CI/artifacts](https://github.com/sandrscore/oldFunny-iOS/actions/runs/39539381754). Downloaded reports/logs were checked and the
+incoming mention screenshot reviewed. Remaining scope includes ordinary row tap/
+options, depth and full comment states, mention panel physics, profile options/
+indexing, feeds/reads, Explore/Activity/preferences, Chats/groups and Studio.
+Valid iOS client setup is required for APNs and alternate OAuth.
 
-Authentication algorithms, Android sources and the same 16 reviewed bitmap
-assets are preserved. Public exports exclude credentials, personal sessions,
-original binaries and generated test media. No live social action was performed.
+Authentication algorithms, Android sources and the same 16 reviewed bitmap assets
+are preserved. No credentials, personal sessions, original binaries or generated
+test media are included in public source exports or Release IPAs.

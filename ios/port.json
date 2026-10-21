@@ -4,7 +4,7 @@
   "product": "oldFunny",
   "bundle_identifier": "mobi.oldfunny.ios",
   "version": "0.3.0",
-  "build": "21",
+  "build": "22",
   "minimum_ios": "16.0",
   "target": {
     "device": "iPhone 16",
@@ -39,26 +39,27 @@
     "captcha_handoff": true,
     "session_survives_relaunch": "unverified"
   },
-  "ui_phase": "Build 21 focused mention query correction; verified checkpoint 19 remains all-green",
+  "ui_phase": "Build 22 bulk selection candidate; verified checkpoint 21 passed 17 UIKit tests",
   "simulator_previews": "Offline fixtures compiled only with CLASSIC_UI_PREVIEW; absent from Release",
   "simulator_ui": {
     "device": "iPhone 16",
     "ios": "18.5",
     "offline_fixtures": true,
     "screens_reviewed": [
-      "profile",
-      "profile-search"
+      "mentions"
     ],
     "target_phone_tested": false,
     "ui_gesture_tests_passed": true,
     "version": "0.3.0",
-    "build": "19",
+    "build": "21",
     "ui_gesture_tests": [
       "testAttachmentPickerBackAndRemovalPreserveDraft",
       "testCommentTapAndSwipeShareOnePanelAndDoNotLoseKeyboardDraft",
+      "testConfirmedMentionReplyUsesSelectedRecipientAndClearsOnlySubmittedDraft",
       "testConfirmedReplyAndRootDeletionUpdatePostCountWithoutChangingReplyCountTwice",
       "testHorizontalPagingAndZoomTakePriorityOverPanelNavigation",
       "testLongGIFUsesDecodedPixelsUnevenTimingLoopAndRetainedPhase",
+      "testMentionSelectionLinkAndUnconfirmedSendPreserveIdentityAndAttachment",
       "testOwnProfilePinReadbackAndGridBadge",
       "testProfileGridViewerRetainsScrollAndFeaturedUsesSeparateSource",
       "testProfileSearchCombinesTagsOriginalAuthorAndRepubToggle",
@@ -151,9 +152,9 @@
     },
     "phone_tested": false
   },
-  "verified_build_source_commit": "86394bb2f59dd7cd16e7593ee2ddcf1dea80b906",
-  "verified_build_url": "https://github.com/sandrscore/oldFunny-iOS/actions/runs/39526685353",
-  "ipa_sha256": "86fe2202410f483ee52fe45791d019eedc672aa4dff7be019967b775b0af84c5",
+  "verified_build_source_commit": "4c990a36420f8f9e2d5dfbb6c55ee603cdace6e1",
+  "verified_build_url": "https://github.com/sandrscore/oldFunny-iOS/actions/runs/39539381754",
+  "ipa_sha256": "e6f1731005e4f8660bebc288f1c11b3e15f7ff6c21c14b915b51f79b0c661aff",
   "target_phone_tested": false,
   "previous_verified_build10": {
     "verified_build_source_commit": "5cca16ac45ac9c208269c6737ef1e36ef582b2a6",
@@ -263,6 +264,22 @@
         "Interactive mention body queried as static text",
         "Accepted mention reply queried as static text"
       ]
+    },
+    "phone_tested": false
+  },
+  "compiled_candidate_build21": {
+    "source_commit": "4c990a36420f8f9e2d5dfbb6c55ee603cdace6e1",
+    "run_url": "https://github.com/sandrscore/oldFunny-iOS/actions/runs/39539381754",
+    "version": "0.3.0",
+    "build": "21",
+    "sha256": "e6f1731005e4f8660bebc288f1c11b3e15f7ff6c21c14b915b51f79b0c661aff",
+    "contains_arm64": true,
+    "main_executable_cryptid": 0,
+    "fixture_code_absent": true,
+    "ui_gesture_tests": {
+      "executed": 17,
+      "passed": 17,
+      "failed": 0
     },
     "phone_tested": false
   }

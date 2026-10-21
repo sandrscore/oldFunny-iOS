@@ -34,6 +34,80 @@ final class ViewerTests: XCTestCase {
         choice.tap(); XCTAssertEqual(draft.value as? String, prefix + "ReaderTwo ")
         XCTAssertFalse(app.otherElements["mention-panel"].exists)
     }
+    private func openBulkComments(_ app: XCUIApplication, flags: [String] = []) {
+        app.launchArguments = ["--ui-tests", "--ui-tests-account", "--ui-tests-accepted-comments", "--ui-tests-bulk-delete"] + flags
+        app.launch(); XCTAssertTrue(app.buttons["5 comments"].waitForExistence(timeout: 10)); app.buttons["5 comments"].tap()
+        XCTAssertTrue(app.buttons["Select comments"].waitForExistence(timeout: 5))
+    }
+    private func attachBulkDraft(_ app: XCUIApplication, text: String) {
+        let draft = app.textFields["comment-draft"]; XCTAssertTrue(draft.waitForExistence(timeout: 5)); draft.tap(); draft.typeText(text)
+        app.buttons["Attach one of your posts"].tap()
+        let tile = app.collectionViews.cells.firstMatch; XCTAssertTrue(tile.waitForExistence(timeout: 5)); tile.tap()
+        XCTAssertTrue(app.buttons["remove-comment-attachment"].waitForExistence(timeout: 5))
+    }
+    private func confirmBulkDelete(_ app: XCUIApplication, count: Int) {
+        app.buttons["Delete selected comments"].tap()
+        let alert = app.alerts["Delete \(count) selected comments?"]
+        XCTAssertTrue(alert.waitForExistence(timeout: 5)); alert.buttons["Delete"].tap()
+    }
+    func testBulkPartialDeletionRemovesRootRepliesOnceAndRetainsFailedSelectionAndDraft() {
+        let app = XCUIApplication(); openBulkComments(app, flags: ["--ui-tests-bulk-partial"])
+        attachBulkDraft(app, text: "Bulk draft")
+        app.buttons["Select comments"].tap()
+        XCTAssertTrue(app.staticTexts["0 selected"].exists)
+        let first = app.tables.cells["comment-row-PreviewComment1"], second = app.tables.cells["comment-row-PreviewComment2"]
+        first.tap(); second.tap(); XCTAssertTrue(app.staticTexts["2 selected"].exists)
+        confirmBulkDelete(app, count: 2)
+        XCTAssertTrue(app.alerts["Some comments were not deleted"].waitForExistence(timeout: 5)); app.alerts.buttons["OK"].tap()
+        XCTAssertFalse(first.exists); XCTAssertEqual(second.value as? String, "Selected"); XCTAssertTrue(app.staticTexts["1 selected"].exists)
+        XCTAssertEqual(app.textFields["comment-draft"].value as? String, "Bulk draft"); XCTAssertTrue(app.buttons["remove-comment-attachment"].exists)
+        XCTAssertEqual(app.otherElements["comments-screen"].value as? String, "selected=PreviewComment2; request=1|POST|/v4/content/PreviewPost/comments?method=DELETE|id=PreviewComment1,PreviewComment2")
+        capture("partial-bulk-delete-retains-failed-row-and-draft", app: app)
+        app.buttons["Cancel comment selection"].tap()
+        XCTAssertTrue(app.staticTexts["2 comments"].exists, "Accepted root plus its two replies must leave two comments")
+        app.buttons["Refresh"].tap(); XCTAssertTrue(second.waitForExistence(timeout: 5)); XCTAssertFalse(first.exists)
+        XCTAssertEqual(app.textFields["comment-draft"].value as? String, "Bulk draft")
+        app.buttons["Back"].tap(); XCTAssertTrue(app.buttons["2 comments"].waitForExistence(timeout: 5))
+    }
+    func testBulkReplyEmptyAcknowledgmentKeepsRootAndDeletedPositionsWithoutDoubleCount() {
+        let app = XCUIApplication(); openBulkComments(app)
+        app.staticTexts["2 replies"].firstMatch.tap()
+        let root = app.tables.cells["comment-row-PreviewComment1"]
+        XCTAssertTrue(root.waitForExistence(timeout: 5)); attachBulkDraft(app, text: "Reply draft")
+        app.buttons["Select comments"].tap(); root.tap()
+        XCTAssertTrue(app.staticTexts["0 selected"].exists, "The retained root context cannot enter a reply selection")
+        app.tables.cells["comment-row-PreviewReply1"].tap(); app.tables.cells["comment-row-PreviewReply2"].tap()
+        XCTAssertTrue(app.staticTexts["2 selected"].exists); confirmBulkDelete(app, count: 2)
+        XCTAssertTrue(app.staticTexts["0 replies"].waitForExistence(timeout: 5)); XCTAssertTrue(root.exists)
+        XCTAssertEqual(app.staticTexts["Comment deleted."].count, 2)
+        XCTAssertEqual(app.otherElements["comments-screen"].value as? String, "selected=; request=1|POST|/v4/content/PreviewPost/comments?method=DELETE|id=PreviewReply1,PreviewReply2")
+        XCTAssertEqual(app.textFields["comment-draft"].value as? String, "Reply draft"); XCTAssertTrue(app.buttons["remove-comment-attachment"].exists)
+        app.buttons["Refresh"].tap(); XCTAssertTrue(root.waitForExistence(timeout: 5)); XCTAssertEqual(app.staticTexts["Comment deleted."].count, 2)
+        capture("bulk-replies-root-and-deleted-placeholders", app: app)
+        app.buttons["Back"].tap(); XCTAssertTrue(app.staticTexts["3 comments"].waitForExistence(timeout: 5))
+        app.buttons["Back"].tap(); XCTAssertTrue(app.buttons["3 comments"].waitForExistence(timeout: 5))
+    }
+    func testAttachmentLongHoldSelectionAndUncertainDeletionRequireReadBeforeRetry() {
+        let app = XCUIApplication(); openBulkComments(app, flags: ["--ui-tests-bulk-uncertain"])
+        attachBulkDraft(app, text: "Keep after uncertainty")
+        let picture = app.buttons["Open attached post"]
+        XCTAssertTrue(picture.waitForExistence(timeout: 5)); picture.press(forDuration: 1)
+        XCTAssertTrue(app.staticTexts["1 selected"].waitForExistence(timeout: 5))
+        XCTAssertEqual(app.tables.cells["comment-row-PreviewComment2"].value as? String, "Selected")
+        confirmBulkDelete(app, count: 1)
+        XCTAssertTrue(app.alerts["Deletion not confirmed"].waitForExistence(timeout: 5)); app.alerts.buttons["OK"].tap()
+        XCTAssertFalse(app.buttons["Delete selected comments"].isEnabled)
+        XCTAssertEqual(app.textFields["comment-draft"].value as? String, "Keep after uncertainty"); XCTAssertTrue(app.buttons["remove-comment-attachment"].exists)
+        XCTAssertEqual(app.otherElements["comments-screen"].value as? String, "selected=PreviewComment2; request=1|POST|/v4/content/PreviewPost/comments?method=DELETE|id=PreviewComment2")
+        capture("uncertain-bulk-delete-keeps-selection-and-draft", app: app)
+        app.buttons["Cancel comment selection"].tap()
+        XCTAssertTrue(app.alerts["oldFunny"].waitForExistence(timeout: 5)); app.alerts.buttons["OK"].tap()
+        XCTAssertFalse(app.buttons["Select comments"].isEnabled, "A failed read cannot unlock an uncertain selection write")
+        app.buttons["Refresh"].tap()
+        waitUntil("Only a successful read unlocks selection again") { app.buttons["Select comments"].isEnabled }
+        XCTAssertTrue(app.staticTexts["5 comments"].waitForExistence(timeout: 5)); XCTAssertTrue(app.tables.cells["comment-row-PreviewComment2"].exists)
+        XCTAssertEqual(app.textFields["comment-draft"].value as? String, "Keep after uncertainty"); XCTAssertTrue(app.buttons["remove-comment-attachment"].exists)
+    }
     func testMentionSelectionLinkAndUnconfirmedSendPreserveIdentityAndAttachment() {
         let app = XCUIApplication(); app.launchArguments = ["--ui-tests", "--ui-tests-account", "--ui-tests-mentions"]; app.launch()
         XCTAssertTrue(app.buttons["3 comments"].waitForExistence(timeout: 10)); app.buttons["3 comments"].tap()

@@ -21,6 +21,7 @@ public struct Post: Equatable, Sendable {
     public let views: Int, republishes: Int
     public let tags: [String]
     public let originalAuthor: String?, originalAuthorID: String?
+    public var moderationOwnerID: String? { originalAuthorID ?? authorID }
     public let hasSource: Bool, isFeatured: Bool, isPinned: Bool, isAbused: Bool
     public let state: String
     public var isVideo: Bool { type == "video" || type == "text_video" || mediaURL?.pathExtension.lowercased() == "mp4" }

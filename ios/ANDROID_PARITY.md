@@ -71,45 +71,45 @@ post panels. Process-death restoration and every gesture edge case remain checks
 | Subscription reads | Immediate settled selection, local unread credit, server reconciliation, durable queues; `SubscriptionsReads` | Missing |
 | Collective | POST form `limit/next` to `/feeds/collective`; `Retrofit$RestInterface.getCollective` in primary smali | Source added; current server and device reads pending |
 | Horizontal viewer | Retain index, edge pagination, page ordering and return position; `gallery/GalleryFragment` | Source, needs new phone regression |
-| Comments entry | Up gesture and comment-button tap share retained panel; native trace above | Source, actual UIKit gesture tests required |
-| Comments exit | Down at boundary, header Back; preserve post/zoom/draft | Source, UIKit and phone checks required |
-| Information entry/exit | Down from media, up to return; retained child | Source; counts/date/author/text/tags shown; full action parity pending |
+| Comments entry | Up gesture and comment-button tap share retained panel; native trace above | Build 19 offline UIKit verifies up gesture and comment button share one retained panel; target-phone and remaining scroll-boundary cases pending. |
+| Comments exit | Down at boundary, header Back; preserve post/zoom/draft | Build 19 offline UIKit verifies slow-drag rejection, fast downward return and Back with retained draft; phone and additional boundaries pending. |
+| Information entry/exit | Down from media, up to return; retained child | Build 19 offline UIKit verifies down/up retained panel flow; full information actions and phone checks remain. |
 | Information actions | Original author/republisher, date, views/smiles/repubs, user lists, tags/edit tags; `IFunnyWorkInfoFragment` | Partial: author routes and details; user-list/tag navigation/editing missing |
 | Image fit | Native fit/centering, tall images and title/body alignment; `ContentBehavior`, `ModernPostText` | Partial: width/fit/scroll/pinch; full-resolution tall-image fidelity pending |
 | Pinch/pan bounds | Image-style scale/pan with pager handoff at bounds; `ContentBehavior` | Partial: still-image zoom, no full edge handoff parity |
 | Double tap | Native smile toggle; `GalleryFragment.b(View)` | Source added; no live reaction used during checks |
-| Triple tap | Content a$3.c(MotionEvent) → GalleryFragment.c(View); resumed, not-abused, signed-in and r() eligibility | Source: classified single/double/triple recognizers defer competing taps; downvote limited to Collective/Tag context and signed-in current non-abused media. Collective switch/real gesture verification pending; Tag destination and BR signed-out double-tap exception remain gaps. |
+| Triple tap | Content a$3.c(MotionEvent) → GalleryFragment.c(View); resumed, not-abused, signed-in and r() eligibility | Build 19 offline UIKit verifies Collective eligibility and deferred triple classification without an earlier smile. Tag destination and BR signed-out double-tap exception remain gaps. |
 | Smile/unsmile | Toggle mutually exclusive state, counts and signed-out route; original Retrofit methods | Source; request tests, live/device checks pending |
-| Video/GIF zoom | Same transformed content as images; `VideoControls` and native behavior | Source: custom retained AVPlayer surface shares image transform; MP4/GIF media classification and full format/timing behavior remain partial. New UIKit verification pending. |
-| Tap playback | Pause/resume only in video; margins hide chrome; paused triangle scales with video | Source: full transformed video hit testing, manual pause, margin chrome and transformed pause indicator; inactive/failed seeks cannot auto-start. New UIKit verification pending. |
-| Scrubber | Only >10s, transparent 24dp hit area, elapsed/total during drag, coalesced accurate seek, retained play state; `VideoControls` | Source: actual duration >10s, 24pt transparent hit region, tracking timestamps, serialized latest seek and zero-tolerance AVPlayer seek. Build13/14 decoded sparse-keyframe target checks passed; full lifecycle test still pending. |
-| Mute | Hide while pinching/zoomed, retain audio state; `VideoControls` | Source: application sound state starts off, resets after >10min background, zoom/pinch hides sound control. Return-to-fit synthetic gesture still under verification. |
-| GIF rendering | Timing/loop/dimensions, MP4-backed GIF support; `VideoCompatibility` | Partial: bounded UIImage animation and native MP4, full timing parity pending |
-| Post hold menu | Share/Save/Chat/Pin/More with ownership and format eligibility; gallery menu patches | Partial: link/copy/share/Save/repub added; Chat/Pin/More missing |
+| Video/GIF zoom | Same transformed content as images; `VideoControls` and native behavior | Build 19 offline UIKit verifies shared video transform, mute during zoom and retained pause across page/panel return. Full pan-edge handoff, format and device cases remain partial. |
+| Tap playback | Pause/resume only in video; margins hide chrome; paused triangle scales with video | Build 19 actual-player fixture verifies confirmed tap pause/resume and retained manual pause. Transformed surface/indicator and margin chrome are in source; all edge geometry and phone cases remain checks. |
+| Scrubber | Only >10s, transparent 24dp hit area, elapsed/total during drag, coalesced accurate seek, retained play state; `VideoControls` | Build 19 actual sparse-keyframe fixture verifies decoded-frame seeking, retained manual pause and playback restart. Core queue tests cover coalescing/inactive completions; exhaustive lifecycle/codec/device cases remain. |
+| Mute | Hide while pinching/zoomed, retain audio state; `VideoControls` | Build 19 offline UIKit verifies mute toggle, zoom hiding, return-to-fit restoration and restart when enabling sound during playback. App-scoped default-off/10-minute reset is in source; phone/audio-session cases pending. |
+| GIF rendering | Timing/loop/dimensions, MP4-backed GIF support; `VideoCompatibility` | Build 19 offline UIKit verifies 82-frame decoded RGB, uneven 7580ms timing, loop and retained inactive phase. ImageIO actor uses a 3-frame LRU, 30MiB/10000-frame/2Mpx/2048-dimension bounds. Full-resolution/disposal/transparency/malformed-format cases remain partial. |
+| Post hold menu | Share/Save/Chat/Pin/More with ownership and format eligibility; gallery menu patches | Partial: link/copy/share/Photos/repub and own-profile Pin context implemented; pin readback/grid badge passes offline UIKit in build 19. Chat and other menu actions remain missing. |
 | Republish | POST `/content/{cid}/republished?from=...`, DELETE to remove; original Retrofit methods | Source added, explicit confirmation and no replay; live checks pending |
 | Image save | Save original supported media to gallery; native options | Source added for Photos; actual permission/format/device checks pending |
 | GIF save | Original GIF or MP4→animated GIF, frames/timing preserved; `GifSaving` | Partial: original GIF save; MP4 GIF currently saved as video, conversion missing |
 | Video save | Original MP4 with audio; `VideoSaving` | Source added; file fidelity/Photos device test pending |
 | Post sharing | Public links, internal post navigation, platform share targets | Partial: iOS share sheet and copy link; in-app inbound link routing missing |
-| Comment layout | Blue author, round avatar, date, proportional preview, replies/smile counts; native CommentViews/PictureComments | Partial: basic rows/previews; inline reactions and net score added in source; exact recent-count/top/hidden/deleted states pending |
+| Comment layout | Blue author, round avatar, date, proportional preview, replies/smile counts; native CommentViews/PictureComments | Partial: basic rows/previews, inline net reactions and retained deleted context. Current final APK confirms ordinary row taps open options, while reply-count taps open threads; native direct row-to-reply behavior and depth30/display-depth10 rules still need correction. Exact abused/hidden/top/recent-count states remain gaps. |
 | Thread paging | Cursor continuation, dedupe, retry without losing loaded rows | Source, endpoint/server pagination checks pending |
-| Replies | Root parent context, recipient chip, mentions, retained thread; `AnswersFragment` | Partial source: root row, retained thread/draft, selected reply recipient and separate root-read/recipient-write routing added; Android recipient X clears reply text and preserves attachment. Depth limits, full deleted-root state and notifications/mentions pending; UIKit tests added, execution pending |
-| Comment options | Copy, smile/unsmile, reply, report, owned deletion | Source in hold menu and per-row smile/unsmile controls; serialized confirmed actions and explicit captured-session fence. Request tests pass; native interaction/server/device validation pending |
-| Comment selection | Pencil/hold multi-selection, permitted rows, immediate partial-success counts; `CommentDelete` | Missing bulk mode; single delete added |
-| Comment delete ack | Empty successful bulk results mean success only with explicit outer status | Missing bulk mode; do not invent equivalent receipts for malformed responses |
-| Attachment plus | Full-screen 3-column own posts/reposts, cursor paging, retained draft on Back; `CommentPostFeed`, `NativePostGrid` | Source added; picker needs simulator/account fixture and device checks |
-| Attachment choice | One thumbnail+X, replace/remove independently of text | Source: visible X added in build 8; draft revision tests pass; offline picker/Back/refresh/removal UI test added, execution and phone checks pending |
+| Replies | Root parent context, recipient chip, mentions, retained thread; `AnswersFragment` | Build 19 offline UIKit verifies retained root, recipient, draft, separate root GET/recipient POST and root deletion retaining replies/counts. Mention UI checks continue in candidate 21; depth/full state/process cases remain gaps. |
+| Comment options | Copy, smile/unsmile, reply, report, owned deletion | Per-row and hold actions with serialized account-fenced writes. Build 19 verifies rejected reaction retains draft and confirmed fixture deletion/counts; server/device checks and broader error states remain. |
+| Comment selection | Pencil/hold multi-selection, permitted rows, immediate partial-success counts; `CommentDelete` | Candidate 22 source: original-author pencil/hold mode, stable selected IDs/highlights, root exclusion in replies, partial/uncertain receipts and root cascade counts. 63 Linux core tests and parser pass; three new UIKit cases are source only, Mac/UIKit verification pending. |
+| Comment delete ack | Empty successful bulk results mean success only with explicit outer status | Candidate 22 receipt parser follows explicit successful empty array and positional 2xx results, preserves failures/missing rows and rejects unknown envelopes. New bulk endpoint uses POST method=DELETE without replay. 5 bulk/owner tests pass; native integration awaits Mac/UIKit. |
+| Attachment plus | Full-screen 3-column own posts/reposts, cursor paging, retained draft on Back; `CommentPostFeed`, `NativePostGrid` | Build 19 offline UIKit verifies 3-column own-post picker, Back and draft retention. Real account pagination and phone checks pending. |
+| Attachment choice | One thumbnail+X, replace/remove independently of text | Build 19 offline UIKit verifies choice, visible X, replacement/picker Back/refresh/removal with text retention. Phone checks pending. |
 | Attachment send | `text` + one `content` ID to comment/reply endpoint; no separate upload | Source now connected; no live comments submitted by agent |
 | Draft success/failure | Clear exact submitted revision only; retain newer edits/uncertain writes | Source and tests; lifecycle/process restoration pending |
 | Send retries | Never replay an uncertain social write; `comment-send-01`, `CommentComposer` | Existing single-attempt API retained; refresh-only GET retry preserved |
-| Mentions | Unicode offsets, exact IDs, suggestions/recent users/avatars, colors and notification fields; `CommentMentions`, `MentionComments` | Build 20 source: selected identity/ranges, edit invalidation, authenticated defaults/paged suggestions, colored drafts and exact glyph links, send form; 58 portable tests pass; new UIKit tests pending. Panel inertia/fling handoff, server notifications and phone validation remain gaps |
-| Keyboard dismissal | First outside tap dismisses and preserves text/attachment/recipient, next tap normal | Source basic text/attachment behavior; recipient/mention parts missing |
-| User profile | Information header, posts/reposts grid, subscriptions/subscribers, actions; profile fragments | Source: native cover/avatar/header, grid/info tabs, public counters, real subscriber/subscription lists, subscribe actions. Basic public-profile schemas verified anonymously; new UIKit/phone validation pending. |
+| Mentions | Unicode offsets, exact IDs, suggestions/recent users/avatars, colors and notification fields; `CommentMentions`, `MentionComments` | Build 21 verifies default/typed paged choice, selected identities and UTF-16 forms, blue incoming links/profile taps, unconfirmed draft retention and edit invalidation. Panel inertia/fling handoff, process restoration, server notifications and phone validation remain gaps. |
+| Keyboard dismissal | First outside tap dismisses and preserves text/attachment/recipient, next tap normal | Build 21 offline UIKit verifies text/attachment/recipient and mention-link outside-tap dismissal followed by normal navigation. Remaining gesture/process/phone cases pending. |
+| User profile | Information header, posts/reposts grid, subscriptions/subscribers, actions; profile fragments | Build 19 offline UIKit verifies header/grid/info, subscriber list and confirmed subscribe readback using fixtures. Bounded anonymous schema reads succeeded; full profile actions and phone checks remain. |
 | Own profile | Account identity, editing, cover/avatar, counters, settings | Partial: account identity, posts/info/featured/counters and own pin context implemented; editing, cover/avatar uploads and full settings still missing. |
-| Featured profile count | Dedicated `/timelines/users/{uid}/featured`, 3-column grid; `ProfileFeatured` | Source: dedicated featured endpoint, owner+flag filtering, 3-column grid/shared gallery. Anonymous server read decoded10 matching-owner featured entries; full navigation UI checks pending. |
-| Grid viewer return | Swipe full snapshot, continue same endpoint, Back to retained grid | Source: shared snapshot/cursor, retained grid, bounded gallery scene cache and same-source pagination. Actual Back/scroll test pending. |
-| Profile pinning | Own profile only, max3, server readback, pinned menu/grid mark; `ProfilePins` | Source: own UserGallery contexts (ordinary/featured/search), max3 preflight, one PUT/DELETE and exact target/count readback, no replay/optimistic success. Contract tests pass; offline UI and live user-controlled write checks pending. |
-| Advanced profile search | Combined media, all tags (AND), original author, repub toggle; `ProfileSearch*` | Source: exact raw-media taxonomy, AND tags, original source author, retained author with repubs off, separate author picker. Tag chips/editor/suggestions/recent10 now implemented in source; UIKit/phone pending. |
+| Featured profile count | Dedicated `/timelines/users/{uid}/featured`, 3-column grid; `ProfileFeatured` | Dedicated featured endpoint and owner/flag filtering. Build 19 offline UIKit verifies separate 3-column featured grid/gallery/Back; earlier anonymous server read succeeded. Device/server-account edges pending. |
+| Grid viewer return | Swipe full snapshot, continue same endpoint, Back to retained grid | Build 19 offline UIKit verifies shared snapshot paging and Back preserves grid scroll; same-source pagination is in source. Large histories, process restoration and phone cases pending. |
+| Profile pinning | Own profile only, max3, server readback, pinned menu/grid mark; `ProfilePins` | Build 19 offline UIKit verifies own pin acknowledgment/readback and grid badge. Max3/account/source contracts pass; live user-controlled writes and phone cases pending. |
+| Advanced profile search | Combined media, all tags (AND), original author, repub toggle; `ProfileSearch*` | Build 19 offline UIKit verifies combined media/AND tags/original author/repub toggle, suspended author restoration, actual result counts/last-result reachability, tag editing/suggestions/recents and Clear filters. Large-history index/device cases remain partial. |
 | Search state | Progressive bounded history scan, cancel stale filters, retain results/scroll, clear on exit | Partial: cancellable off-main rescans, query/account/read generations, sparse-page continuation, retained loaded results/cursor and failure retry. Full raw post history still in memory; disk-backed large-history index remains required. |
 | User/tag Explore | Real user/tag search, recent users/tags, tag galleries | Missing |
 | Subscribe/block | Confirmed subscribe/unsubscribe/block state with ownership rules | Partial: subscribe/unsubscribe single-attempt write + profile readback and uncertain-state reconciliation. Offline tests pending; block UI/API and real user-controlled validation remain gaps. |
@@ -332,3 +332,35 @@ across accessibility types and still asserts the exact reply text. App/core sour
 matches build 20. The new bulk selection prototype in the original workspace is
 excluded from this focused candidate. All 17 tests remain mandatory; target phone,
 server notifications and live social writes remain untested.
+
+### Verified checkpoint 21 and bulk candidate 22
+
+Source `4c990a36420f8f9e2d5dfbb6c55ee603cdace6e1`,
+[Mac CI](https://github.com/sandrscore/oldFunny-iOS/actions/runs/39539381754),
+passed 58 Mac core, 6 Python and all 17 actual UIKit tests with zero failures.
+Both mention tests completed every remaining assertion: default/typed paged
+choice and dedupe, exact identity, attachment and Back retention, first outside
+keyboard tap, actual mentioned profile, uncertain root form/draft, interior edit
+removing identity, and accepted selected-recipient reply with exact fields.
+Reports and logs were downloaded/checked; the incoming link screenshot reviewed.
+IPA independently verifies ARM64/cryptid0/fixture exclusion, SHA-256:
+`e6f1731005e4f8660bebc288f1c11b3e15f7ff6c21c14b915b51f79b0c661aff`.
+No new phone or live social/notification validation was performed.
+
+Candidate 22 ports Android selection deletion from CommentsFragment, its action
+mode handler, CommentsFragmentImpl/AnswersFragment and revival.CommentDelete.
+The request is POST /content/{postID}/comments?method=DELETE with ordered id CSV.
+Explicit empty data.responses plus successful outer status acknowledges all
+valid unique IDs. Otherwise only positional 2xx results apply; malformed/unknown
+receipts never invent acceptance. Failed/missing rows remain selected. The main
+root delta includes its replies; reply rows become deleted_self and preserve the
+root/positions. Original source author owns the pencil/hold selection, and reply
+root context is excluded. Unknown receipts block selection until a successful
+replacement read; a failed refresh keeps the lock. Account generations and no
+write replay remain enforced, with draft and attachment retained.
+
+63 Linux core tests (including five bulk/owner contracts), six Python checks and
+native syntax parsing pass. Three added actual UI tests cover partial root counts,
+empty reply receipts, root exclusion, full attachment hold, uncertain write and
+failed/successful read recovery. The 20-case Mac/UIKit run is pending. Ordinary
+row tap/options and depth/state rules are explicitly still incomplete.

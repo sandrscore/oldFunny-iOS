@@ -68,7 +68,7 @@ final class PostController: UIViewController, UIGestureRecognizerDelegate {
         case .media: incoming = media
         case .comments:
             if comments == nil {
-                let child = CommentsController(app: app, postID: post.id, count: post.comments, postAuthorID: post.authorID)
+                let child = CommentsController(app: app, postID: post.id, count: post.comments, postAuthorID: post.moderationOwnerID)
                 child.onClose = { [weak self] in self?.showPanel(.media) }; child.isEmbeddedPanel = true
                 child.onCountChange = { [weak self] count in self?.media.setCommentCount(count) }
                 comments = child

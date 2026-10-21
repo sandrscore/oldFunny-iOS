@@ -280,6 +280,13 @@ public actor APIClient {
         let path = "content/" + (try Wire.requireID(postID)) + "/comments/" + (try Wire.requireID(commentID))
         _ = try await call(path: path, method: "DELETE", authenticated: true)
     }
+    public func deleteComments(postID: String, commentIDs: [String], session: UUID) async throws -> CommentDeletionReceipt {
+        try validateWriteSession(session)
+        let ids = try CommentDeletionReceipt.selectionField(commentIDs)
+        let response = try await call(path: "content/" + Wire.requireID(postID) + "/comments", query: [("method", "DELETE")],
+            method: "POST", fields: [("id", ids)], authenticated: true)
+        return try CommentDeletionReceipt(response, requested: commentIDs)
+    }
     public func reportComment(postID: String, commentID: String, session: UUID? = nil) async throws {
         try validateWriteSession(session)
         let path = "content/" + (try Wire.requireID(postID)) + "/comments/" + (try Wire.requireID(commentID)) + "/abuses"

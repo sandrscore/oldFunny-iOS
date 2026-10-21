@@ -44,6 +44,7 @@ final class ClassicCommentCell: UITableViewCell {
     override func prepareForReuse() { super.prepareForReuse(); imageTask?.cancel(); commentID = nil; picture.image = nil; onAuthor = nil; onAttachment = nil; onSmile = nil; onUnsmile = nil; onMention = nil; canOpenMention = nil }
     func bind(_ comment: Comment, loader: MediaLoader, replyCount: Int? = nil) {
         imageTask?.cancel(); commentID = comment.id
+        accessibilityIdentifier = "comment-row-" + comment.id
         name.setTitle(comment.author, for: .normal); name.isEnabled = comment.authorID != nil && !comment.isDeleted; name.isHidden = comment.isDeleted
         avatar.isHidden = comment.isDeleted; avatar.set(comment.isDeleted ? nil : comment.authorAvatarURL, loader: loader)
         if let value = comment.date, !comment.isDeleted { date.text = DateFormatter.localizedString(from: value, dateStyle: .short, timeStyle: .none); date.isHidden = false }
@@ -76,6 +77,10 @@ final class ClassicCommentCell: UITableViewCell {
     @objc private func smileTapped() { onSmile?() }
     @objc private func unsmileTapped() { onUnsmile?() }
     func setActionsEnabled(_ enabled: Bool) { smile.isEnabled = enabled; unsmile.isEnabled = enabled }
+    func setBatchSelected(_ selected: Bool) {
+        contentView.backgroundColor = selected ? ClassicTheme.yellow.withAlphaComponent(0.16) : .clear
+        accessibilityValue = selected ? "Selected" : nil
+    }
 }
 
 final class ClassicTextField: UITextField {
