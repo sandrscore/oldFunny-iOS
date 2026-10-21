@@ -24,6 +24,8 @@ final class CommentsController: ClassicScreenController, UITableViewDataSource, 
     private var generation = UUID()
     private var readGeneration = UUID(), hasLoadedReplies = false, refreshWhenIdle = false
     private var dismissingKeyboardTap = false
+    private var mentionComposer: CommentMentionComposer?, mentionPanel: MentionSuggestionsView?
+    private var mentionHeight: NSLayoutConstraint?
     init(app: AppContext, postID: String, parentID: String? = nil, count: Int? = nil, postAuthorID: String? = nil, rootComment: Comment? = nil) {
         self.app = app; self.postID = postID; self.parentID = parentID; self.count = count; self.postAuthorID = postAuthorID
         self.rootComment = rootComment
@@ -92,11 +94,40 @@ final class CommentsController: ClassicScreenController, UITableViewDataSource, 
             footer.bottomAnchor.constraint(equalTo: view.keyboardLayoutGuide.topAnchor),
             composer.heightAnchor.constraint(equalToConstant: 60), text.heightAnchor.constraint(equalToConstant: 40)
         ])
+        let suggestions = MentionSuggestionsView(app: app, host: self); mentionPanel = suggestions
+        suggestions.translatesAutoresizingMaskIntoConstraints = false; contentView.addSubview(suggestions)
+        let height = suggestions.heightAnchor.constraint(equalToConstant: 56); mentionHeight = height
+        NSLayoutConstraint.activate([suggestions.leadingAnchor.constraint(equalTo: contentView.leadingAnchor), suggestions.trailingAnchor.constraint(equalTo: contentView.trailingAnchor), suggestions.bottomAnchor.constraint(equalTo: footer.topAnchor), height])
+        suggestions.availableHeight = { [weak footer] in max(56, (footer?.frame.minY ?? 360) - 56) }
+        suggestions.onHeight = { [weak self] value in
+            let resolved = max(56, value) // Hidden overlay need not collapse its internal rows.
+            guard let self, let mentionHeight, abs(mentionHeight.constant - resolved) > 0.5 else { return }
+            mentionHeight.constant = resolved; contentView.layoutIfNeeded()
+        }
+        let mentions = CommentMentionComposer(input: text, suggestions: suggestions); mentionComposer = mentions
+        mentions.onChange = { [weak self] document in
+            guard let self else { return }; draft.edit(document)
+            traceMentionDraft()
+        }
+        mentions.restore(MentionDocument(text: draft.text, mentions: draft.mentions))
         NotificationCenter.default.addObserver(self, selector: #selector(accountChanged), name: .oldFunnyAccountChanged, object: nil)
         Task { [weak self] in guard let self else { return }; accountID = await app.api.account()?.accountID }
         load(replacing: true)
     }
-    @objc private func draftChanged() { draft.edit(text.text ?? "") }
+    override func viewDidAppear(_ animated: Bool) { super.viewDidAppear(animated); mentionComposer?.setActive(true) }
+    override func viewWillDisappear(_ animated: Bool) { mentionComposer?.setActive(false); super.viewWillDisappear(animated) }
+    @objc private func draftChanged() { if let mentionComposer { mentionComposer.didEdit() } else { draft.edit(text.text ?? "") } }
+    private func traceMentionDraft() {
+        #if CLASSIC_UI_PREVIEW
+        view.accessibilityValue = "mentions=" + (MentionDocument(text: draft.text, mentions: draft.mentions).wire() ?? "") + "; request=" + PreviewFixtures.mentionRequest
+        #endif
+    }
+    func textField(_ textField: UITextField, shouldChangeCharactersIn range: NSRange, replacementString string: String) -> Bool {
+        mentionComposer?.shouldEdit(range, replacement: string) ?? true
+    }
+    func textFieldDidChangeSelection(_ textField: UITextField) { mentionComposer?.updateSelection() }
+    func textFieldDidBeginEditing(_ textField: UITextField) { mentionComposer?.updateSelection() }
+    func textFieldDidEndEditing(_ textField: UITextField) { mentionComposer?.endEditing() }
     private func renderRecipient() {
         recipientRow.isHidden = draft.recipient == nil
         recipientLabel.text = draft.recipient.map { "Reply to \($0.nickname)" }
@@ -107,7 +138,7 @@ final class CommentsController: ClassicScreenController, UITableViewDataSource, 
     @objc private func clearRecipient() {
         // Android AnswersFragment.onReplyToCloseClick clears reply text and
         // dismisses the keyboard; the independently chosen post remains.
-        draft.reply(to: nil); draft.edit(""); text.text = ""; renderRecipient(); view.endEditing(true)
+        draft.reply(to: nil); draft.edit(""); text.text = ""; mentionComposer?.restore(MentionDocument()); renderRecipient(); view.endEditing(true)
     }
     @objc private func dismissKeyboard() { view.endEditing(true) }
     func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldReceive touch: UITouch) -> Bool {
@@ -149,7 +180,7 @@ final class CommentsController: ClassicScreenController, UITableViewDataSource, 
     @objc private func accountChanged() {
         task?.cancel(); generation = UUID(); readGeneration = UUID(); loading = false; hasLoadedReplies = false
         comments = []; nextCursor = nil; usedCursors = []; text.text = nil
-        draft = CommentDraft(); renderAttachment(); renderRecipient(); replyThreads = [:]; replyCounts = [:]; accountID = nil
+        draft = CommentDraft(); mentionComposer?.resetAccount(); renderAttachment(); renderRecipient(); replyThreads = [:]; replyCounts = [:]; accountID = nil
         Task { [weak self] in guard let self else { return }; accountID = await app.api.account()?.accountID }
         table.reloadData(); refresh()
     }
@@ -203,6 +234,11 @@ final class CommentsController: ClassicScreenController, UITableViewDataSource, 
         cell.onAuthor = { [weak self] in
             guard let self, !consumeEditingTap(), let id = comment.authorID else { return }
             navigationController?.pushViewController(ProfileController(app: app, userID: id, nickname: comment.author), animated: true)
+        }
+        cell.canOpenMention = { [weak self] in self?.text.isFirstResponder == false }
+        cell.onMention = { [weak self] mention in
+            guard let self, !consumeEditingTap() else { return }
+            navigationController?.pushViewController(ProfileController(app: app, userID: mention.userID, nickname: mention.nickname), animated: true)
         }
         return cell
     }
@@ -315,6 +351,7 @@ final class CommentsController: ClassicScreenController, UITableViewDataSource, 
     func textFieldShouldReturn(_ textField: UITextField) -> Bool { postComment(); return false }
     @objc private func postComment() {
         guard send.isEnabled, !writing else { return }
+        mentionComposer?.didEdit()
         draft.edit(text.text ?? ""); let snapshot = draft, owner = generation
         guard snapshot.canSend else { showError(ClientError.invalidInput); return }
         send.isEnabled = false; pauseReads(); setRowActionsEnabled(false)
@@ -326,15 +363,18 @@ final class CommentsController: ClassicScreenController, UITableViewDataSource, 
             guard await app.api.account() != nil else { app.signIn(from: self); return }
             guard owner == generation else { return }
             do {
-                try await app.api.sendComment(postID: postID, parentID: snapshot.replyParentID(root: parentID), text: snapshot.text, attachmentID: snapshot.attachment?.id, session: session)
+                try await app.api.sendComment(postID: postID, parentID: snapshot.replyParentID(root: parentID), text: snapshot.text, attachmentID: snapshot.attachment?.id, mentions: snapshot.mentions, session: session)
+                traceMentionDraft()
                 guard owner == generation else { return }
-                draft.clear(ifRevision: snapshot.revision); text.text = draft.text; renderAttachment(); renderRecipient()
+                draft.clear(ifRevision: snapshot.revision); text.text = draft.text
+                mentionComposer?.restore(MentionDocument(text: draft.text, mentions: draft.mentions)); renderAttachment(); renderRecipient()
                 if let count { self.count = count + 1; updateCount() }
                 if parentID != nil { onPostCountDelta?(1) }
                 view.endEditing(true)
                 refresh = true
             } catch {
                 guard owner == generation else { return }
+                traceMentionDraft()
                 // A network failure may follow server acceptance. Keep the draft
                 // and ask the user to check the thread before any manual retry.
                 let alert = UIAlertController(title: "Comment not confirmed", message: "Your text and attachment are still here. Refresh the thread and check whether it appeared before sending again.", preferredStyle: .alert)

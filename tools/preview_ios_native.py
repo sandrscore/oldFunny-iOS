@@ -77,7 +77,7 @@ def main():
         run("xcrun", "simctl", "install", device, str(app))
         report.update(simulator_device=kind["name"], simulator_ios=runtime["version"])
         stage = "screenshots"
-        for name, args in [("feed", []), ("sidebar", ["--preview-sidebar"]), ("comments", ["--preview-comments"]), ("information", ["--preview-information"]), ("profile", ["--preview-profile"]), ("profile-search", ["--preview-profile-search"])]:
+        for name, args in [("feed", []), ("sidebar", ["--preview-sidebar"]), ("comments", ["--preview-comments"]), ("information", ["--preview-information"]), ("profile", ["--preview-profile"]), ("profile-search", ["--preview-profile-search"]), ("mentions", ["--preview-comments", "--ui-tests-account", "--ui-tests-mentions"])]:
             run("xcrun", "simctl", "launch", "--terminate-running-process", device, "mobi.oldfunny.ios", *args)
             time.sleep(3)
             path = output / (name + ".png")

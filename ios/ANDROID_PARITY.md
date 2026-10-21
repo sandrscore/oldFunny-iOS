@@ -102,7 +102,7 @@ post panels. Process-death restoration and every gesture edge case remain checks
 | Attachment send | `text` + one `content` ID to comment/reply endpoint; no separate upload | Source now connected; no live comments submitted by agent |
 | Draft success/failure | Clear exact submitted revision only; retain newer edits/uncertain writes | Source and tests; lifecycle/process restoration pending |
 | Send retries | Never replay an uncertain social write; `comment-send-01`, `CommentComposer` | Existing single-attempt API retained; refresh-only GET retry preserved |
-| Mentions | Unicode offsets, exact IDs, suggestions/recent users/avatars, chips/colors and notification fields; `CommentMentions`, `MentionComments` | Missing |
+| Mentions | Unicode offsets, exact IDs, suggestions/recent users/avatars, colors and notification fields; `CommentMentions`, `MentionComments` | Build 20 source: selected identity/ranges, edit invalidation, authenticated defaults/paged suggestions, colored drafts and exact glyph links, send form; 58 portable tests pass; new UIKit tests pending. Panel inertia/fling handoff, server notifications and phone validation remain gaps |
 | Keyboard dismissal | First outside tap dismisses and preserves text/attachment/recipient, next tap normal | Source basic text/attachment behavior; recipient/mention parts missing |
 | User profile | Information header, posts/reposts grid, subscriptions/subscribers, actions; profile fragments | Source: native cover/avatar/header, grid/info tabs, public counters, real subscriber/subscription lists, subscribe actions. Basic public-profile schemas verified anonymously; new UIKit/phone validation pending. |
 | Own profile | Account identity, editing, cover/avatar, counters, settings | Partial: account identity, posts/info/featured/counters and own pin context implemented; editing, cover/avatar uploads and full settings still missing. |
@@ -284,3 +284,33 @@ this fix; unfinished mention prototypes in the original workspace are excluded.
 Build18IPA independently verified ARM64/cryptid0/no fixtures:
 `b15f9a021c3557f073f9a0b2ef6c0c3e614017ece8096b2e3483f49b0657337a`.
 No target-phone/live-social check and no Android changes.
+
+### Verified checkpoint 19 and candidate 20
+
+Build 19 source `86394bb2f59dd7cd16e7593ee2ddcf1dea80b906`,
+[Mac CI](https://github.com/sandrscore/oldFunny-iOS/actions/runs/39526685353),
+passed 48 Mac Swift, 6 Python and all 15 UIKit tests with zero failures. The
+ImageIO fixture confirms global dimensions are zero and first-frame dimensions
+320x320; fallback resolves the load failure. Actual decoded GIF frame 81, uneven
+7580ms loop, green/blue pixels and inactive-panel phase retention now pass.
+Video, profile/search/tag/pin/subscribe and previous comment tests also pass.
+The downloaded IPA independently verifies ARM64/cryptid0/fixture exclusion:
+`86fe2202410f483ee52fe45791d019eedc672aa4dff7be019967b775b0af84c5`.
+Reports, exact source ZIP and local IPA are retained. No new phone/live-write check.
+
+Build 20 incorporates the inherited local mention contracts and native UI.
+`MentionDocument` follows Android exact UTF-16 identities, boundary edits, token
+rules, ASCII trim and inclusive send offsets. Selected users replace @query;
+plain typed names never gain an ID. Draft revisions retain identity with text,
+attachment and reply recipient. Incoming blue/bold glyph links open the actual ID;
+first outside keyboard tap is dismissal only. Suggestions use authenticated
+9-default/20-paged endpoints, 250ms typed debounce, query/account fences and dedupe.
+A resizable overlay remains above the recipient/composer footer. Full Android
+inertia/fling handoff is still missing. Exact server notification behavior and
+account/process edge cases require further validation.
+
+58 portable Swift tests and 6 packaging checks pass locally. Added offline UIKit
+tests verify actual choice/pagination, link navigation, rejected root form with
+retained draft/attachment, identity removal after an interior edit, and accepted
+selected-recipient reply with exact mention/attachment fields. These native/UI
+additions are pending Mac verification; no real comment/notification is sent.

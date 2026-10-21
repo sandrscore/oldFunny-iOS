@@ -21,6 +21,66 @@ final class ViewerTests: XCTestCase {
             if parts.count == 2 { result[parts[0]] = parts[1] }
         }
     }
+    private func chooseMention(_ app: XCUIApplication, prefix: String, defaults: Bool = false) {
+        let draft = app.textFields["comment-draft"]; draft.tap(); draft.typeText(prefix + "@")
+        if defaults { XCTAssertTrue(app.tables.cells["mention-user-Reader1"].waitForExistence(timeout: 5)) }
+        draft.typeText("r")
+        XCTAssertTrue(app.buttons["mention-status"].waitForExistence(timeout: 5))
+        XCTAssertEqual(app.buttons["mention-status"].label, "Type one more character to search")
+        draft.typeText("e")
+        let choice = app.tables.cells["mention-user-Reader2"]
+        XCTAssertTrue(choice.waitForExistence(timeout: 5), "The second paginated result must be reachable")
+        XCTAssertEqual(app.tables["mention-suggestions"].cells.count, 2, "Duplicate IDs across pages appear once")
+        choice.tap(); XCTAssertEqual(draft.value as? String, prefix + "ReaderTwo ")
+        XCTAssertFalse(app.otherElements["mention-panel"].exists)
+    }
+    func testMentionSelectionLinkAndUnconfirmedSendPreserveIdentityAndAttachment() {
+        let app = XCUIApplication(); app.launchArguments = ["--ui-tests", "--ui-tests-account", "--ui-tests-mentions"]; app.launch()
+        XCTAssertTrue(app.buttons["3 comments"].waitForExistence(timeout: 10)); app.buttons["3 comments"].tap()
+        chooseMention(app, prefix: "Hi ", defaults: true)
+        let screen = app.otherElements["comments-screen"], draft = app.textFields["comment-draft"]
+        XCTAssertTrue((screen.value as? String ?? "").hasPrefix("mentions=Reader2:3:11;"))
+        app.buttons["Attach one of your posts"].tap()
+        let tile = app.collectionViews.cells.firstMatch; XCTAssertTrue(tile.waitForExistence(timeout: 5)); tile.tap()
+        XCTAssertTrue(app.buttons["remove-comment-attachment"].waitForExistence(timeout: 5))
+        app.buttons["Back"].tap(); app.buttons["3 comments"].tap()
+        XCTAssertEqual(draft.value as? String, "Hi ReaderTwo ")
+        XCTAssertTrue((screen.value as? String ?? "").hasPrefix("mentions=Reader2:3:11;"))
+        draft.tap()
+        let body = app.staticTexts["comment-body-PreviewComment1"]
+        XCTAssertTrue(body.waitForExistence(timeout: 5))
+        let link = body.coordinate(withNormalizedOffset: .zero).withOffset(CGVector(dx: 20, dy: 8))
+        link.tap(); XCTAssertEqual(app.keyboards.count, 0); XCTAssertFalse(app.otherElements["user-profile"].exists)
+        link.tap(); XCTAssertTrue(app.otherElements["user-profile"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["ReaderTwo"].exists, "The linked identity opens Reader2's profile")
+        app.buttons["Back"].tap(); XCTAssertTrue(draft.waitForExistence(timeout: 5))
+        XCTAssertEqual(draft.value as? String, "Hi ReaderTwo ")
+        app.buttons["Send comment"].tap()
+        XCTAssertTrue(app.alerts["Comment not confirmed"].waitForExistence(timeout: 5)); app.alerts.buttons["OK"].tap()
+        XCTAssertEqual(draft.value as? String, "Hi ReaderTwo "); XCTAssertTrue(app.buttons["remove-comment-attachment"].exists)
+        XCTAssertEqual(screen.value as? String, "mentions=Reader2:3:11; request=1|/v4/content/PreviewPost/comments|text=Hi ReaderTwo|mentions=Reader2:3:11|content=PreviewPost")
+        capture("mention-unconfirmed-form-and-retained-draft", app: app)
+        draft.tap(); draft.typeText(XCUIKeyboardKey.delete.rawValue + XCUIKeyboardKey.delete.rawValue)
+        XCTAssertEqual(draft.value as? String, "Hi ReaderTw")
+        XCTAssertTrue((screen.value as? String ?? "").hasPrefix("mentions=; request="), "Editing inside the name removes the chosen identity")
+    }
+    func testConfirmedMentionReplyUsesSelectedRecipientAndClearsOnlySubmittedDraft() {
+        let app = XCUIApplication(); app.launchArguments = ["--ui-tests", "--ui-tests-account", "--ui-tests-mentions", "--ui-tests-mention-success", "--ui-tests-accepted-comments"]; app.launch()
+        XCTAssertTrue(app.buttons["5 comments"].waitForExistence(timeout: 10)); app.buttons["5 comments"].tap()
+        let replies = app.staticTexts["2 replies"].firstMatch; XCTAssertTrue(replies.waitForExistence(timeout: 5)); replies.tap()
+        let recipient = app.staticTexts["Reply number one"]; XCTAssertTrue(recipient.waitForExistence(timeout: 5)); recipient.tap()
+        chooseMention(app, prefix: "Hello ")
+        XCTAssertEqual(app.staticTexts["reply-recipient"].label, "Reply to ReaderOne")
+        app.buttons["Attach one of your posts"].tap()
+        let tile = app.collectionViews.cells.firstMatch; XCTAssertTrue(tile.waitForExistence(timeout: 5)); tile.tap()
+        app.buttons["Send comment"].tap()
+        XCTAssertTrue(app.staticTexts["Hello ReaderTwo"].waitForExistence(timeout: 5), app.debugDescription)
+        XCTAssertTrue((app.otherElements["comments-screen"].value as? String ?? "").contains("request=1|/v4/content/PreviewPost/comments/PreviewReply1/replies|text=Hello ReaderTwo|mentions=Reader2:6:14|content=PreviewPost"))
+        XCTAssertFalse(app.staticTexts["reply-recipient"].exists); XCTAssertFalse(app.buttons["remove-comment-attachment"].exists)
+        XCTAssertEqual(app.textFields["comment-draft"].value as? String, "Say something funny…")
+        XCTAssertTrue(app.staticTexts["3 replies"].firstMatch.exists)
+        capture("confirmed-mention-reply", app: app)
+    }
     func testLongGIFUsesDecodedPixelsUnevenTimingLoopAndRetainedPhase() {
         let app = XCUIApplication(); app.launchArguments = ["--ui-tests", "--ui-tests-gif"]; app.launch()
         let gif = app.descendants(matching: .any)["post-gif"].firstMatch

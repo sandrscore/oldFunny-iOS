@@ -1,43 +1,40 @@
-> Build19 is under verification with a focused GIF metadata-dimension fix. Build18 passed48 core/6 packaging checks and14/15 UIKit tests: all profile/search/tag/pin/subscribe, video and comment tests passed. Its only failure was GIF loading before playback. The grid trace confirmed18totalresults versus15exposedcells; scroll/ID checks passed. No new target-phone or live-write validation; full parity remains incomplete.
-
 # oldFunny iOS
 
-**0.3.0 build 11: verified offline viewer/gesture checkpoint.**
+**Verified checkpoint: 0.3.0/build 19. Candidate build 20 adds comment mentions;
+its Mac compilation and UIKit tests are pending. Full Android parity is incomplete.**
 
-[Download the unsigned IPA artifact ZIP](https://github.com/sandrscore/oldFunny-iOS/actions/runs/39502078271/artifacts/12301621612),
-extract the IPA and sign/update through Zeus. SHA-256:
-`3c211f82d370d522f2f55f8762bb700ccfb12c81dfc4ef543b85b5dd68b5912c`.
-Bundle: `mobi.oldfunny.ios`; minimum iOS 16.0; ARM64, cryptid=0, unsigned.
-Artifact expires October 27, 2026; a local verified copy is preserved in the
-original workspace. Original binaries, credentials and sessions are excluded.
+[Download the build 19 unsigned IPA artifact ZIP](https://github.com/sandrscore/oldFunny-iOS/actions/runs/39526685353/artifacts/12313263187),
+extract the IPA and update through Zeus. SHA-256:
+`86fe2202410f483ee52fe45791d019eedc672aa4dff7be019967b775b0af84c5`.
+Bundle `mobi.oldfunny.ios`; minimum iOS 16.0; ARM64, cryptid=0, unsigned.
+Artifacts expire October 28, 2026; an independently verified local copy and exact
+source archive are preserved in the original workspace.
 
-[Successful Mac CI](https://github.com/sandrscore/oldFunny-iOS/actions/runs/39502078271)
-for source `9dd9ac22bfc72b1bd0b329d4f8236bd91e2b2cda` passed 27 core tests,
-6 packaging/test-verification checks and all 7 actual UIKit tests. The downloaded
-IPA, preview report and test logs were independently checked. Four simulator
-screens were reviewed on iPhone 16 / iOS 18.5 using offline fixtures only.
+[Build 19 Mac CI](https://github.com/sandrscore/oldFunny-iOS/actions/runs/39526685353) for source `86394bb2f59dd7cd16e7593ee2ddcf1dea80b906` passed
+48 core tests, 6 packaging/test-verification checks and all 15 actual UIKit tests.
+The downloaded reports and logs confirm execution with zero failures. Tests cover
+vertical panels/drafts/replies/attachments, paging/zoom, confirmed comment counts,
+video decoded-frame seeking/pause/mute/zoom/return, long GIF decoded pixels/timing/
+loop/retained phase, context-gated triple taps, profiles/featured/grid return,
+combined search, tag editing, pin readback and subscriptions. These are offline
+fixtures on iPhone 16 / iOS 18.5, separate from server and target-phone validation.
 
-Tests cover vertical comments/information entry and return, slow-fling rejection,
-keyboard dismissal, retained drafts and reply recipients through Back, attachment
-picker/Back/refresh/removal, paging/zoom priority, fitted image size and rejected
-inline reactions preserving drafts. Production gesture thresholds remain the
-Android values. This verifies those fixture interactions, not full Android parity
-or iOS 27 compatibility. See [the behavioral ledger](ANDROID_PARITY.md).
+Build 20 source adds authenticated mention suggestions, exact selected user IDs
+and UTF-16 edit ranges, colored draft names and incoming profile links, and the
+`user_mentions` send field. Two added UIKit tests exercise selection/pagination,
+attachment and Back retention, uncertain receipts, link taps and confirmed reply
+forms. 58 portable core tests pass locally; current Mac/UIKit verification is
+pending. No live comments or mention notifications were sent.
 
-Refresh is visible in the simulator. The new offline reply/delete test verifies
-post count propagation and retained replies after deleting a root. Full deleted/
-hidden/depth rules, unsmile eligibility, mentions/bulk deletion, custom video/GIF
-controls, complete profiles/search/pins, reads, Explore/Activity/settings, Chats/
-groups and Studio/publishing remain unfinished.
+Remaining work includes full comment state/depth/bulk handling, suggestion panel
+physics, large-profile indexing and other profile options, feed/read queues,
+Explore/Activity/settings, Chats/groups and Studio/publishing. Special GIF/codec/
+Photos cases and new saved-session behavior still require phone checks. See the
+[behavioral ledger](ANDROID_PARITY.md) for the complete scope and gaps.
 
-The user confirmed 0.1.2 password sign-in/CAPTCHA on iPhone 16 / reported iOS
-27.0.1. Its sign-in, refresh and request-authentication algorithms are preserved;
-new social actions add a captured-session fence. No live social write or new
-phone validation was performed. After Zeus update, saved sign-in, vertical
-panels, unsent drafts, image/video viewing and Photos still need phone checks.
-
-The previous 0.2.0/build 6 IPA remains preserved with SHA-256
-`91abe2d26c5fb00cae5311145f71696fa901570da6942dac021564da2cc9a3b5`.
+The user's last target-phone confirmation is 0.1.2 sign-in/CAPTCHA. Authentication
+algorithms and the same 16 reviewed bitmap assets are preserved; credentials,
+sessions and original binaries are excluded. Android remains unchanged.
 
 ## Build and test
 

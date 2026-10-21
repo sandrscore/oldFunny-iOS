@@ -92,6 +92,7 @@ public struct PostPage: Sendable {
 
 public struct Comment: Sendable {
     public let id: String, text: String, author: String
+    public let mentions: [MentionSpan]
     public let authorID: String?, authorAvatarURL: URL?, date: Date?
     public let attachments: [Post]
     public let replies: Int
@@ -104,6 +105,7 @@ public struct Comment: Sendable {
     public init(_ value: JSON) throws {
         id = try Wire.requireID(value["id"].string ?? "")
         text = value["text"].string ?? ""
+        mentions = MentionDocument.parse(text: text, data: value["attachments"]["mention_user"])
         author = value["user"]["nick"].string ?? value["creator"]["nick"].string ?? "iFunny"
         let user = value["user"] == .null ? value["creator"] : value["user"]
         authorID = user["id"].string.flatMap { Wire.validID($0) ? $0 : nil }

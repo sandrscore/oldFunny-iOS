@@ -2,7 +2,7 @@ import UIKit
 
 final class ClassicCommentCell: UITableViewCell {
     private let avatar = RemoteAvatarView(), name = UIButton(type: .custom)
-    private let date = UILabel(), body = UILabel(), replies = UILabel()
+    private let date = UILabel(), body = MentionLabel(), replies = UILabel()
     private let preview = UIButton(type: .custom), picture = UIImageView()
     private let smile = ClassicCounterButton(), unsmile = ClassicTheme.button(.unsmile, label: "Unsmile comment")
     private let reactions = UIStackView()
@@ -11,6 +11,8 @@ final class ClassicCommentCell: UITableViewCell {
     private var commentID: String?
     var onAuthor: (() -> Void)?, onAttachment: (() -> Void)?
     var onSmile: (() -> Void)?, onUnsmile: (() -> Void)?
+    var onMention: ((MentionSpan) -> Void)? { didSet { body.onMention = onMention } }
+    var canOpenMention: (() -> Bool)? { didSet { body.canOpen = canOpenMention } }
     override init(style: UITableViewCell.CellStyle, reuseIdentifier: String?) {
         super.init(style: style, reuseIdentifier: reuseIdentifier)
         backgroundColor = ClassicTheme.bar; selectionStyle = .none
@@ -39,14 +41,16 @@ final class ClassicCommentCell: UITableViewCell {
     }
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
     deinit { imageTask?.cancel() }
-    override func prepareForReuse() { super.prepareForReuse(); imageTask?.cancel(); commentID = nil; picture.image = nil; onAuthor = nil; onAttachment = nil; onSmile = nil; onUnsmile = nil }
+    override func prepareForReuse() { super.prepareForReuse(); imageTask?.cancel(); commentID = nil; picture.image = nil; onAuthor = nil; onAttachment = nil; onSmile = nil; onUnsmile = nil; onMention = nil; canOpenMention = nil }
     func bind(_ comment: Comment, loader: MediaLoader, replyCount: Int? = nil) {
         imageTask?.cancel(); commentID = comment.id
         name.setTitle(comment.author, for: .normal); name.isEnabled = comment.authorID != nil && !comment.isDeleted; name.isHidden = comment.isDeleted
         avatar.isHidden = comment.isDeleted; avatar.set(comment.isDeleted ? nil : comment.authorAvatarURL, loader: loader)
         if let value = comment.date, !comment.isDeleted { date.text = DateFormatter.localizedString(from: value, dateStyle: .short, timeStyle: .none); date.isHidden = false }
         else { date.text = nil; date.isHidden = true }
-        body.text = comment.isDeleted ? "Comment deleted." : comment.text; body.isHidden = !comment.isDeleted && comment.text.isEmpty
+        body.show(comment.isDeleted ? "Comment deleted." : comment.text, mentions: comment.isDeleted ? [] : comment.mentions)
+        body.accessibilityIdentifier = "comment-body-" + comment.id
+        body.isHidden = !comment.isDeleted && comment.text.isEmpty
         reactions.isHidden = comment.isDeleted
         let count = replyCount ?? comment.replies
         replies.text = "\(count) replies"; replies.isHidden = count == 0

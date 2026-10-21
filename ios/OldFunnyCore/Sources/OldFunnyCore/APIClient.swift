@@ -227,16 +227,25 @@ public actor APIClient {
     private func validateWriteSession(_ session: UUID?) throws {
         if let session, session != epoch { throw ClientError.sessionChanged }
     }
-    public func sendComment(postID: String, parentID: String? = nil, text: String, attachmentID: String? = nil, session: UUID? = nil) async throws {
+    public func sendComment(postID: String, parentID: String? = nil, text: String, attachmentID: String? = nil, mentions: [MentionSpan] = [], session: UUID? = nil) async throws {
         try validateWriteSession(session)
-        guard text.utf16.count <= 300, !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || attachmentID != nil else {
+        let submitted = MentionDocument.asciiTrim(text)
+        guard text.utf16.count <= 300, !submitted.isEmpty || attachmentID != nil else {
             throw ClientError.invalidInput
         }
         var path = "content/" + (try Wire.requireID(postID)) + "/comments"
         if let parentID { path += "/" + (try Wire.requireID(parentID)) + "/replies" }
-        var fields = [("text", text)]
+        var fields = [("text", submitted)]
         if let attachmentID { fields.append(("content", try Wire.requireID(attachmentID))) }
+        if let wire = MentionDocument(text: text, mentions: mentions).wire(for: submitted) { fields.append(("user_mentions", wire)) }
         _ = try await call(path: path, method: "POST", fields: fields, authenticated: true)
+    }
+    public func mentionUsers(query: String = "", next: String? = nil) async throws -> MentionUserPage {
+        guard query.utf16.count <= 25, query.isEmpty || query.unicodeScalars.count >= 2,
+              next == nil || next!.utf8.count <= 8192 else { throw ClientError.invalidInput }
+        var fields = [("limit", query.isEmpty ? "9" : "20")]
+        if !query.isEmpty { fields.append(("q", query)) }; if let next { fields.append(("next", next)) }
+        return try MentionUserPage(await call(path: query.isEmpty ? "users/my/mention_users" : "search/users_for_mentions", query: fields, authenticated: true)["data"])
     }
     public func smile(postID: String, enabled: Bool, source: String, session: UUID? = nil) async throws {
         try validateWriteSession(session)

@@ -16,10 +16,13 @@ private struct PreviewStore: CredentialStore {
 private actor PreviewTransport: HTTPTransport {
     private var sentReplies = [[String: Any]](), deleted = Set<String>()
     private var profilePins = Set<String>(), subscriptions = Set<String>()
+    private var mentionSends = 0
     private var replyCount: Int { 2 + sentReplies.count - deleted.filter { $0.hasPrefix("PreviewReply") || $0.hasPrefix("FixtureSentReply") }.count }
     func send(_ request: URLRequest) async throws -> HTTPResult {
         let path = request.url?.path ?? "", method = request.httpMethod ?? "GET"
-        if ProcessInfo.processInfo.arguments.contains("--ui-tests-profile") || ProcessInfo.processInfo.arguments.contains("--preview-profile") || ProcessInfo.processInfo.arguments.contains("--preview-profile-search") {
+        if ProcessInfo.processInfo.arguments.contains("--ui-tests-mentions"), let result = try await mentionRequest(request) { return result }
+        let mentionedProfile = ProcessInfo.processInfo.arguments.contains("--ui-tests-mentions") && (path.hasPrefix("/v4/users/Reader2") || path.hasPrefix("/v4/timelines/users/Reader2"))
+        if ProcessInfo.processInfo.arguments.contains("--ui-tests-profile") || ProcessInfo.processInfo.arguments.contains("--preview-profile") || ProcessInfo.processInfo.arguments.contains("--preview-profile-search") || mentionedProfile {
             if let result = try profileRequest(request) { return result }
         }
         if ProcessInfo.processInfo.arguments.contains("--ui-tests-reactions"), ["PUT", "DELETE"].contains(method), path == "/v4/content/PreviewPost/smiles" || path == "/v4/content/PreviewPost/unsmiles" {
@@ -63,6 +66,10 @@ private actor PreviewTransport: HTTPTransport {
             comments["items"] = (comments["items"] as! [[String: Any]]).map { row -> [String: Any] in
                 var row = row
                 if row["id"] as? String == "PreviewComment1" { row["num"] = ["replies": replyCount] }
+                if ProcessInfo.processInfo.arguments.contains("--ui-tests-mentions"), row["id"] as? String == "PreviewComment1" {
+                    row["text"] = "ReaderTwo says hello."
+                    row["attachments"] = ["mention_user": [["user_id": "Reader2", "nick": "ReaderTwo", "start_index": 0, "stop_index": 8]]]
+                }
                 if deleted.contains(row["id"] as! String) { row["state"] = "deleted_self" }
                 return row
             }
@@ -78,6 +85,40 @@ private actor PreviewTransport: HTTPTransport {
         else { throw ClientError.invalidInput }
         return HTTPResult(status: 200, body: Data(value.utf8))
     }
+    private func mentionRequest(_ request: URLRequest) async throws -> HTTPResult? {
+        let path = request.url!.path, method = request.httpMethod ?? "GET"
+        let query = URLComponents(url: request.url!, resolvingAgainstBaseURL: false)?.queryItems ?? []
+        func field(_ name: String) -> String? { query.first { $0.name == name }?.value }
+        func response(_ users: [[String: Any]], next: String? = nil) throws -> HTTPResult {
+            HTTPResult(status: 200, body: try JSONSerialization.data(withJSONObject: ["status": 200, "data": ["users": ["items": users, "paging": ["hasNext": next != nil, "cursors": next.map { ["next": $0] } ?? [:]]]]]))
+        }
+        func user(_ id: String, _ name: String) -> [String: Any] { ["id": id, "nick": name, "is_in_subscribers": true, "is_in_subscriptions": true, "photo": ["thumb": ["small_url": "https://preview.invalid/avatar/" + id]]] }
+        if method == "GET", path == "/v4/users/my/mention_users" {
+            guard field("limit") == "9", request.value(forHTTPHeaderField: "Authorization") == "Bearer offline-fixture-not-a-session" else { throw ClientError.invalidInput }
+            return try response([user("Reader1", "ReaderOne"), user("Reader2", "ReaderTwo")])
+        }
+        if method == "GET", path == "/v4/search/users_for_mentions" {
+            guard field("limit") == "20", field("q") == "re" else { throw ClientError.invalidInput }
+            if field("next") == nil { return try response([user("Reader1", "ReaderOne")], next: "mention-next") }
+            guard field("next") == "mention-next" else { throw ClientError.invalidInput }
+            return try response([user("Reader1", "ReaderOne"), user("Reader2", "ReaderTwo")])
+        }
+        if method == "POST", ["/v4/content/PreviewPost/comments", "/v4/content/PreviewPost/comments/PreviewReply1/replies"].contains(path) {
+            let encoded = String(decoding: request.httpBody ?? Data(), as: UTF8.self).replacingOccurrences(of: "+", with: "%20")
+            let fields = URLComponents(string: "?" + encoded)?.queryItems ?? []
+            func value(_ name: String) -> String { fields.first { $0.name == name }?.value ?? "" }
+            mentionSends += 1
+            let record = "\(mentionSends)|\(path)|text=\(value("text"))|mentions=\(value("user_mentions"))|content=\(value("content"))"
+            await MainActor.run { PreviewFixtures.mentionRequest = record }
+            // A deliberate uncertain receipt retains the exact draft. Tests
+            // assert the recorded form independently of the production parser.
+            if !ProcessInfo.processInfo.arguments.contains("--ui-tests-mention-success") { throw ClientError.transport }
+            guard path.hasSuffix("/PreviewReply1/replies"), value("text") == "Hello ReaderTwo", value("user_mentions") == "Reader2:6:14", value("content") == "PreviewPost" else { throw ClientError.invalidInput }
+            sentReplies.append(["id": "FixtureSentReply1", "text": "Hello ReaderTwo", "user": ["id": "PreviewUser", "nick": "ClassicFan"], "root_comm_id": "PreviewComment1", "parent_comm_id": "PreviewReply1", "depth": 2, "attachments": ["mention_user": [["user_id": "Reader2", "nick": "ReaderTwo", "start_index": 6, "stop_index": 14]]]])
+            return HTTPResult(status: 204, body: Data())
+        }
+        return nil
+    }
     private func profileRequest(_ request: URLRequest) throws -> HTTPResult? {
         let path = request.url!.path, method = request.httpMethod ?? "GET"
         let query = URLComponents(url: request.url!, resolvingAgainstBaseURL: false)?.queryItems ?? []
@@ -87,7 +128,7 @@ private actor PreviewTransport: HTTPTransport {
             return try response(["tags": ["items": ["dogs", "cats", "fun", "cat_pictures"].filter { $0.hasPrefix(q) }.map { ["tag": $0] }, "paging": ["hasNext": false]]])
         }
         func user(_ id: String) -> [String: Any] {
-            ["id": id, "nick": id == "PreviewUser" ? "ClassicFan" : id == "Writer" ? "Writer" : "ReaderOne", "about": "Offline profile fixture.", "avatar": ["s": "https://preview.invalid/avatar"], "cover_url": "https://preview.invalid/cover", "num": ["created": 44, "featured": 5, "subscribers": 2, "subscriptions": 3], "is_in_subscriptions": subscriptions.contains(id)]
+            ["id": id, "nick": id == "PreviewUser" ? "ClassicFan" : id == "Writer" ? "Writer" : id == "Reader2" ? "ReaderTwo" : "ReaderOne", "about": "Offline profile fixture.", "avatar": ["s": "https://preview.invalid/avatar"], "cover_url": "https://preview.invalid/cover", "num": ["created": 44, "featured": 5, "subscribers": 2, "subscriptions": 3], "is_in_subscriptions": subscriptions.contains(id)]
         }
         if method != "GET" {
             guard ProcessInfo.processInfo.arguments.contains("--ui-tests-profile-writes") else { return nil }
@@ -139,6 +180,7 @@ private actor PreviewTransport: HTTPTransport {
 
 enum PreviewFixtures {
     @MainActor static var reactionEvents = [String]()
+    @MainActor static var mentionRequest = ""
     @MainActor static func makeApp() throws -> AppContext {
         let api = try APIClient(installation: String(repeating: "a", count: 64), userAgent: "Offline UI preview", store: PreviewStore(), transport: PreviewTransport())
         return AppContext(previewAPI: api)

@@ -38,14 +38,22 @@ public struct ReplyRecipient: Equatable, Sendable {
 
 public struct CommentDraft: Equatable, Sendable {
     public private(set) var text = ""
+    public private(set) var mentions = [MentionSpan]()
     public private(set) var attachment: Post?
     public private(set) var recipient: ReplyRecipient?
     public private(set) var revision: UInt64 = 0
     public init() {}
     public var canSend: Bool {
-        text.utf16.count <= 300 && (!text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || attachment != nil)
+        text.utf16.count <= 300 && (!MentionDocument.asciiTrim(text).isEmpty || attachment != nil)
     }
-    public mutating func edit(_ value: String) { if text != value { text = value; revision &+= 1 } }
+    public mutating func edit(_ value: String) {
+        if !text.utf16.elementsEqual(value.utf16) { text = value; mentions = []; revision &+= 1 }
+    }
+    public mutating func edit(_ document: MentionDocument) {
+        if !text.utf16.elementsEqual(document.text.utf16) || mentions != document.mentions {
+            text = document.text; mentions = document.mentions; revision &+= 1
+        }
+    }
     public mutating func attach(_ post: Post?) { if attachment != post { attachment = post; revision &+= 1 } }
     public mutating func reply(to comment: Comment?) {
         let value = comment.map(ReplyRecipient.init)
@@ -53,6 +61,6 @@ public struct CommentDraft: Equatable, Sendable {
     }
     public func replyParentID(root: String?) -> String? { recipient?.commentID ?? root }
     public mutating func clear(ifRevision submitted: UInt64) {
-        guard revision == submitted else { return }; text = ""; attachment = nil; recipient = nil; revision &+= 1
+        guard revision == submitted else { return }; text = ""; mentions = []; attachment = nil; recipient = nil; revision &+= 1
     }
 }

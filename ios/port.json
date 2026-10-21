@@ -4,7 +4,7 @@
   "product": "oldFunny",
   "bundle_identifier": "mobi.oldfunny.ios",
   "version": "0.3.0",
-  "build": "19",
+  "build": "20",
   "minimum_ios": "16.0",
   "target": {
     "device": "iPhone 16",
@@ -39,30 +39,36 @@
     "captcha_handoff": true,
     "session_survives_relaunch": "unverified"
   },
-  "ui_phase": "Candidate19: focused ImageIO GIF dimension fallback; all14 non-GIF UIKit tests passed in18, GIF runtime remains unverified",
+  "ui_phase": "Build 20 source: native mentions; verified checkpoint 19 passed all 15 UIKit tests",
   "simulator_previews": "Offline fixtures compiled only with CLASSIC_UI_PREVIEW; absent from Release",
   "simulator_ui": {
     "device": "iPhone 16",
     "ios": "18.5",
     "offline_fixtures": true,
     "screens_reviewed": [
-      "feed",
-      "sidebar",
-      "comments",
-      "information"
+      "profile",
+      "profile-search"
     ],
     "target_phone_tested": false,
     "ui_gesture_tests_passed": true,
     "version": "0.3.0",
-    "build": "11",
+    "build": "19",
     "ui_gesture_tests": [
       "testAttachmentPickerBackAndRemovalPreserveDraft",
       "testCommentTapAndSwipeShareOnePanelAndDoNotLoseKeyboardDraft",
       "testConfirmedReplyAndRootDeletionUpdatePostCountWithoutChangingReplyCountTwice",
       "testHorizontalPagingAndZoomTakePriorityOverPanelNavigation",
+      "testLongGIFUsesDecodedPixelsUnevenTimingLoopAndRetainedPhase",
+      "testOwnProfilePinReadbackAndGridBadge",
+      "testProfileGridViewerRetainsScrollAndFeaturedUsesSeparateSource",
+      "testProfileSearchCombinesTagsOriginalAuthorAndRepubToggle",
+      "testProfileSubscriberListAndConfirmedSubscribeToggle",
+      "testProfileTagSuggestionsLimitRemovalAndPendingBackCommit",
       "testReplyThreadRetainsRootRecipientAndDraftThroughBack",
       "testUnconfirmedInlineReactionKeepsThreadAndDraft",
-      "testVerticalPanelsRetainPostAndDraftWithoutPushingComments"
+      "testUnsmileContextAndTripleTapClassification",
+      "testVerticalPanelsRetainPostAndDraftWithoutPushingComments",
+      "testVideoPausedSeekMuteZoomAndPageReturnUseActualPlayer"
     ],
     "current_candidate_verified": false
   },
@@ -145,9 +151,9 @@
     },
     "phone_tested": false
   },
-  "verified_build_source_commit": "9dd9ac22bfc72b1bd0b329d4f8236bd91e2b2cda",
-  "verified_build_url": "https://github.com/sandrscore/oldFunny-iOS/actions/runs/39502078271",
-  "ipa_sha256": "3c211f82d370d522f2f55f8762bb700ccfb12c81dfc4ef543b85b5dd68b5912c",
+  "verified_build_source_commit": "86394bb2f59dd7cd16e7593ee2ddcf1dea80b906",
+  "verified_build_url": "https://github.com/sandrscore/oldFunny-iOS/actions/runs/39526685353",
+  "ipa_sha256": "86fe2202410f483ee52fe45791d019eedc672aa4dff7be019967b775b0af84c5",
   "target_phone_tested": false,
   "previous_verified_build10": {
     "verified_build_source_commit": "5cca16ac45ac9c208269c6737ef1e36ef582b2a6",
@@ -221,6 +227,22 @@
     "profile_result_counts": {
       "actual_items": 18,
       "accessible_cells": 15
+    },
+    "phone_tested": false
+  },
+  "compiled_candidate_build19": {
+    "source_commit": "86394bb2f59dd7cd16e7593ee2ddcf1dea80b906",
+    "run_url": "https://github.com/sandrscore/oldFunny-iOS/actions/runs/39526685353",
+    "version": "0.3.0",
+    "build": "19",
+    "sha256": "86fe2202410f483ee52fe45791d019eedc672aa4dff7be019967b775b0af84c5",
+    "contains_arm64": true,
+    "main_executable_cryptid": 0,
+    "fixture_code_absent": true,
+    "ui_gesture_tests": {
+      "executed": 15,
+      "passed": 15,
+      "failed": 0
     },
     "phone_tested": false
   }
