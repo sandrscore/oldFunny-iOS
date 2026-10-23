@@ -26,6 +26,7 @@ final class CommentsController: ClassicScreenController, UITableViewDataSource, 
     private var dismissingKeyboardTap = false
     private var mentionComposer: CommentMentionComposer?, mentionPanel: MentionSuggestionsView?
     private var mentionHeight: NSLayoutConstraint?
+    private var pendingRecipient: Comment?
     private var selecting = false, selectedIDs = [String](), uncertainDeletion = false
     private let selectionEntry = UIButton(type: .system)
     private lazy var selectionHold = UILongPressGestureRecognizer(target: self, action: #selector(selectHeldRow(_:)))
@@ -121,6 +122,7 @@ final class CommentsController: ClassicScreenController, UITableViewDataSource, 
     }
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated); mentionComposer?.setActive(true)
+        if let recipient = pendingRecipient { pendingRecipient = nil; selectRecipient(recipient) }
         if uncertainDeletion && !selecting { refresh() }
     }
     override func viewWillDisappear(_ animated: Bool) {
@@ -153,10 +155,10 @@ final class CommentsController: ClassicScreenController, UITableViewDataSource, 
     @objc private func dismissKeyboard() { view.endEditing(true) }
     func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldReceive touch: UITouch) -> Bool {
         if gestureRecognizer === selectionHold {
-            guard canSelectComments, !writing, send.isEnabled, !uncertainDeletion,
+            guard !writing, send.isEnabled, !uncertainDeletion,
                   let path = table.indexPathForRow(at: touch.location(in: table)) else { return false }
             let row = comment(at: path)
-            return row.id != parentID && !row.isDeleted
+            return !row.isDeleted
         }
         // Decide at touch-down: UIKit may move focus before shouldBegin runs.
         // The first tap on an author/attachment/row must only dismiss editing.
@@ -196,7 +198,7 @@ final class CommentsController: ClassicScreenController, UITableViewDataSource, 
     @objc private func accountChanged() {
         task?.cancel(); generation = UUID(); readGeneration = UUID(); loading = false; hasLoadedReplies = false
         comments = []; nextCursor = nil; usedCursors = []; text.text = nil
-        draft = CommentDraft(); mentionComposer?.resetAccount(); renderAttachment(); renderRecipient(); replyThreads = [:]; replyCounts = [:]; accountID = nil
+        draft = CommentDraft(); pendingRecipient = nil; mentionComposer?.resetAccount(); renderAttachment(); renderRecipient(); replyThreads = [:]; replyCounts = [:]; accountID = nil
         selecting = false; selectedIDs = []; uncertainDeletion = false; renderHeader()
         Task { [weak self] in guard let self else { return }; accountID = await app.api.account()?.accountID; renderHeader() }
         table.reloadData(); refresh()
@@ -237,7 +239,8 @@ final class CommentsController: ClassicScreenController, UITableViewDataSource, 
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         let comment = comment(at: indexPath)
         let cell = table.dequeueReusableCell(withIdentifier: "comment", for: indexPath) as! ClassicCommentCell
-        cell.bind(comment, loader: app.media, replyCount: showsRoot && indexPath.section == 0 ? count : replyCounts[comment.id])
+        let dots = parentID == nil ? 0 : CommentBehavior.replyDots(depth: comment.depth, shortestViewportSide: Double(min(view.bounds.width, view.bounds.height)))
+        cell.bind(comment, loader: app.media, replyCount: showsRoot && indexPath.section == 0 ? count : replyCounts[comment.id], replyDots: dots, showsReplyControl: parentID == nil)
         cell.setBatchSelected(selectedIDs.contains(comment.id))
         cell.setActionsEnabled(!writing && send.isEnabled)
         cell.onSmile = { [weak self] in
@@ -245,6 +248,11 @@ final class CommentsController: ClassicScreenController, UITableViewDataSource, 
         }
         cell.onUnsmile = { [weak self] in
             guard let self, !consumeEditingTap() else { return }; if selecting { toggleSelection(comment); return }; commentAction(comment, kind: "unsmile")
+        }
+        cell.onReplies = { [weak self] in
+            guard let self, !consumeEditingTap() else { return }
+            if selecting { toggleSelection(comment); return }
+            openReplies(to: comment)
         }
         cell.onAttachment = { [weak self] in
             guard let self, !consumeEditingTap(), let post = comment.attachments.first else { return }
@@ -271,10 +279,23 @@ final class CommentsController: ClassicScreenController, UITableViewDataSource, 
         table.deselectRow(at: indexPath, animated: true)
         guard !consumeEditingTap() else { return }
         if selecting { toggleSelection(comment(at: indexPath)); return }
-        reply(to: comment(at: indexPath))
+        showOptions(for: comment(at: indexPath))
     }
-    private func reply(to comment: Comment) {
-        if parentID != nil { if !comment.isDeleted { selectRecipient(comment) }; return }
+    private func requestReply(to comment: Comment) {
+        guard !comment.isDeleted, !writing, send.isEnabled,
+              parentID == nil || comment.depth < CommentBehavior.maximumReplyDepth else { return }
+        let owner = generation
+        Task { [weak self] in
+            guard let self else { return }
+            let signedIn = await app.api.account() != nil
+            guard owner == generation else { return }
+            guard signedIn else { app.signIn(from: self); return }
+            if parentID != nil { selectRecipient(comment) }
+            else { openReplies(to: comment, focusReply: true) }
+        }
+    }
+    private func openReplies(to comment: Comment, focusReply: Bool = false) {
+        guard parentID == nil, !writing else { return }
         let child: CommentsController
         if let cached = replyThreads[comment.id] { child = cached }
         else {
@@ -287,6 +308,7 @@ final class CommentsController: ClassicScreenController, UITableViewDataSource, 
             }
             replyThreads[comment.id] = child
         }
+        if focusReply { child.pendingRecipient = comment }
         navigationController?.pushViewController(child, animated: true)
     }
     private func markRootDeleted() {
@@ -356,6 +378,7 @@ final class CommentsController: ClassicScreenController, UITableViewDataSource, 
     @objc private func selectHeldRow(_ hold: UILongPressGestureRecognizer) {
         guard hold.state == .began, let path = table.indexPathForRow(at: hold.location(in: table)) else { return }
         let row = comment(at: path)
+        if !(canSelectComments && row.id != parentID) { showOptions(for: row); return }
         if !selecting { beginSelection() }; toggleSelection(row)
     }
     private func toggleSelection(_ comment: Comment) {
@@ -415,30 +438,51 @@ final class CommentsController: ClassicScreenController, UITableViewDataSource, 
         let alert = UIAlertController(title: title, message: message, preferredStyle: .alert)
         alert.addAction(UIAlertAction(title: "OK", style: .default)); present(alert, animated: true)
     }
-    func tableView(_ tableView: UITableView, contextMenuConfigurationForRowAt indexPath: IndexPath, point: CGPoint) -> UIContextMenuConfiguration? {
-        let comment = comment(at: indexPath)
-        guard !comment.isDeleted, !selecting, !(canSelectComments && comment.id != parentID) else { return nil }
-        return UIContextMenuConfiguration(identifier: nil, previewProvider: nil) { [weak self] _ in
-            guard let self else { return nil }
-            var actions = [UIAction(title: "Copy text", image: UIImage(systemName: "doc.on.doc")) { _ in UIPasteboard.general.string = comment.text }]
-            actions.append(UIAction(title: "Reply", image: UIImage(systemName: "arrowshape.turn.up.left")) { [weak self] _ in self?.reply(to: comment) })
-            actions.append(UIAction(title: comment.isSmiled ? "Remove smile" : "Smile", image: UIImage(systemName: "face.smiling")) { [weak self] _ in self?.commentAction(comment, kind: "smile") })
-            actions.append(UIAction(title: comment.isUnsmiled ? "Remove unsmile" : "Unsmile", image: UIImage(systemName: "hand.thumbsdown")) { [weak self] _ in self?.commentAction(comment, kind: "unsmile") })
-            if let accountID, accountID == comment.authorID || accountID == postAuthorID {
-                actions.append(UIAction(title: "Delete", image: UIImage(systemName: "trash"), attributes: .destructive) { [weak self] _ in self?.confirm(comment, kind: "delete") })
+    private func showOptions(for comment: Comment) {
+        guard !comment.isDeleted, !writing, send.isEnabled, !uncertainDeletion, !selecting, presentedViewController == nil else { return }
+        let owner = generation
+        let alert = UIAlertController(title: "Comment options", message: nil, preferredStyle: .alert)
+        let options = CommentBehavior.options(authorID: comment.authorID, originalAuthorID: postAuthorID,
+                                              accountID: accountID, depth: comment.depth, inReplies: parentID != nil)
+        for option in options {
+            let label: String
+            switch option {
+            case .reply: label = "Reply"
+            case .profile: label = "Profile"
+            case .report: label = "Report"
+            case .delete: label = "Delete"
+            case .remove: label = "Remove"
             }
-            actions.append(UIAction(title: "Report", image: UIImage(systemName: "flag"), attributes: .destructive) { [weak self] _ in self?.confirm(comment, kind: "report") })
-            return UIMenu(children: actions)
+            alert.addAction(UIAlertAction(title: label, style: .default) { [weak self, weak alert] _ in
+                // Finish the options dismissal before presenting confirmation,
+                // sign-in or a reply screen; fast offline actions exercise this.
+                alert?.dismiss(animated: true) { [weak self] in
+                    guard let self, owner == generation else { return }
+                    switch option {
+                    case .reply: requestReply(to: comment)
+                    case .profile:
+                        if let id = comment.authorID { navigationController?.pushViewController(ProfileController(app: app, userID: id, nickname: comment.author), animated: true) }
+                    case .report: confirm(comment, kind: "report")
+                    case .delete: confirm(comment, kind: "delete")
+                    case .remove: confirm(comment, kind: "remove")
+                    }
+                }
+            })
         }
+        alert.addAction(UIAlertAction(title: "Cancel", style: .cancel)); present(alert, animated: true)
     }
     private var writing = false
     private func setRowActionsEnabled(_ enabled: Bool) {
         for case let cell as ClassicCommentCell in table.visibleCells { cell.setActionsEnabled(enabled) }
     }
     private func confirm(_ comment: Comment, kind: String) {
-        let alert = UIAlertController(title: kind == "delete" ? "Delete this comment?" : "Report this comment?", message: nil, preferredStyle: .alert)
+        let owner = generation
+        let label = kind == "delete" ? "Delete" : kind == "remove" ? "Remove" : "Report"
+        let alert = UIAlertController(title: "\(label) this comment?", message: nil, preferredStyle: .alert)
         alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
-        alert.addAction(UIAlertAction(title: kind == "delete" ? "Delete" : "Report", style: .destructive) { [weak self] _ in self?.commentAction(comment, kind: kind) })
+        alert.addAction(UIAlertAction(title: label, style: .destructive) { [weak self] _ in
+            guard let self, owner == generation else { return }; commentAction(comment, kind: kind)
+        })
         present(alert, animated: true)
     }
     private func commentAction(_ comment: Comment, kind: String) {
@@ -453,12 +497,12 @@ final class CommentsController: ClassicScreenController, UITableViewDataSource, 
                 switch kind {
                 case "smile": try await app.api.reactToComment(postID: postID, commentID: comment.id, unsmile: false, enabled: !comment.isSmiled, session: session)
                 case "unsmile": try await app.api.reactToComment(postID: postID, commentID: comment.id, unsmile: true, enabled: !comment.isUnsmiled, session: session)
-                case "delete": try await app.api.deleteComment(postID: postID, commentID: comment.id, session: session)
+                case "delete", "remove": try await app.api.deleteComment(postID: postID, commentID: comment.id, session: session)
                 case "report": try await app.api.reportComment(postID: postID, commentID: comment.id, session: session)
                 default: return
                 }
                 guard owner == generation else { return }
-                if kind == "delete" {
+                if kind == "delete" || kind == "remove" {
                     if comment.id == parentID {
                         // AnswersFragment's successful root deletion removes
                         // the complete thread, reports its total, and finishes

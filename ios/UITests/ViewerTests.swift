@@ -50,6 +50,72 @@ final class ViewerTests: XCTestCase {
         let alert = app.alerts["Delete \(count) selected comments?"]
         XCTAssertTrue(alert.waitForExistence(timeout: 5)); alert.buttons["Delete"].tap()
     }
+    private func assertCommentOptions(_ app: XCUIApplication, _ labels: [String], file: StaticString = #filePath, line: UInt = #line) {
+        let alert = app.alerts["Comment options"]
+        XCTAssertTrue(alert.waitForExistence(timeout: 5), file: file, line: line)
+        XCTAssertEqual(alert.buttons.allElementsBoundByIndex.map(\.label).filter { $0 != "Cancel" }, labels, file: file, line: line)
+    }
+    func testCommentTapRoleMenusReplyDepthDotsAndDraftRetention() {
+        let app = XCUIApplication(); app.launchArguments = ["--ui-tests", "--ui-tests-account", "--ui-tests-comment-options"]; app.launch()
+        XCTAssertTrue(app.buttons["3 comments"].waitForExistence(timeout: 10)); app.buttons["3 comments"].tap()
+        let root = app.staticTexts["The classic look is coming back."]
+        XCTAssertTrue(root.waitForExistence(timeout: 5)); root.tap()
+        assertCommentOptions(app, ["Reply", "Delete"])
+        XCTAssertTrue(app.staticTexts["3 comments"].exists, "Ordinary row tap must keep the main list behind its options")
+        app.alerts.buttons["Cancel"].tap()
+        app.staticTexts["An attached post, right in the thread."].tap()
+        assertCommentOptions(app, ["Reply", "Report", "Remove"])
+        app.alerts.buttons["Remove"].tap()
+        XCTAssertTrue(app.alerts["Remove this comment?"].waitForExistence(timeout: 5)); app.alerts.buttons["Cancel"].tap()
+        app.descendants(matching: .any)["comment-replies-PreviewComment1"].firstMatch.tap()
+        XCTAssertTrue(app.staticTexts["Reply number one"].waitForExistence(timeout: 5))
+        for id in ["PreviewReply1", "PreviewReply2"] {
+            let dots = app.descendants(matching: .any)["comment-dots-" + id].firstMatch
+            XCTAssertTrue(dots.exists); XCTAssertEqual(dots.label, "10 reply depth dots")
+            XCTAssertEqual(dots.frame.width, 94, accuracy: 0.5, "Depth 29/30 must cap the actual dot strip at ten circles")
+        }
+        app.staticTexts["Reply number one"].tap(); assertCommentOptions(app, ["Reply", "Report", "Remove"])
+        app.alerts.buttons["Reply"].tap()
+        let draft = app.textFields["comment-draft"]
+        waitUntil("Reply from the options must focus the composer") { app.keyboards.count > 0 }
+        draft.typeText("Retained depth draft")
+        XCTAssertEqual(app.staticTexts["reply-recipient"].label, "Reply to ReaderOne")
+        app.staticTexts["Reply number two"].tap() // First outside tap only dismisses editing.
+        XCTAssertFalse(app.alerts.firstMatch.exists); XCTAssertEqual(app.keyboards.count, 0)
+        app.staticTexts["Reply number two"].tap(); assertCommentOptions(app, ["Report", "Remove"])
+        capture("depth-30-options-and-capped-dots", app: app)
+        app.alerts.buttons["Cancel"].tap()
+        XCTAssertEqual(draft.value as? String, "Retained depth draft")
+        XCTAssertEqual(app.staticTexts["reply-recipient"].label, "Reply to ReaderOne")
+    }
+    func testGuestCommentOptionsProfileAndSignedInOtherPostRole() {
+        let app = XCUIApplication(); app.launchArguments = ["--ui-tests", "--ui-tests-comment-options", "--ui-tests-profile"]; app.launch()
+        XCTAssertTrue(app.buttons["3 comments"].waitForExistence(timeout: 10)); app.buttons["3 comments"].tap()
+        let row = app.staticTexts["The classic look is coming back."]
+        XCTAssertTrue(row.waitForExistence(timeout: 5))
+        for id in ["comment-avatar-PreviewComment1", "comment-date-PreviewComment1"] {
+            app.buttons[id].tap()
+            XCTAssertTrue(app.collectionViews["profile-grid"].waitForExistence(timeout: 5), "Avatar and date route directly to the author profile")
+            app.buttons["Back"].tap(); XCTAssertTrue(row.waitForExistence(timeout: 5))
+        }
+        XCTAssertTrue(row.waitForExistence(timeout: 5)); row.tap(); assertCommentOptions(app, ["Reply", "Profile", "Report"])
+        app.alerts.buttons["Profile"].tap()
+        XCTAssertTrue(app.collectionViews["profile-grid"].waitForExistence(timeout: 5), "Guests can open the comment author's profile")
+        app.buttons["Back"].tap()
+        app.descendants(matching: .any)["comment-replies-PreviewComment1"].firstMatch.tap()
+        XCTAssertTrue(app.staticTexts["Reply number one"].waitForExistence(timeout: 5)); XCTAssertFalse(app.alerts.firstMatch.exists)
+        app.terminate()
+        app.launchArguments = ["--ui-tests", "--ui-tests-account", "--ui-tests-comment-options", "--ui-tests-comment-other-owner"]; app.launch()
+        XCTAssertTrue(app.buttons["3 comments"].waitForExistence(timeout: 10)); app.buttons["3 comments"].tap()
+        XCTAssertTrue(row.waitForExistence(timeout: 5)); row.tap(); assertCommentOptions(app, ["Reply", "Delete"])
+        app.alerts.buttons["Cancel"].tap()
+        app.staticTexts["Same feed. Familiar controls."].tap(); assertCommentOptions(app, ["Reply", "Profile", "Report"])
+        app.alerts.buttons["Cancel"].tap()
+        row.tap(); app.alerts.buttons["Reply"].tap()
+        XCTAssertTrue(app.staticTexts["Reply number one"].waitForExistence(timeout: 5))
+        waitUntil("Main-list Reply opens the thread with composer focus") { app.keyboards.count > 0 }
+        XCTAssertFalse(app.staticTexts["reply-recipient"].exists, "Replying to the root uses the root endpoint without a nested recipient")
+    }
     func testBulkPartialDeletionRemovesRootRepliesOnceAndRetainsFailedSelectionAndDraft() {
         let app = XCUIApplication(); openBulkComments(app, flags: ["--ui-tests-bulk-partial"])
         attachBulkDraft(app, text: "Bulk draft")
@@ -71,7 +137,7 @@ final class ViewerTests: XCTestCase {
     }
     func testBulkReplyEmptyAcknowledgmentKeepsRootAndDeletedPositionsWithoutDoubleCount() {
         let app = XCUIApplication(); openBulkComments(app)
-        app.staticTexts["2 replies"].firstMatch.tap()
+        app.descendants(matching: .any)["comment-replies-PreviewComment1"].firstMatch.tap()
         let root = app.tables.cells["comment-row-PreviewComment1"]
         XCTAssertTrue(root.waitForExistence(timeout: 5)); attachBulkDraft(app, text: "Reply draft")
         app.buttons["Select comments"].tap(); root.tap()
@@ -80,6 +146,7 @@ final class ViewerTests: XCTestCase {
         XCTAssertTrue(app.staticTexts["2 selected"].exists); confirmBulkDelete(app, count: 2)
         XCTAssertTrue(app.staticTexts["0 replies"].waitForExistence(timeout: 5)); XCTAssertTrue(root.exists)
         XCTAssertEqual(app.staticTexts.matching(NSPredicate(format: "label == %@", "Comment deleted.")).count, 2)
+        XCTAssertFalse(app.descendants(matching: .any)["comment-dots-PreviewReply2"].firstMatch.exists, "Deleted reply positions have no depth strip")
         XCTAssertEqual(app.otherElements["comments-screen"].value as? String, "selected=; request=1|POST|/v4/content/PreviewPost/comments?method=DELETE|id=PreviewReply1,PreviewReply2")
         XCTAssertEqual(app.textFields["comment-draft"].value as? String, "Reply draft"); XCTAssertTrue(app.buttons["remove-comment-attachment"].exists)
         app.buttons["Refresh"].tap(); XCTAssertTrue(root.waitForExistence(timeout: 5)); XCTAssertEqual(app.staticTexts.matching(NSPredicate(format: "label == %@", "Comment deleted.")).count, 2)
@@ -149,8 +216,8 @@ final class ViewerTests: XCTestCase {
     func testConfirmedMentionReplyUsesSelectedRecipientAndClearsOnlySubmittedDraft() {
         let app = XCUIApplication(); app.launchArguments = ["--ui-tests", "--ui-tests-account", "--ui-tests-mentions", "--ui-tests-mention-success", "--ui-tests-accepted-comments"]; app.launch()
         XCTAssertTrue(app.buttons["5 comments"].waitForExistence(timeout: 10)); app.buttons["5 comments"].tap()
-        let replies = app.staticTexts["2 replies"].firstMatch; XCTAssertTrue(replies.waitForExistence(timeout: 5)); replies.tap()
-        let recipient = app.staticTexts["Reply number one"]; XCTAssertTrue(recipient.waitForExistence(timeout: 5)); recipient.tap()
+        let replies = app.descendants(matching: .any)["comment-replies-PreviewComment1"].firstMatch; XCTAssertTrue(replies.waitForExistence(timeout: 5)); replies.tap()
+        let recipient = app.staticTexts["Reply number one"]; XCTAssertTrue(recipient.waitForExistence(timeout: 5)); recipient.tap(); app.alerts["Comment options"].buttons["Reply"].tap()
         chooseMention(app, prefix: "Hello ")
         XCTAssertEqual(app.staticTexts["reply-recipient"].label, "Reply to ReaderOne")
         app.buttons["Attach one of your posts"].tap()
@@ -354,7 +421,7 @@ final class ViewerTests: XCTestCase {
     func testConfirmedReplyAndRootDeletionCloseThreadAndRemoveRepliesFromPostTotalOnce() {
         let app = XCUIApplication(); app.launchArguments = ["--ui-tests", "--ui-tests-account", "--ui-tests-accepted-comments"]; app.launch()
         XCTAssertTrue(app.buttons["5 comments"].waitForExistence(timeout: 10)); app.buttons["5 comments"].tap()
-        let replies = app.staticTexts["2 replies"].firstMatch
+        let replies = app.descendants(matching: .any)["comment-replies-PreviewComment1"].firstMatch
         XCTAssertTrue(replies.waitForExistence(timeout: 5)); replies.tap()
         let root = app.staticTexts["The classic look is coming back."]
         XCTAssertTrue(root.waitForExistence(timeout: 5))
@@ -365,7 +432,7 @@ final class ViewerTests: XCTestCase {
         XCTAssertTrue(app.staticTexts["3 replies"].firstMatch.waitForExistence(timeout: 5))
         app.buttons["Back"].tap()
         XCTAssertTrue(app.staticTexts["6 comments"].waitForExistence(timeout: 5))
-        app.staticTexts["3 replies"].firstMatch.tap()
+        app.descendants(matching: .any)["comment-replies-PreviewComment1"].firstMatch.tap()
         XCTAssertTrue(root.waitForExistence(timeout: 5)); root.press(forDuration: 1)
         app.buttons["Delete"].tap()
         XCTAssertTrue(app.alerts["Delete this comment?"].waitForExistence(timeout: 5)); app.alerts.buttons["Delete"].tap()
@@ -396,12 +463,12 @@ final class ViewerTests: XCTestCase {
     func testReplyThreadRetainsRootRecipientAndDraftThroughBack() {
         let app = XCUIApplication(); app.launchArguments = ["--ui-tests", "--ui-tests-account"]; app.launch()
         XCTAssertTrue(app.buttons["3 comments"].waitForExistence(timeout: 10)); app.buttons["3 comments"].tap()
-        let replies = app.staticTexts["2 replies"].firstMatch
+        let replies = app.descendants(matching: .any)["comment-replies-PreviewComment1"].firstMatch
         XCTAssertTrue(replies.waitForExistence(timeout: 5)); replies.tap()
         let reply = app.staticTexts["Reply number one"]
         XCTAssertTrue(reply.waitForExistence(timeout: 5))
         XCTAssertTrue(app.staticTexts["The classic look is coming back."].exists)
-        reply.tap()
+        reply.tap(); app.alerts["Comment options"].buttons["Reply"].tap()
         let draft = app.textFields["comment-draft"]; draft.typeText("Reply draft")
         XCTAssertEqual(app.staticTexts["reply-recipient"].label, "Reply to ReaderOne")
         app.buttons["Back"].tap()

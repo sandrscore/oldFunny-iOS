@@ -1,52 +1,40 @@
 # oldFunny iOS
 
-**Verified checkpoint: 0.3.0/build 21. Candidate build 25 fixes disabled-control
-accessibility and checks mention deletion/input timing. Mac/UIKit verification is
-pending. Full parity is incomplete.**
+**Verified checkpoint: 0.3.0/build 25. Candidate build 26 ports Android comment
+options, reply-count navigation, author tap targets and reply depth/dots. Its
+Mac/UIKit verification is pending. Full parity is incomplete.**
 
-[Download the build 21 unsigned IPA artifact ZIP](https://github.com/sandrscore/oldFunny-iOS/actions/runs/39539381754/artifacts/12318721806),
+[Download the build 25 unsigned IPA artifact ZIP](https://github.com/sandrscore/oldFunny-iOS/actions/runs/40010014066/artifacts/12526400847),
 extract the IPA and update through Zeus. SHA-256:
-`e6f1731005e4f8660bebc288f1c11b3e15f7ff6c21c14b915b51f79b0c661aff`.
+`2466cca5f4c34aaa9fd22d84ad12be6eb5a896190e15a49971c297cd0fce8b43`.
 Bundle `mobi.oldfunny.ios`; minimum iOS 16.0; ARM64, cryptid=0, unsigned.
-Artifact expires October 28, 2026; the independently inspected IPA and exact
-source archive are preserved locally in the original workspace.
+Artifact expires October 30, 2026; the independently inspected IPA and exact source
+archive are preserved locally in the original workspace.
 
-[Build 21 Mac CI](https://github.com/sandrscore/oldFunny-iOS/actions/runs/39539381754) for source `4c990a36420f8f9e2d5dfbb6c55ee603cdace6e1` passed
-58 core tests, 6 packaging checks and all 17 actual UIKit tests with zero failures.
-Downloaded reports and logs confirm each expected test executed. Offline tests
-cover retained panels/drafts/replies/attachments, counts, decoded video seeking,
-pause/mute/zoom/return, long GIF pixels/timing/loop/phase, classified triple taps,
-profiles/search/tags/pins/subscriptions, and mention choice/link/send/error flows.
-Mention tests verify exact selected IDs/UTF-16 offsets and attachment fields,
-first-tap keyboard dismissal, profile navigation, unconfirmed-draft retention and
-identity removal after editing the name. These are iPhone 16 / iOS 18.5 fixtures,
-separate from server notifications and actual target-phone validation.
+[Build 25 Mac CI](https://github.com/sandrscore/oldFunny-iOS/actions/runs/40010014066)
+for source `a05a335c8ed9fe0eb103f75bace763180e06a165` passed 63 core tests,
+6 packaging checks and all 20 actual UIKit cases with zero failures. Downloaded
+reports/logs confirm every expected test executed. Comments and incoming mention
+screenshots were reviewed on iPhone 16 / iOS 18.5 with offline fixtures.
 
-Candidate 22 added original-post-author pencil/hold selection, stable row highlight,
-ordered bulk requests and positional acknowledgments. Only confirmed rows affect
-counts; failed rows stay selected. Main-root removal counts its replies; reply
-removal retains deleted positions and root context. An uncertain receipt locks
-selection until a replacement read succeeds, including after a failed refresh.
-The app compiled with 63 Mac core tests and six packaging checks passing. The
-new test target failed to compile because duplicate-placeholder counts used an
-element instead of a query; none of the 20 UIKit cases executed. Candidate 24
-corrects those queries and the traced root-deletion behavior: deleting a root
-closes its reply screen and removes root plus replies from the post total. The
-old retained-thread fixture expectation is replaced with the actual Android
-contract. Build 24 executed all 20 cases: 18 passed, including partial bulk
-removal, reply placeholders and complete root-delete return/counts. The uncertain
-selection test failed because the custom delete control appeared enabled to
-accessibility; the mention edit test observed only one of two rapid deletions.
-The job was cancelled and xcodebuild exceeded its 600s budget while finalizing
-results (503s of actual XCTest execution plus startup). This is not a green build.
+Tests cover retained panels/drafts/replies/attachments, actual video/GIF decoding,
+profiles/search/tags/pins/subscriptions, mention choice/link/exact send fields,
+partial bulk deletion, reply placeholders, and complete root-delete return/counts.
+The uncertain-write case checks a physical disabled-control tap cannot retry,
+a failed read keeps selection locked and a successful read unlocks it. Mention
+edits check trailing-space identity retention, interior deletion invalidation and
+rapid consecutive deletes without restoring an identity. All social writes use
+fake transports. Server notifications and current-build phone validation remain
+separate, unverified requirements.
 
-Candidate 25 exposes disabled custom controls with the notEnabled trait and checks
-that a physical tap cannot retry the uncertain write. Mention styling avoids
-assigning an identical attributed string during editing. Its UI test separately
-checks trailing-space identity retention, interior deletion invalidation and rapid
-consecutive deletions without recreating identity. The simulator-test allowance
-is 900s and job limit 30 minutes so results can finalize; every one of the same
-20 tests remains mandatory. The separate next menu/depth slice is excluded.
+Candidate 26 changes ordinary comment taps to the native role-ordered options
+dialog and gives reply counts their own read-only navigation. Reply requires
+sign-in and focuses the appropriate composer; depth 30 removes Reply. Reply dots
+follow depth-1 capped at 10 on phones/15 on tablets. Avatar/date taps open the
+author profile. Two new UI cases check roles, real navigation/focus, capped dot
+geometry, the depth boundary, first outside keyboard tap and draft/recipient
+retention. All 22 cases remain required. Portable contracts total 67; the separate
+inbound multi-attachment/public-picture prototype is excluded from this candidate.
 
 Remaining work includes ordinary comment tap/options parity, reply-depth/state/
 layout rules, mention-panel physics, large-profile indexing/options, feeds/reads,

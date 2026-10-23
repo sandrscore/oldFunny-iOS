@@ -220,7 +220,7 @@ public actor APIClient {
     public func comments(postID: String, parentID: String? = nil, next: String? = nil) async throws -> CommentPage {
         var path = "content/" + (try Wire.requireID(postID)) + "/comments"
         if let parentID { path += "/" + (try Wire.requireID(parentID)) + "/replies" }
-        var query = [("limit", "30"), ("from", "feat")]
+        var query = [("limit", String(CommentBehavior.pageSize))]
         if let next, next.utf8.count <= 8192 { query.append(("next", next)) }
         return try CommentPage(await call(path: path, query: query)["data"], replies: parentID != nil)
     }

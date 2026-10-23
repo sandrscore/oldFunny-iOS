@@ -94,9 +94,9 @@ post panels. Process-death restoration and every gesture edge case remain checks
 | Comment layout | Blue author, round avatar, date, proportional preview, replies/smile counts; native CommentViews/PictureComments | Partial: basic rows/previews, inline net reactions and retained deleted context. Current final APK confirms ordinary row taps open options, while reply-count taps open threads; native direct row-to-reply behavior and depth30/display-depth10 rules still need correction. Exact abused/hidden/top/recent-count states remain gaps. |
 | Thread paging | Cursor continuation, dedupe, retry without losing loaded rows | Source, endpoint/server pagination checks pending |
 | Replies | Root parent context, recipient chip, mentions, retained thread; `AnswersFragment` | Build 21 verifies root/recipient/draft and send counts. Candidate 23 supersedes the earlier root-deletion fixture: actual Android success closes the reply screen and removes root plus replies from post total. Native result still pending; full state/depth/process rules remain gaps. |
-| Comment options | Copy, smile/unsmile, reply, report, owned deletion | Per-row and hold actions with serialized account-fenced writes. Build 19 verifies rejected reaction retains draft and confirmed fixture deletion/counts; server/device checks and broader error states remain. |
-| Comment selection | Pencil/hold multi-selection, permitted rows, immediate partial-success counts; `CommentDelete` | Candidate 22 source: original-author pencil/hold mode, stable selected IDs/highlights, root exclusion in replies, partial/uncertain receipts and root cascade counts. 63 Linux core tests and parser pass; three new UIKit cases are source only, Mac/UIKit verification pending. |
-| Comment delete ack | Empty successful bulk results mean success only with explicit outer status | Candidate 22 receipt parser follows explicit successful empty array and positional 2xx results, preserves failures/missing rows and rejects unknown envelopes. New bulk endpoint uses POST method=DELETE without replay. 5 bulk/owner tests pass; native integration awaits Mac/UIKit. |
+| Comment options | Own comment Reply/Delete; other on own original post Reply/Report/Remove; other/guest Reply/Profile/Report. Answers removes Reply at depth30; CommentsFragment/AnswersFragment | Candidate26 source implements ordinary-tap and nonowner-hold dialogs, authenticated Reply/focus and distinct read-only reply-count taps. Existing inline reactions stay separate. 67 portable contracts/22 UIKit cases; Mac/UI pending. |
+| Comment selection | Pencil/hold multi-selection, permitted rows, immediate partial-success counts; `CommentDelete` | Build25 offline UIKit verifies original-author pencil/attachment hold, selection toggles, root exclusion, partial results, reply placeholders and count deltas. Physical disabled tap cannot retry; failed read stays locked, successful read unlocks. Server/phone cases remain. |
+| Comment delete ack | Empty successful bulk results mean success only with explicit outer status | Build25: explicit successful empty array/positional 2xx contracts, failed/missing rows retained, unknown envelopes rejected, POST method=DELETE without replay. Five bulk/owner contracts and all20 UIKit cases passed; live writes/phone validation remain absent. |
 | Attachment plus | Full-screen 3-column own posts/reposts, cursor paging, retained draft on Back; `CommentPostFeed`, `NativePostGrid` | Build 19 offline UIKit verifies 3-column own-post picker, Back and draft retention. Real account pagination and phone checks pending. |
 | Attachment choice | One thumbnail+X, replace/remove independently of text | Build 19 offline UIKit verifies choice, visible X, replacement/picker Back/refresh/removal with text retention. Phone checks pending. |
 | Attachment send | `text` + one `content` ID to comment/reply endpoint; no separate upload | Source now connected; no live comments submitted by agent |
@@ -426,3 +426,29 @@ rapid consecutive deletes without recreating the old identity. Tests get 900s an
 the free public Mac job 30 minutes to finalize reports; all 20 cases stay required.
 The local options/depth/page40 work is excluded from this focused candidate.
 Target-phone, live writes/notifications and full parity remain unverified.
+
+### Verified checkpoint 25 and candidate 26
+
+Source `a05a335c8ed9fe0eb103f75bace763180e06a165`,
+[Mac CI](https://github.com/sandrscore/oldFunny-iOS/actions/runs/40010014066),
+passed 63 Mac Swift, six Python checks and all 20 actual UIKit cases with zero
+failures. Reports and complete xcresult/logs were downloaded and artifact hashes
+checked. Both previously failing flows completed all assertions: physical disabled
+Delete cannot send another request, failed/successful read recovery preserves draft,
+and individual/rapid mention edits retain/remove identity at the correct boundary.
+Partial bulk results, reply placeholders and corrected root-delete close/counts
+passed again. Comments and incoming-mention screenshots reviewed. IPA independent
+ARM64/cryptid0/fixture exclusion, SHA-256
+`2466cca5f4c34aaa9fd22d84ad12be6eb5a896190e15a49971c297cd0fce8b43`.
+Protected169/Android137 hashes match. No new phone/live-social validation.
+
+Candidate26 integrates traced role-ordered ordinary-tap/nonowner-hold options,
+original-owner hold selection, separate reply-count read navigation, authenticated
+Reply with root/nested composer focus, depth30 eligibility and depth-1 dots capped
+10phone/15tablet. Actual avatar/date targets route to the author profile. Existing
+UI tests now use actual Reply actions and stable reply-count identifiers; two new
+cases cover role order/guest/profile routes, exact dot geometry, 29/30 boundary,
+keyboard dismissal and preserved text/recipient. 67 portable contracts pass;
+all22 UIKit cases remain mandatory and Mac/UI pending. The separate multi-card/
+public-picture recovery work is excluded. Full state/attachment/render/lifecycle
+and remaining screen ledger requirements are not implied complete.

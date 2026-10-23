@@ -4,7 +4,7 @@
   "product": "oldFunny",
   "bundle_identifier": "mobi.oldfunny.ios",
   "version": "0.3.0",
-  "build": "25",
+  "build": "26",
   "minimum_ios": "16.0",
   "target": {
     "device": "iPhone 16",
@@ -39,24 +39,46 @@
     "captcha_handoff": true,
     "session_survives_relaunch": "unverified"
   },
-  "ui_phase": "Focused build25: disabled-control accessibility, single/rapid mention editing, complete CI result collection; verified21 checkpoint",
+  "ui_phase": "Verified25 all20UIKit; candidate26 native comment options/reply navigation/author targets/depth/dots, 67core/22UI pending",
   "simulator_previews": "Offline fixtures compiled only with CLASSIC_UI_PREVIEW; absent from Release",
   "simulator_ui": {
-    "device": "iPhone 16",
-    "ios": "18.5",
     "offline_fixtures": true,
-    "screens_reviewed": [
-      "mentions"
-    ],
+    "real_account_used": false,
+    "real_api_used": false,
     "target_phone_tested": false,
-    "ui_gesture_tests_passed": true,
-    "version": "0.3.0",
-    "build": "21",
+    "screenshots": [
+      "feed.png",
+      "sidebar.png",
+      "comments.png",
+      "information.png",
+      "profile.png",
+      "profile-search.png",
+      "mentions.png"
+    ],
+    "generated_video_fixture": {
+      "duration_ms": 12400,
+      "audio": true,
+      "source": "synthetic CI output"
+    },
+    "generated_gif_fixture": {
+      "first_height": 320,
+      "first_width": 320,
+      "frames": 82,
+      "global_height": 0,
+      "global_width": 0,
+      "uneven_delays": true,
+      "source": "synthetic CI output"
+    },
+    "simulator_device": "iPhone 16",
+    "simulator_ios": "18.5",
     "ui_gesture_tests": [
+      "testAttachmentLongHoldSelectionAndUncertainDeletionRequireReadBeforeRetry",
       "testAttachmentPickerBackAndRemovalPreserveDraft",
+      "testBulkPartialDeletionRemovesRootRepliesOnceAndRetainsFailedSelectionAndDraft",
+      "testBulkReplyEmptyAcknowledgmentKeepsRootAndDeletedPositionsWithoutDoubleCount",
       "testCommentTapAndSwipeShareOnePanelAndDoNotLoseKeyboardDraft",
       "testConfirmedMentionReplyUsesSelectedRecipientAndClearsOnlySubmittedDraft",
-      "testConfirmedReplyAndRootDeletionUpdatePostCountWithoutChangingReplyCountTwice",
+      "testConfirmedReplyAndRootDeletionCloseThreadAndRemoveRepliesFromPostTotalOnce",
       "testHorizontalPagingAndZoomTakePriorityOverPanelNavigation",
       "testLongGIFUsesDecodedPixelsUnevenTimingLoopAndRetainedPhase",
       "testMentionSelectionLinkAndUnconfirmedSendPreserveIdentityAndAttachment",
@@ -71,7 +93,15 @@
       "testVerticalPanelsRetainPostAndDraftWithoutPushingComments",
       "testVideoPausedSeekMuteZoomAndPageReturnUseActualPlayer"
     ],
-    "current_candidate_verified": false
+    "ui_gesture_tests_passed": true,
+    "success": true,
+    "version": "0.3.0",
+    "build": "25",
+    "current_candidate_verified": false,
+    "screens_reviewed": [
+      "comments",
+      "mentions"
+    ]
   },
   "known_ui_polish": [],
   "parity_audit": "ANDROID_PARITY.md",
@@ -329,6 +359,23 @@
     },
     "job_conclusion": "cancelled",
     "result_collection_timed_out": true,
+    "phone_tested": false
+  },
+  "compiled_candidate_build25": {
+    "source_commit": "a05a335c8ed9fe0eb103f75bace763180e06a165",
+    "run_url": "https://github.com/sandrscore/oldFunny-iOS/actions/runs/40010014066",
+    "sha256": "2466cca5f4c34aaa9fd22d84ad12be6eb5a896190e15a49971c297cd0fce8b43",
+    "independent_inspection": true,
+    "contains_arm64": true,
+    "main_executable_cryptid": 0,
+    "fixture_code_absent": true,
+    "mac_core_tests": 63,
+    "python_checks": 6,
+    "ui_gesture_tests": {
+      "executed": 20,
+      "passed": 20,
+      "failed": 0
+    },
     "phone_tested": false
   }
 }

@@ -80,12 +80,16 @@ private actor PreviewTransport: HTTPTransport {
             }
         }
         guard method == "GET" || (method == "POST" && path == "/v4/feeds/collective") else { throw ClientError.invalidInput }
+        if method == "GET", path.contains("/comments"), ProcessInfo.processInfo.arguments.contains("--ui-tests-comment-options") {
+            let items = URLComponents(url: request.url!, resolvingAgainstBaseURL: false)?.queryItems ?? []
+            guard items == [URLQueryItem(name: "limit", value: "40")] else { throw ClientError.invalidInput }
+        }
         let value: String
         if path.contains("/replies") {
             var root = try JSONSerialization.jsonObject(with: Data(PreviewFixtures.replies.utf8)) as! [String: Any]
             var data = root["data"] as! [String: Any], replies = data["replies"] as! [String: Any]
             let rows = (replies["items"] as! [[String: Any]]) + sentReplies
-            replies["items"] = rows.map { row -> [String: Any] in var row = row; if deleted.contains(row["id"] as! String) { row["state"] = "deleted_self" }; return row }
+            replies["items"] = rows.map { row -> [String: Any] in var row = row; if ProcessInfo.processInfo.arguments.contains("--ui-tests-comment-options") { row["depth"] = row["id"] as? String == "PreviewReply1" ? 29 : 30 }; if deleted.contains(row["id"] as! String) { row["state"] = "deleted_self" }; return row }
             data["replies"] = replies; data["comment"] = ["replies_count": replyCount]; root["data"] = data
             return HTTPResult(status: 200, body: try JSONSerialization.data(withJSONObject: root))
         }
@@ -227,6 +231,9 @@ enum PreviewFixtures {
             first = post.replacingOccurrences(of: "\"type\":\"picture\"", with: "\"type\":\"gif\"")
                 .replacingOccurrences(of: "https://preview.invalid/post", with: "https://preview.invalid/fixture-animation.gif")
                 .replacingOccurrences(of: "\"h\":760", with: "\"h\":640")
+        }
+        if ProcessInfo.processInfo.arguments.contains("--ui-tests-comment-other-owner") {
+            first = first.replacingOccurrences(of: "PreviewUser", with: "OtherPostOwner")
         }
         return "{\"status\":200,\"data\":{\"content\":{\"items\":[\(first),\(second)],\"paging\":{\"hasNext\":false}}}}"
     }
