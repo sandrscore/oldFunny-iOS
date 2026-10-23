@@ -403,3 +403,26 @@ execution resulted. Candidate 24 restores the read-side helper for pre-existing
 deleted root context; confirmed deletion continues through the separate complete
 thread-removal/return path. All 20 UI cases remain required. The local menu/depth/
 page40 prototype stays excluded from this focused build.
+
+### Build 24 results and focused candidate 25
+
+Source `3f7a90f59cde67023d54fc5c8853f73cc74fe232`, run 39543370601,
+compiled with 63 Mac core/six Python checks passing. All 20 UIKit cases executed:
+18 passed, including partial root removal/counts, reply placeholders/root retention,
+and confirmed single-root deletion returning with the complete thread delta.
+The uncertain-selection case failed on accessibility isEnabled; the custom
+UIControl already had its guard disabled but did not expose the notEnabled trait.
+The mention test observed one of two rapid synthesized deletions. Later assertions
+in these two cases remain unverified. No full-green claim follows from 18 passes.
+Xcodebuild exceeded 600s after 503s of XCTest plus startup; the job was cancelled
+and its result bundle was incomplete. Downloaded logs/artifact hashes were checked.
+IPA independently verifies ARM64/cryptid0/no test fixtures, SHA-256
+`4b81c390e5096ad45db9b86cfbfc1a2a9d89569bbe1b58338e49903e1f8e0001`.
+
+Candidate 25 exposes the disabled trait and adds a physical no-retry tap check.
+Mention styling skips identical attributed-string assignments; UI checks cover
+trailing-space deletion retaining identity, interior deletion removing it, and
+rapid consecutive deletes without recreating the old identity. Tests get 900s and
+the free public Mac job 30 minutes to finalize reports; all 20 cases stay required.
+The local options/depth/page40 work is excluded from this focused candidate.
+Target-phone, live writes/notifications and full parity remain unverified.

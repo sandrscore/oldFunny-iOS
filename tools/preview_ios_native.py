@@ -99,7 +99,9 @@ def main():
             shutil.copyfile(fixture, app / fixture.name)
             shutil.copyfile(gif_fixture, app / gif_fixture.name)
             test_command[-1:] = ["-resultBundlePath", str(output / "ViewerTests.xcresult"), "test-without-building"]
-            subprocess.run(test_command, stdout=log, stderr=subprocess.STDOUT, check=True, timeout=600)
+            # The 20-case run took 503s inside XCTest plus simulator startup;
+            # 600s interrupted xcodebuild before it finalized the result bundle.
+            subprocess.run(test_command, stdout=log, stderr=subprocess.STDOUT, check=True, timeout=900)
         report["ui_gesture_tests"] = verify_gesture_tests((output / "ui-tests.log").read_text(), (IOS / "UITests/ViewerTests.swift").read_text())
         report["ui_gesture_tests_passed"] = True
         report["success"] = True

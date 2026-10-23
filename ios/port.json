@@ -4,7 +4,7 @@
   "product": "oldFunny",
   "bundle_identifier": "mobi.oldfunny.ios",
   "version": "0.3.0",
-  "build": "24",
+  "build": "25",
   "minimum_ios": "16.0",
   "target": {
     "device": "iPhone 16",
@@ -39,7 +39,7 @@
     "captcha_handoff": true,
     "session_survives_relaunch": "unverified"
   },
-  "ui_phase": "Build 24 restores read-side deleted-context helper; confirmed root delete closes/cascades; verified21 checkpoint",
+  "ui_phase": "Focused build25: disabled-control accessibility, single/rapid mention editing, complete CI result collection; verified21 checkpoint",
   "simulator_previews": "Offline fixtures compiled only with CLASSIC_UI_PREVIEW; absent from Release",
   "simulator_ui": {
     "device": "iPhone 16",
@@ -307,5 +307,28 @@
     "ipa_produced": false,
     "ui_executed": 0,
     "error": "Read-refresh call still needs markRootDeleted helper"
+  },
+  "compiled_candidate_build24": {
+    "source_commit": "3f7a90f59cde67023d54fc5c8853f73cc74fe232",
+    "run_url": "https://github.com/sandrscore/oldFunny-iOS/actions/runs/39543370601",
+    "sha256": "4b81c390e5096ad45db9b86cfbfc1a2a9d89569bbe1b58338e49903e1f8e0001",
+    "independent_inspection": true,
+    "contains_arm64": true,
+    "main_executable_cryptid": 0,
+    "fixture_code_absent": true,
+    "mac_core_tests": 63,
+    "python_checks": 6,
+    "ui_gesture_tests": {
+      "executed": 20,
+      "passed": 18,
+      "failed": 2,
+      "failures": [
+        "disabled custom-control accessibility state",
+        "rapid mention deletion"
+      ]
+    },
+    "job_conclusion": "cancelled",
+    "result_collection_timed_out": true,
+    "phone_tested": false
   }
 }

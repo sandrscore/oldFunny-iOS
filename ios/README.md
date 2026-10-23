@@ -1,7 +1,8 @@
 # oldFunny iOS
 
-**Verified checkpoint: 0.3.0/build 21. Candidate build 24 verifies bulk selection
-and corrects root-deletion return/counts; its Mac/UIKit checks are pending. Full parity is incomplete.**
+**Verified checkpoint: 0.3.0/build 21. Candidate build 25 fixes disabled-control
+accessibility and checks mention deletion/input timing. Mac/UIKit verification is
+pending. Full parity is incomplete.**
 
 [Download the build 21 unsigned IPA artifact ZIP](https://github.com/sandrscore/oldFunny-iOS/actions/runs/39539381754/artifacts/12318721806),
 extract the IPA and update through Zeus. SHA-256:
@@ -32,7 +33,20 @@ element instead of a query; none of the 20 UIKit cases executed. Candidate 24
 corrects those queries and the traced root-deletion behavior: deleting a root
 closes its reply screen and removes root plus replies from the post total. The
 old retained-thread fixture expectation is replaced with the actual Android
-contract. All 20 UIKit cases remain required; native verification is pending.
+contract. Build 24 executed all 20 cases: 18 passed, including partial bulk
+removal, reply placeholders and complete root-delete return/counts. The uncertain
+selection test failed because the custom delete control appeared enabled to
+accessibility; the mention edit test observed only one of two rapid deletions.
+The job was cancelled and xcodebuild exceeded its 600s budget while finalizing
+results (503s of actual XCTest execution plus startup). This is not a green build.
+
+Candidate 25 exposes disabled custom controls with the notEnabled trait and checks
+that a physical tap cannot retry the uncertain write. Mention styling avoids
+assigning an identical attributed string during editing. Its UI test separately
+checks trailing-space identity retention, interior deletion invalidation and rapid
+consecutive deletions without recreating identity. The simulator-test allowance
+is 900s and job limit 30 minutes so results can finalize; every one of the same
+20 tests remains mandatory. The separate next menu/depth slice is excluded.
 
 Remaining work includes ordinary comment tap/options parity, reply-depth/state/
 layout rules, mention-panel physics, large-profile indexing/options, feeds/reads,

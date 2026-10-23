@@ -186,6 +186,9 @@ final class CommentMentionComposer {
         let font = input.font ?? ClassicTheme.font(15)
         let attributed = NSMutableAttributedString(string: document.text, attributes: [.font: font, .foregroundColor: UIColor(white: 0.25, alpha: 1)])
         for mention in document.mentions { attributed.addAttribute(.foregroundColor, value: UIColor(red: 41 / 255, green: 121 / 255, blue: 1, alpha: 1), range: mention.range) }
+        // UIKit already preserves attributes for ordinary edits. Replacing an
+        // identical value during editing needlessly resets its text-input state.
+        guard input.attributedText?.isEqual(to: attributed) != true else { return }
         input.attributedText = attributed
         if let (start, end) = selected, let a = input.position(from: input.beginningOfDocument, offset: start), let b = input.position(from: input.beginningOfDocument, offset: end) { input.selectedTextRange = input.textRange(from: a, to: b) }
     }

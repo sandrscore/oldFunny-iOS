@@ -79,7 +79,12 @@ final class ClassicIconButton: UIControl {
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
     func setImage(_ image: UIImage?, for state: UIControl.State) { symbol.image = image }
     override func tintColorDidChange() { super.tintColorDidChange(); symbol.tintColor = tintColor }
-    override var isEnabled: Bool { didSet { alpha = isEnabled ? 1 : 0.4 } }
+    override var isEnabled: Bool {
+        didSet {
+            alpha = isEnabled ? 1 : 0.4
+            accessibilityTraits = isEnabled ? .button : [.button, .notEnabled]
+        }
+    }
     override var isHighlighted: Bool { didSet { alpha = isHighlighted ? 0.5 : (isEnabled ? 1 : 0.4) } }
 }
 
