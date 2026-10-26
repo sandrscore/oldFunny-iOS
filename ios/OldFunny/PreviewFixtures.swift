@@ -7,9 +7,11 @@ private struct PreviewStore: CredentialStore {
     func read() throws -> Credential? {
         guard ProcessInfo.processInfo.arguments.contains("--ui-tests-account") else { return nil }
         // Fabricated fixture identity; never Keychain data or a usable session.
-        return try Credential(accessToken: "offline-fixture-not-a-session", refreshToken: nil, accountID: "PreviewUser", nickname: "ClassicFan")
+        return try Credential(accessToken: "offline-fixture-not-a-session", refreshToken: ProcessInfo.processInfo.arguments.contains("--ui-tests-read-refresh") ? "offline-refresh-not-a-session" : nil, accountID: "PreviewUser", nickname: "ClassicFan")
     }
-    func write(_ credential: Credential) throws { throw ClientError.invalidInput }
+    func write(_ credential: Credential) throws {
+        guard ProcessInfo.processInfo.arguments.contains("--ui-tests-read-refresh"), credential.accessToken == "offline-fresh-not-a-session" else { throw ClientError.invalidInput }
+    }
     func erase() throws {}
 }
 
@@ -21,9 +23,19 @@ private actor PreviewTransport: HTTPTransport {
     private var bulkReadFailures = 0
     private var attachmentPageReads = 0
     private var readClearAttempts = 0, readAllCleared = false
+    private var readTokenRefreshed = false
     private var replyCount: Int { 2 + sentReplies.count - deleted.filter { $0.hasPrefix("PreviewReply") || $0.hasPrefix("FixtureSentReply") }.count }
     func send(_ request: URLRequest) async throws -> HTTPResult {
         let path = request.url?.path ?? "", method = request.httpMethod ?? "GET"
+        if ProcessInfo.processInfo.arguments.contains("--ui-tests-read-refresh") {
+            if method == "POST", path == "/v4/oauth2/token" {
+                guard String(decoding: request.httpBody ?? Data(), as: UTF8.self).contains("refresh_token=offline-refresh-not-a-session") else { throw ClientError.invalidInput }
+                readTokenRefreshed = true
+                await MainActor.run { PreviewFixtures.readEvents.append("token-refresh") }
+                return HTTPResult(status: 200, body: Data(#"{"access_token":"offline-fresh-not-a-session","refresh_token":"offline-refresh-not-a-session"}"#.utf8))
+            }
+            if method == "GET", path == "/v4/feeds/featured", !readTokenRefreshed { return HTTPResult(status: 401, body: Data()) }
+        }
         if method == "PUT", path.hasPrefix("/v4/reads/") {
             let query = URLComponents(url: request.url!, resolvingAgainstBaseURL: false)?.queryItems ?? []
             let source = query.first { $0.name == "from" }?.value ?? ""
@@ -33,6 +45,7 @@ private actor PreviewTransport: HTTPTransport {
             if ids == "all" {
                 readClearAttempts += 1
                 if ProcessInfo.processInfo.arguments.contains("--ui-tests-read-clear-failure"), readClearAttempts == 1 { throw ClientError.transport }
+                if ProcessInfo.processInfo.arguments.contains("--ui-tests-read-clear-delay") { try await Task.sleep(nanoseconds: 4_000_000_000) }
                 readAllCleared = true
             }
             return HTTPResult(status: 204, body: Data())

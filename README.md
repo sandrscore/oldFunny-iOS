@@ -1,11 +1,11 @@
 # oldFunny iOS
 
-Native iOS client targeting the project's current oldFunny Android behavior. Full behavioral parity is incomplete.
+Native iOS client targeting current oldFunny Android behavior. Full behavioral parity is incomplete.
 
-Verified checkpoint **0.3.0/build28** passed74 Mac Swift tests, six packaging checks and all23 offline UIKit cases. Downloaded logs/reports/artifact hashes were checked; the attachment screenshot was reviewed.
+Build29 source `98e048e8c8e6f5f8e77c6d256eede91e2e6b83a1` passed90 Mac Swift tests, six packaging checks and all25 offline UIKit cases. Exact reports, archive hashes and actual read-tracking captures were checked. Separate regressions reproduced read-wrapper token-refresh rejection and cross-feed queue starvation; focused30 corrects both.
 
-[Download build28's unsigned IPA artifact ZIP](https://github.com/sandrscore/oldFunny-iOS/actions/runs/40407953474/artifacts/12691629064), extract the IPA and update through Zeus. Artifact expires November2,2026. SHA256: `8af68fb23d0a56e28a86fbdbb7762ed000b651b07d1d437de8ed9c6dcdeedd15`.
+Candidate30 passes93 Linux Swift tests/six packaging checks. All25 native cases remain mandatory, with expanded fake token-refresh/pending-clear/duplicate prevention assertions. Authentication algorithms, Android and reviewed16 bitmaps are preserved. No real read acknowledgment or social write was used for validation; current target-phone checks remain separate.
 
-Candidate29 integrates durable read tracking, actual viewer visibility/lifecycle gates, immediate Subscriptions loading credit, filtered Featured paging and confirmed Subscriptions-only unread clearing. 90 Linux contracts/six packaging checks pass; all25 UIKit cases require Mac execution. No real read acknowledgement or social write was used for validation. Current target-iPhone checks remain separate.
+The earlier build28 IPA is retained as the preceding checkpoint while30 verifies: [download unsigned artifact ZIP](https://github.com/sandrscore/oldFunny-iOS/actions/runs/40407953474/artifacts/12691629064), extract and update through Zeus. Expires November2,2026. SHA256 `8af68fb23d0a56e28a86fbdbb7762ed000b651b07d1d437de8ed9c6dcdeedd15`.
 
 See [build/signing instructions](ios/README.md), [behavior ledger](ios/ANDROID_PARITY.md) and [status](ios/PORT_STATUS.md).

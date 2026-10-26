@@ -29,10 +29,12 @@ final class ViewerTests: XCTestCase {
     }
     func testSubscriptionLoadingCreditsBadgeAndOnlyConfirmedExplicitClearRemovesUnread() {
         let app = XCUIApplication()
-        app.launchArguments = ["--ui-tests", "--ui-tests-account", "--ui-tests-reads", "--ui-tests-read-loading", "--ui-tests-read-clear-failure"]
+        app.launchArguments = ["--ui-tests", "--ui-tests-account", "--ui-tests-reads", "--ui-tests-read-loading", "--ui-tests-read-clear-failure", "--ui-tests-read-refresh", "--ui-tests-read-clear-delay"]
         app.launch()
         let trace = app.staticTexts["offline-read-trace"]
         XCTAssertTrue(trace.waitForExistence(timeout: 10))
+        XCTAssertTrue(app.buttons["3 comments"].waitForExistence(timeout: 10), "Read wrapper must preserve successful automatic token refresh")
+        XCTAssertTrue(trace.label.contains("token-refresh"))
         app.buttons["Open menu"].tap(); app.buttons["Subscriptions"].tap()
         waitUntil("Subscriptions credits the selected post before media renders", timeout: 5) { trace.label.contains("subs:PreviewPost") && trace.label.contains("rendered=false") && trace.label.contains("unread=9") }
         app.buttons["Open menu"].tap()
@@ -46,7 +48,13 @@ final class ViewerTests: XCTestCase {
         let failure = app.alerts["oldFunny"]; XCTAssertTrue(failure.waitForExistence(timeout: 5)); failure.buttons["OK"].tap()
         XCTAssertEqual(subscriptions.value as? String, "9 unread", "Uncertain explicit clear preserves local credit")
         subscriptions.press(forDuration: 0.8); app.alerts["Subscriptions"].buttons["Mark as viewed"].tap()
+        waitUntil("Explicit clearing exposes its pending state") { subscriptions.value as? String == "Marking as viewed" }
+        subscriptions.press(forDuration: 0.8)
+        let pending = app.alerts["Subscriptions"]
+        XCTAssertTrue(pending.waitForExistence(timeout: 5)); XCTAssertFalse(pending.buttons["Mark as viewed"].isEnabled)
+        pending.buttons["Cancel"].tap()
         waitUntil("Confirmed explicit success clears the badge", timeout: 5) { subscriptions.value as? String == "0 unread" }
+        XCTAssertEqual(trace.label.components(separatedBy: "subs:all").count - 1, 2, "One failed choice plus one confirmed choice; no pending duplicate")
         app.buttons["Collective"].tap()
         app.buttons["Open menu"].tap()
         XCTAssertEqual(app.buttons["Subscriptions"].value as? String, "0 unread", "Ordinary section navigation preserves progress")

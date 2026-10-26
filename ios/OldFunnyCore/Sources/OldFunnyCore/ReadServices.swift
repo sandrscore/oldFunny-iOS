@@ -142,28 +142,37 @@ public actor ReadCoordinator {
         try await check(context); return try await flushLocked(context)
     }
     private func flushLocked(_ context: ReadContext) async throws -> Bool {
+        var failure: Error?, subscriptionsFailed = false
         for feed in [Feed.featured, .subscriptions] {
             if feed == .subscriptions && !context.signedIn { continue }
-            for _ in 0..<4 {
-                try await check(context)
-                let batch = (feed == .featured ? state.featured : state.subscriptions).batch
-                if batch.isEmpty { break }
-                try await backend.acknowledgeReads(batch, feed: feed, context: context)
-                try await check(context)
-                var updated = state, ledger = feed == .featured ? state.featured : state.subscriptions
-                ledger.acknowledged(batch)
-                if feed == .featured { updated.featured = ledger }
-                else { updated.subscriptions = ledger; updated.counterDirty = true }
-                try persist(updated, context: context)
+            do {
+                for _ in 0..<4 {
+                    try await check(context)
+                    let batch = (feed == .featured ? state.featured : state.subscriptions).batch
+                    if batch.isEmpty { break }
+                    try await backend.acknowledgeReads(batch, feed: feed, context: context)
+                    try await check(context)
+                    var updated = state, ledger = feed == .featured ? state.featured : state.subscriptions
+                    ledger.acknowledged(batch)
+                    if feed == .featured { updated.featured = ledger }
+                    else { updated.subscriptions = ledger; updated.counterDirty = true }
+                    try persist(updated, context: context)
+                }
+            } catch {
+                try await check(context) // Cancellation/account loss aborts both queues.
+                if error as? ClientError == .sessionChanged { throw error }
+                if failure == nil { failure = error }
+                if feed == .subscriptions { subscriptionsFailed = true }
             }
         }
-        if context.signedIn && state.counterDirty {
+        if context.signedIn && state.counterDirty && !subscriptionsFailed {
             let count = try await backend.unreadSubscriptions(context: context); try await check(context)
             var updated = state, progress = updated.progress
             try progress.merge(server: count); updated.progress = progress
             if updated.subscriptions.pending.isEmpty { updated.counterDirty = false }
             try persist(updated, context: context)
         }
+        if let failure { throw failure }
         return !state.featured.pending.isEmpty || (context.signedIn && !state.subscriptions.pending.isEmpty)
     }
     public func refreshCounter() async throws {
@@ -188,7 +197,27 @@ public actor ReadCoordinator {
         try persist(updated, context: context)
     }
     public func page(_ feed: Feed, next: String? = nil) async throws -> PostPage {
-        let context = try await prepare(); try await acquire(); defer { release() }; try await check(context)
+        try await scopedPage(feed, next: next).0
+    }
+    /// A GET may refresh its token in APIClient. Retry this read once for the
+    /// same account and epoch, returning the exact context of the accepted page.
+    /// Account switches and explicit sign-outs are never treated as refreshes.
+    public func scopedPage(_ feed: Feed, next: String? = nil) async throws -> (PostPage, ReadContext) {
+        var context = try await prepare()
+        for attempt in 0..<2 {
+            do { return (try await pageInContext(feed, next: next, context: context), context) }
+            catch ClientError.sessionChanged {
+                let live = await backend.readContext()
+                guard attempt == 0, live.key == context.key, live.epoch == context.epoch,
+                      live.signedIn == context.signedIn, live.authorizationMarker != context.authorizationMarker else { throw ClientError.sessionChanged }
+                context = try await prepare()
+                guard context == live else { throw ClientError.sessionChanged }
+            }
+        }
+        throw ClientError.sessionChanged
+    }
+    private func pageInContext(_ feed: Feed, next: String?, context: ReadContext) async throws -> PostPage {
+        try await acquire(); defer { release() }; try await check(context)
         if feed != .collective {
             do { _ = try await flushLocked(context) }
             catch is CancellationError { throw CancellationError() }

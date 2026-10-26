@@ -19,10 +19,12 @@ private actor ReadFixtureBackend: ReadBackend {
     private var selected: ReadContext
     var counter = 10, failures = 0
     private var pages = [PostPage](), events = [String](), batches = [[String]]()
+    private var pageContextTransition: ReadContext?
     private var hold = false, held: CheckedContinuation<Void, Never>?, observed: CheckedContinuation<Void, Never>?
     init(_ context: ReadContext) { selected = context }
     func readContext() -> ReadContext { selected }
     func switchTo(_ context: ReadContext) { selected = context }
+    func changeContextDuringPage(_ context: ReadContext) { pageContextTransition = context }
     func configure(counter: Int? = nil, failures: Int = 0, pages: [PostPage] = []) {
         if let counter { self.counter = counter }; self.failures = failures; self.pages = pages
     }
@@ -45,7 +47,9 @@ private actor ReadFixtureBackend: ReadBackend {
     }
     func readPage(_ feed: Feed, next: String?, context: ReadContext) async throws -> PostPage {
         guard context == selected else { throw ClientError.sessionChanged }; events.append("page:" + (next ?? "head"))
-        guard !pages.isEmpty else { throw ClientError.transport }; return pages.removeFirst()
+        guard !pages.isEmpty else { throw ClientError.transport }
+        if let replacement = pageContextTransition { selected = replacement; pageContextTransition = nil }
+        return pages.removeFirst()
     }
 }
 private struct ReadCredentialStore: CredentialStore {
@@ -63,6 +67,32 @@ private actor ReadHTTPFixture: HTTPTransport {
     func recorded() -> [URLRequest] { requests }
 }
 final class ReadServicesTests: XCTestCase {
+    func testFailedFeaturedQueueDoesNotStarveSubscriptionAcknowledgmentsOrCounter() async throws {
+        let backend = ReadFixtureBackend(context()), coordinator = ReadCoordinator(backend: backend, store: ReadMemoryStore())
+        try await coordinator.refreshCounter()
+        _ = try await coordinator.viewed("FeaturedPending", feed: .featured)
+        _ = try await coordinator.viewed("SubscriptionPending", feed: .subscriptions)
+        await backend.configure(failures: 1)
+        do { _ = try await coordinator.flush(); XCTFail("Featured failure must remain retryable") }
+        catch { XCTAssertEqual(error as? ClientError, .transport) }
+        let state = try await coordinator.snapshot()
+        XCTAssertEqual(state.featured.pending, ["FeaturedPending"])
+        XCTAssertTrue(state.subscriptions.pending.isEmpty, "Independent Subscriptions worker must still make progress")
+        XCTAssertEqual(state.progress.remaining, 9); XCTAssertFalse(state.counterDirty)
+        let events = await backend.recorded(); XCTAssertEqual(Array(events.0.suffix(3)), ["ack:feat", "ack:subs", "counter"])
+    }
+    func testFeedRetryNeverCrossesAccountOrSignOutEpoch() async throws {
+        for sameKey in [false, true] {
+            let a = context(), changed = context(sameKey ? "a" : "b")
+            let backend = ReadFixtureBackend(a), coordinator = ReadCoordinator(backend: backend, store: ReadMemoryStore())
+            await backend.configure(pages: [try page(["OldAccountPost"], next: nil)])
+            await backend.changeContextDuringPage(changed)
+            do { _ = try await coordinator.scopedPage(.featured); XCTFail("Account/epoch changes must not retry") }
+            catch { XCTAssertEqual(error as? ClientError, .sessionChanged) }
+            let events = await backend.recorded(); XCTAssertEqual(events.0, ["page:head"])
+            let state = try await coordinator.snapshot(); XCTAssertTrue(state.featured.seen.isEmpty)
+        }
+    }
     private func context(_ letter: String = "a", signed: Bool = true) -> ReadContext {
         ReadContext(key: String(repeating: letter, count: 40), epoch: UUID(), signedIn: signed, authorizationMarker: "transient")
     }

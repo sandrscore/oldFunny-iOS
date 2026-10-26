@@ -127,8 +127,9 @@ final class FeedController: ClassicScreenController, UIPageViewControllerDataSou
     private func updateReadTrace() {
         let current = pager.viewControllers?.first as? PostController
         let rendered = current?.readVisibility(settled: settled, drawerOpen: sidebar != nil).rendered == true
-        readTrace.text = "\(PreviewFixtures.readEvents.joined(separator: "|")); unread=\(app.reads.unreadSubscriptions.map(String.init) ?? "unknown"); rendered=\(rendered); post=\(current?.post.id ?? "none")"
-        view.bringSubviewToFront(readTrace)
+        let value = "\(PreviewFixtures.readEvents.joined(separator: "|")); unread=\(app.reads.unreadSubscriptions.map(String.init) ?? "unknown"); rendered=\(rendered); post=\(current?.post.id ?? "none")"
+        if readTrace.text != value { readTrace.text = value }
+        if view.subviews.last !== readTrace { view.bringSubviewToFront(readTrace) }
     }
     #endif
     private var currentPost: Post? { pages.posts.indices.contains(selected) ? pages.posts[selected] : nil }
@@ -171,9 +172,9 @@ final class FeedController: ClassicScreenController, UIPageViewControllerDataSou
         UIAccessibility.post(notification: .screenChanged, argument: menu)
     }
     private func subscriptionsOptions() {
-        guard !app.reads.clearing, let context = app.reads.currentContext, context.signedIn else { return }
+        guard let context = app.reads.currentContext, context.signedIn else { return }
         let options = UIAlertController(title: "Subscriptions", message: nil, preferredStyle: .alert)
-        options.addAction(UIAlertAction(title: "Mark as viewed", style: .default) { [weak self] _ in
+        let mark = UIAlertAction(title: "Mark as viewed", style: .default) { [weak self] _ in
             guard let self else { return }
             Task { [weak self] in
                 guard let self else { return }
@@ -187,7 +188,8 @@ final class FeedController: ClassicScreenController, UIPageViewControllerDataSou
                     showError(error)
                 }
             }
-        })
+        }
+        mark.isEnabled = !app.reads.clearing; options.addAction(mark)
         options.addAction(UIAlertAction(title: "Cancel", style: .cancel))
         present(options, animated: true)
     }
@@ -273,6 +275,7 @@ final class FeedController: ClassicScreenController, UIPageViewControllerDataSou
         let controller = PostController(app: app, post: post, index: index, source: timelineID == nil ? feed.source : "prof", section: profileName ?? feed.title, selected: index == selected)
         if timelineID == nil { controller.onMenu = { [weak self] in self?.toggleMenu() } }
         controller.onRefresh = { [weak self] in self?.refresh() }
+        controller.onPanelChange = { [weak self] _ in self?.exposure.reset() }
         retained[post.id] = controller
         return controller
     }

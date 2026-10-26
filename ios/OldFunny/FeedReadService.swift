@@ -45,13 +45,15 @@ final class FeedReadService {
         notify()
     }
     func page(_ feed: Feed, next: String?) async throws -> (PostPage, ReadContext) {
-        let context = try await coordinator.context()
-        let page = try await coordinator.page(feed, next: next)
+        let (page, context) = try await coordinator.scopedPage(feed, next: next)
         let (live, _) = try await coordinator.currentSnapshot()
-        guard context == live else { throw ClientError.sessionChanged }
+        guard context.key == live.key, context.epoch == live.epoch, context.signedIn == live.signedIn else { throw ClientError.sessionChanged }
         try await publish()
+        // A successful foreground GET may have refreshed the token or restored
+        // connectivity since the failed worker. Retry its durable IDs now.
+        retry?.cancel(); retry = nil
         requestSync()
-        return (page, context)
+        return (page, live)
     }
     func viewed(_ id: String, feed: Feed, context: ReadContext) async throws {
         if try await coordinator.viewed(id, feed: feed, expected: context) {
@@ -74,6 +76,12 @@ final class FeedReadService {
                     try await publish()
                     if more { requested = true }
                 } catch {
+                    if error as? ClientError == .sessionChanged && !Task.isCancelled {
+                        // Rebind immediately after a token/account generation
+                        // change; the ten-second delay is for network failures.
+                        requested = true; try? await publish(); await Task.yield()
+                        continue
+                    }
                     failed = !Task.isCancelled; requested = true
                     // Queue and credit remain durable. Display a restored badge
                     // even when the server is unavailable.
