@@ -4,7 +4,7 @@
   "product": "oldFunny",
   "bundle_identifier": "mobi.oldfunny.ios",
   "version": "0.3.0",
-  "build": "27",
+  "build": "28",
   "minimum_ios": "16.0",
   "target": {
     "device": "iPhone 16",
@@ -39,7 +39,7 @@
     "captcha_handoff": true,
     "session_survives_relaunch": "unverified"
   },
-  "ui_phase": "Verified25 all20UI; focused27 native deleted-reply placeholder after26 ran22UI/21pass",
+  "ui_phase": "Verified27 all22UI; candidate28 inbound attachment/full-post recovery,74core/23UI pending",
   "simulator_previews": "Offline fixtures compiled only with CLASSIC_UI_PREVIEW; absent from Release",
   "simulator_ui": {
     "offline_fixtures": true,
@@ -77,8 +77,10 @@
       "testBulkPartialDeletionRemovesRootRepliesOnceAndRetainsFailedSelectionAndDraft",
       "testBulkReplyEmptyAcknowledgmentKeepsRootAndDeletedPositionsWithoutDoubleCount",
       "testCommentTapAndSwipeShareOnePanelAndDoNotLoseKeyboardDraft",
+      "testCommentTapRoleMenusReplyDepthDotsAndDraftRetention",
       "testConfirmedMentionReplyUsesSelectedRecipientAndClearsOnlySubmittedDraft",
       "testConfirmedReplyAndRootDeletionCloseThreadAndRemoveRepliesFromPostTotalOnce",
+      "testGuestCommentOptionsProfileAndSignedInOtherPostRole",
       "testHorizontalPagingAndZoomTakePriorityOverPanelNavigation",
       "testLongGIFUsesDecodedPixelsUnevenTimingLoopAndRetainedPhase",
       "testMentionSelectionLinkAndUnconfirmedSendPreserveIdentityAndAttachment",
@@ -96,11 +98,11 @@
     "ui_gesture_tests_passed": true,
     "success": true,
     "version": "0.3.0",
-    "build": "25",
+    "build": "27",
     "current_candidate_verified": false,
     "screens_reviewed": [
       "comments",
-      "mentions"
+      "deleted-reply-native-placeholder"
     ]
   },
   "known_ui_polish": [],
@@ -392,6 +394,48 @@
       "passed": 21,
       "failed": 1,
       "failure": "Deleted reply positions have no depth strip"
+    },
+    "phone_tested": false
+  },
+  "candidate28": {
+    "published": true,
+    "mac_compiled": false,
+    "linux_core_tests": 74,
+    "python_checks": 6,
+    "ui_test_cases": 23,
+    "ui_tests_executed": false,
+    "anonymous_content_read_routes": {
+      "observed_date": "2026-10-26",
+      "GET_requests": 3,
+      "direct_API200": true,
+      "API404_public_website200_recovery": true,
+      "identity_matches": true,
+      "real_account_used": false,
+      "social_writes": false,
+      "read_acknowledgements": false
+    },
+    "phone_tested": false,
+    "known_gaps": [
+      "HTTP-only thumbnail transport",
+      "payload checks after download, not midstream",
+      "external browser runtime",
+      "toast versus alert presentation"
+    ]
+  },
+  "compiled_candidate_build27": {
+    "source_commit": "f205168b98f5c886a26b0e758393b5137b8932e1",
+    "run_url": "https://github.com/sandrscore/oldFunny-iOS/actions/runs/40404742369",
+    "sha256": "67488a070a27fb8eb08348663dc281e097620861ba94fbe98334d2cab30798f6",
+    "independent_inspection": true,
+    "contains_arm64": true,
+    "main_executable_cryptid": 0,
+    "fixture_code_absent": true,
+    "mac_core_tests": 67,
+    "python_checks": 6,
+    "ui_gesture_tests": {
+      "executed": 22,
+      "passed": 22,
+      "failed": 0
     },
     "phone_tested": false
   }

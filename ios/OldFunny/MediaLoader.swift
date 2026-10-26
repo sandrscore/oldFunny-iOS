@@ -11,6 +11,7 @@ private final class CachedMediaImage: NSObject {
 actor MediaLoader {
     private let session: URLSession
     private let cache = NSCache<NSURL, CachedMediaImage>()
+    private let commentThumbnails = CommentThumbnailLoader()
     init() {
         cache.countLimit = 48; cache.totalCostLimit = 32 * 1024 * 1024
         let config = URLSessionConfiguration.ephemeral
@@ -37,6 +38,7 @@ actor MediaLoader {
         let destination = FileManager.default.temporaryDirectory.appendingPathComponent("oldFunny-save-" + UUID().uuidString).appendingPathExtension(suffix)
         try FileManager.default.copyItem(at: temporary, to: destination); return destination
     }
+    func commentImage(_ url: URL, userAgent: String) async throws -> UIImage { try await commentThumbnails.image(url, userAgent: userAgent) }
     func image(_ url: URL) async throws -> UIImage {
         #if CLASSIC_UI_PREVIEW
         if url.host == "preview.invalid" { return await PreviewFixtures.image(url) }

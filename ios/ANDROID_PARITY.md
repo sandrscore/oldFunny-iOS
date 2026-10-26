@@ -474,3 +474,60 @@ keeps root context on its existing path. The original zero-dot assertion remains
 plus author/reaction absence, exact caption, refresh/draft/count checks. All22
 cases are mandatory; Mac/UIpending. Inbound multi-card/public-picture changes
 remain separate. No new phone or live social validation; full parity incomplete.
+
+### Local candidate 28: inbound attachment and content navigation slice
+
+Readable AttachmentSpec, PictureComments, PreviewCrop and PublicPictures/WebPostData
+are the specification. Native cards preserve max4 entries, deleted/blocked/unavailable
+states, ID-less previews, link-derived fallback, exact thumbnail priority, bounded
+geometry and ARGB, badge taxonomy, first-comic-panel/centered-video source crops,
+image-only rows and withheld placeholders. Abused/deleted rows suppress attachments
+and mention links. Full post loading uses GET content/{id} and validates returned
+identity. Only an API404 recovers a published non-abused matching picture from the
+website JSON. No script executes; website requests carry no API authorization or
+cookies. Session generations and cancellation fence late content responses. Parent
+thread/draft remains underneath internal viewer Back. Original-owner moderation
+now remains nil when source data omits the original author.
+
+Thumbnail loading has an independent strict10MiB LRU, two workers and64 waiters,
+8MiB compressed-file validation and power-of-two ImageIO sampling to1024. Fixtures
+supply encoded PNG data to the actual decoder/queue/cache rather than returning a
+ready-made bitmap. The 23rd UI case checks actual pixel crops, cap/badges, hold to
+select, unavailable/failed/withheld/blocked/link-derived states, refresh replacement,
+API404 recovery and draft/Back. All22 existing cases remain required. Local74Core,
+six Python checks and native syntax pass; new native files have not Maccompiled.
+These tests do not prove HTTP-only preview support, stream-time payload enforcement,
+external browser behavior, all image/codec edges or Android toast presentation.
+
+2026-10-26 anonymous read evidence:3 GETs total, no account/session/read ack/social
+write. A known attachment resolved through API200 (1075x823), and a long picture
+resolved API404->website200 (638x4719), matching each requested ID and full media.
+This establishes the implemented server-read routes on that date; it does not
+establish target-phone gestures, notifications or live action behavior. The public
+build27 currently excludes this slice and remains under its own22-case UI gate.
+
+### Verified checkpoint 27 and candidate28 verification
+
+Source `f205168b98f5c886a26b0e758393b5137b8932e1`,
+[Mac CI](https://github.com/sandrscore/oldFunny-iOS/actions/runs/40404742369),
+passed67 Mac core/six Python and all22 actual UIKit cases, zero failures. The
+previous deleted-depth assertion and every subsequent refresh/draft/attachment/
+count assertion passed. Root context is retained; deleted nonroot rows have exact
+centered caption and no author/reaction/dot children. Actual XCTest screenshot
+was extracted losslessly from its payloadRef and visually reviewed, plus comments.
+Both role/menu/author/guest/navigation/focus/depth cases and previous media/profile/
+mention/bulk cases passed again. Artifact hashes/logs/full result were checked.
+IPA independently ARM64/cryptid0/fixture exclusion, SHA256
+`67488a070a27fb8eb08348663dc281e097620861ba94fbe98334d2cab30798f6`.
+All169 protected/137 Android-doc hashes match. No new phone/live social validation.
+
+Candidate28 now goes to Mac with74 core and23 mandatory UIKit cases. The inbound
+fixture additionally checks real card hold selection and a refresh replacing
+withheld data with link-derived cards/blocked-creator state, preserving the draft.
+The candidate's new files are not certified by27's green result. Remaining limits
+above and the full screen ledger stay open; parity is not complete.
+
+The recovery trigger is the actual HTTP404 status. A status404 JSON envelope on
+HTTP200 does not invoke website recovery. The shared request loop returns its raw
+HTTP result before parsing, retaining account fences/read-only refresh/no write
+replay; content and ordinary callers check their captured epoch again.

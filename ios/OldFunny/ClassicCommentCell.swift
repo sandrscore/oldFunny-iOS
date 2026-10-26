@@ -3,14 +3,13 @@ import UIKit
 final class ClassicCommentCell: UITableViewCell {
     private let avatar = RemoteAvatarView(), name = UIButton(type: .custom)
     private let date = UILabel(), body = MentionLabel(), replies = UILabel()
-    private let preview = UIButton(type: .custom), picture = UIImageView()
+    private let previews = CommentAttachmentsView()
     private let smile = ClassicCounterButton(), unsmile = ClassicTheme.button(.unsmile, label: "Unsmile comment")
     private let reactions = UIStackView()
     private let depthDots = ReplyDepthDotsView()
-    private var previewHeight: NSLayoutConstraint!
-    private var imageTask: Task<Void, Never>?
     private var commentID: String?
-    var onAuthor: (() -> Void)?, onAttachment: (() -> Void)?
+    var onAuthor: (() -> Void)?
+    var onAttachment: ((CommentAttachment) -> Void)? { didSet { previews.onOpen = onAttachment } }
     var onSmile: (() -> Void)?, onUnsmile: (() -> Void)?
     var onReplies: (() -> Void)?
     var onMention: ((MentionSpan) -> Void)? { didSet { body.onMention = onMention } }
@@ -27,15 +26,10 @@ final class ClassicCommentCell: UITableViewCell {
         replies.font = ClassicTheme.font(12); replies.textColor = ClassicTheme.blue
         replies.isUserInteractionEnabled = true; replies.accessibilityTraits = .button
         replies.addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(repliesTapped)))
-        picture.contentMode = .scaleAspectFill; picture.clipsToBounds = true; picture.backgroundColor = ClassicTheme.background
-        picture.translatesAutoresizingMaskIntoConstraints = false; preview.addSubview(picture)
-        NSLayoutConstraint.activate([picture.leadingAnchor.constraint(equalTo: preview.leadingAnchor), picture.trailingAnchor.constraint(equalTo: preview.trailingAnchor), picture.topAnchor.constraint(equalTo: preview.topAnchor), picture.bottomAnchor.constraint(equalTo: preview.bottomAnchor)])
-        preview.accessibilityLabel = "Open attached post"; preview.addTarget(self, action: #selector(attachmentTapped), for: .touchUpInside)
-        previewHeight = preview.heightAnchor.constraint(equalToConstant: 160); previewHeight.priority = .defaultHigh; previewHeight.isActive = true
         smile.icon = ClassicGlyph.smile.image; smile.addTarget(self, action: #selector(smileTapped), for: .touchUpInside)
         unsmile.addTarget(self, action: #selector(unsmileTapped), for: .touchUpInside)
         [smile, unsmile, UIView()].forEach { reactions.addArrangedSubview($0) }; reactions.spacing = 3; reactions.alignment = .center
-        let stack = UIStackView(arrangedSubviews: [name, date, body, preview, replies, reactions]); stack.axis = .vertical; stack.spacing = 4
+        let stack = UIStackView(arrangedSubviews: [name, date, body, previews, replies, reactions]); stack.axis = .vertical; stack.spacing = 4
         let identity = UIStackView(arrangedSubviews: [depthDots, avatar]); identity.spacing = 10; identity.alignment = .center
         depthDots.setContentCompressionResistancePriority(.required, for: .horizontal)
         depthDots.setContentHuggingPriority(.required, for: .horizontal)
@@ -50,10 +44,14 @@ final class ClassicCommentCell: UITableViewCell {
         ])
     }
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
-    deinit { imageTask?.cancel() }
-    override func prepareForReuse() { super.prepareForReuse(); imageTask?.cancel(); commentID = nil; picture.image = nil; onAuthor = nil; onAttachment = nil; onSmile = nil; onUnsmile = nil; onReplies = nil; onMention = nil; canOpenMention = nil }
+    override func systemLayoutSizeFitting(_ targetSize: CGSize, withHorizontalFittingPriority horizontalFittingPriority: UILayoutPriority, verticalFittingPriority: UILayoutPriority) -> CGSize {
+        let extra = depthDots.count > 0 ? depthDots.intrinsicContentSize.width + 10 : 0
+        previews.measure(availableWidth: max(64, targetSize.width - 65 - extra))
+        return super.systemLayoutSizeFitting(targetSize, withHorizontalFittingPriority: horizontalFittingPriority, verticalFittingPriority: verticalFittingPriority)
+    }
+    override func prepareForReuse() { super.prepareForReuse(); previews.cancel(); commentID = nil; onAuthor = nil; onAttachment = nil; onSmile = nil; onUnsmile = nil; onReplies = nil; onMention = nil; canOpenMention = nil }
     func bind(_ comment: Comment, loader: MediaLoader, replyCount: Int? = nil, replyDots: Int = 0, showsReplyControl: Bool = true) {
-        imageTask?.cancel(); commentID = comment.id
+        commentID = comment.id
         accessibilityIdentifier = "comment-row-" + comment.id
         name.setTitle(comment.author, for: .normal); name.isEnabled = comment.authorID != nil && !comment.isDeleted; name.isHidden = comment.isDeleted
         avatar.isHidden = comment.isDeleted; avatar.set(comment.isDeleted ? nil : comment.authorAvatarURL, loader: loader)
@@ -68,9 +66,13 @@ final class ClassicCommentCell: UITableViewCell {
         date.accessibilityIdentifier = "comment-date-" + comment.id
         if let value = comment.date, !comment.isDeleted { date.text = DateFormatter.localizedString(from: value, dateStyle: .short, timeStyle: .none); date.isHidden = false }
         else { date.text = nil; date.isHidden = true }
-        body.show(comment.isDeleted ? "Comment deleted." : comment.text, mentions: comment.isDeleted ? [] : comment.mentions)
+        body.font = ClassicTheme.font(15); body.textColor = ClassicTheme.text
+        let blank = MentionDocument.asciiTrim(comment.text).isEmpty
+        let withheld = !comment.isDeleted && !comment.isAbused && blank && comment.hasWithheldAttachments
+        if withheld { body.font = .italicSystemFont(ofSize: 12); body.textColor = UIColor(white: 1 / 3, alpha: 1) }
+        body.show(comment.isDeleted ? "Comment deleted." : withheld ? "Post Unavailable" : comment.text, mentions: comment.isDeleted || comment.isAbused ? [] : comment.mentions)
         body.accessibilityIdentifier = "comment-body-" + comment.id
-        body.isHidden = !comment.isDeleted && comment.text.isEmpty
+        body.isHidden = !comment.isDeleted && !withheld && (comment.text.isEmpty || (!comment.isAbused && !comment.attachmentPreviews.isEmpty && blank))
         reactions.isHidden = comment.isDeleted
         let count = replyCount ?? comment.replies
         replies.text = "\(count) replies"; replies.isHidden = count == 0 || !showsReplyControl
@@ -88,18 +90,9 @@ final class ClassicCommentCell: UITableViewCell {
         unsmile.tintColor = comment.isUnsmiled ? ClassicTheme.yellow : .white
         unsmile.accessibilityLabel = comment.isUnsmiled ? "Remove comment unsmile" : "Unsmile comment"
         unsmile.accessibilityIdentifier = "comment-unsmile-\(comment.id)"
-        preview.isHidden = comment.isDeleted || comment.attachments.isEmpty; picture.image = nil
-        guard !comment.isDeleted else { return }
-        if let post = comment.attachments.first, let url = post.posterURL ?? post.mediaURL {
-            previewHeight.constant = min(240, max(100, max(200, contentView.bounds.width - 65) * CGFloat(post.height / post.width)))
-            imageTask = Task { [weak self] in
-                guard let loaded = try? await loader.image(url), !Task.isCancelled, self?.commentID == comment.id else { return }
-                self?.picture.image = loaded
-            }
-        }
+        previews.bind(comment.isDeleted || comment.isAbused ? [] : comment.attachmentPreviews, commentID: comment.id, loader: loader)
     }
     @objc private func authorTapped() { onAuthor?() }
-    @objc private func attachmentTapped() { onAttachment?() }
     @objc private func smileTapped() { onSmile?() }
     @objc private func unsmileTapped() { onUnsmile?() }
     @objc private func repliesTapped() { onReplies?() }

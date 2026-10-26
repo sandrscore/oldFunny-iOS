@@ -21,7 +21,7 @@ public struct Post: Equatable, Sendable {
     public let views: Int, republishes: Int
     public let tags: [String]
     public let originalAuthor: String?, originalAuthorID: String?
-    public var moderationOwnerID: String? { originalAuthorID ?? authorID }
+    public var moderationOwnerID: String? { hasSource ? originalAuthorID : authorID }
     public let hasSource: Bool, isFeatured: Bool, isPinned: Bool, isAbused: Bool
     public let state: String
     public var isVideo: Bool { type == "video" || type == "text_video" || mediaURL?.pathExtension.lowercased() == "mp4" }
@@ -96,6 +96,9 @@ public struct Comment: Sendable {
     public let mentions: [MentionSpan]
     public let authorID: String?, authorAvatarURL: URL?, date: Date?
     public let attachments: [Post]
+    public let attachmentPreviews: [CommentAttachment]
+    public let hasWithheldAttachments: Bool
+    public var isAbused: Bool { state == "abused" }
     public let replies: Int
     public let smiles: Int, unsmiles: Int, isSmiled: Bool, isUnsmiled: Bool
     public var displayedScore: Int? { smiles > unsmiles ? smiles - unsmiles : (isSmiled ? 1 : nil) }
@@ -114,6 +117,8 @@ public struct Comment: Sendable {
         let timestamp = value["date"].number
         date = timestamp.flatMap { $0.isFinite && $0 > 0 && $0 < 32_503_680_000 ? Date(timeIntervalSince1970: $0) : nil }
         attachments = value["attachments"]["content"].items.compactMap { try? Post($0) }
+        attachmentPreviews = CommentAttachment.parse(value["attachments"])
+        hasWithheldAttachments = CommentAttachment.isWithheld(value["attachments"])
         replies = max(0, value["num"]["replies"].integer ?? 0)
         smiles = max(0, value["num"]["smiles"].integer ?? 0)
         unsmiles = max(0, value["num"]["unsmiles"].integer ?? 0)

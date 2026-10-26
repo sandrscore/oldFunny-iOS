@@ -1,4 +1,5 @@
 import XCTest
+import UIKit
 
 final class ViewerTests: XCTestCase {
     override func setUpWithError() throws { continueAfterFailure = false }
@@ -54,6 +55,72 @@ final class ViewerTests: XCTestCase {
         let alert = app.alerts["Comment options"]
         XCTAssertTrue(alert.waitForExistence(timeout: 5), file: file, line: line)
         XCTAssertEqual(alert.buttons.allElementsBoundByIndex.map(\.label).filter { $0 != "Cancel" }, labels, file: file, line: line)
+    }
+    private func previewRGB(_ element: XCUIElement, y: CGFloat) -> [UInt8] {
+        guard let cg = element.screenshot().image.cgImage,
+              let pixel = cg.cropping(to: CGRect(x: cg.width / 2, y: min(cg.height - 1, Int(CGFloat(cg.height) * y)), width: 1, height: 1)) else { XCTFail("Missing actual preview screenshot"); return [] }
+        var pixels = [UInt8](repeating: 0, count: 4)
+        pixels.withUnsafeMutableBytes { bytes in
+            let context = CGContext(data: bytes.baseAddress, width: 1, height: 1, bitsPerComponent: 8, bytesPerRow: 4,
+                                    space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)!
+            context.draw(pixel, in: CGRect(x: 0, y: 0, width: 1, height: 1))
+        }
+        return Array(pixels.prefix(3))
+    }
+    func testInboundAttachmentCardsCropsUnavailableAndPublicRecoveryPreserveDraftAndBack() {
+        let app = XCUIApplication(); app.launchArguments = ["--ui-tests", "--ui-tests-account", "--ui-tests-attachment-cards"]; app.launch()
+        XCTAssertTrue(app.buttons["3 comments"].waitForExistence(timeout: 10)); app.buttons["3 comments"].tap()
+        let first = app.buttons["comment-attachment-Cards-0"], draft = app.textFields["comment-draft"]
+        XCTAssertTrue(first.waitForExistence(timeout: 5)); XCTAssertFalse(app.buttons["comment-attachment-Cards-4"].exists, "The fifth incoming card must be excluded")
+        XCTAssertEqual(first.frame.width / first.frame.height, 0.75, accuracy: 0.02)
+        waitUntil("The actual comic preview must finish decoding") {
+            let rgb = self.previewRGB(first, y: 0.25)
+            return rgb.count == 3 && rgb[0] > 230 && rgb[1] < 30 && rgb[2] < 30
+        }
+        let top = previewRGB(first, y: 0.25), lower = previewRGB(first, y: 0.75)
+        XCTAssertEqual(top.count, 3); XCTAssertEqual(lower.count, 3)
+        XCTAssertTrue(top[0] > 230 && top[1] < 30 && top[2] < 30, "The first comic panel must be visible: \(top)")
+        XCTAssertTrue(lower[2] > 230 && lower[0] < 30 && lower[1] < 30, "The card must crop, without stretching the whole strip: \(lower)")
+        draft.tap(); draft.typeText("Attachment draft")
+        first.tap(); XCTAssertEqual(app.keyboards.count, 0); XCTAssertTrue(app.otherElements["comments-screen"].exists)
+        first.press(forDuration: 1)
+        XCTAssertTrue(app.staticTexts["1 selected"].waitForExistence(timeout: 5))
+        XCTAssertEqual(app.tables.cells["comment-row-Cards"].value as? String, "Selected", "Holding a real multi-card hit rectangle selects its owning comment")
+        app.buttons["Cancel comment selection"].tap()
+        XCTAssertEqual(draft.value as? String, "Attachment draft")
+        first.tap()
+        XCTAssertTrue(app.buttons["8 smiles, smile"].waitForExistence(timeout: 5), "API404 must resolve the exact public picture before navigation")
+        app.buttons["Back"].tap(); XCTAssertTrue(first.waitForExistence(timeout: 5))
+        XCTAssertEqual(draft.value as? String, "Attachment draft")
+        XCTAssertEqual(app.otherElements["comments-screen"].value as? String, "api:AttachedPic,web:AttachedPic")
+        func reveal(_ element: XCUIElement) {
+            for _ in 0..<5 { if element.isHittable { break }; app.tables.firstMatch.swipeUp() }
+            XCTAssertTrue(element.isHittable)
+        }
+        let gif = app.buttons["comment-attachment-Cards-1"]; reveal(gif)
+        XCTAssertEqual(gif.value as? String, "GIF")
+        let gone = app.buttons["comment-attachment-Cards-2"]; reveal(gone)
+        XCTAssertEqual(gone.value as? String, "Post unavailable"); gone.tap()
+        XCTAssertTrue(app.alerts["Post unavailable"].waitForExistence(timeout: 5)); app.alerts.buttons["OK"].tap()
+        XCTAssertEqual(app.otherElements["comments-screen"].value as? String, "api:AttachedPic,web:AttachedPic", "Unavailable cards cannot issue another post request")
+        let failed = app.buttons["comment-attachment-Cards-3"]; reveal(failed)
+        XCTAssertEqual(failed.value as? String, "Preview unavailable - tap to open; VIDEO")
+        failed.tap(); XCTAssertTrue(app.buttons["128 smiles, smile"].waitForExistence(timeout: 5)); app.buttons["Back"].tap()
+        XCTAssertEqual(draft.value as? String, "Attachment draft")
+        let withheld = app.descendants(matching: .any)["comment-body-Withheld"].firstMatch; reveal(withheld)
+        XCTAssertEqual(withheld.label, "Post Unavailable")
+        let abused = app.descendants(matching: .any)["comment-body-Abused"].firstMatch; reveal(abused)
+        XCTAssertFalse(app.buttons["comment-attachment-Abused-0"].exists)
+        abused.tap(); assertCommentOptions(app, ["Reply", "Report", "Remove"])
+        app.alerts.buttons["Cancel"].tap(); capture("incoming-cards-unavailable-and-withheld", app: app)
+        app.buttons["Refresh"].tap()
+        let linked = app.buttons["comment-attachment-Withheld-0"]; reveal(linked)
+        XCTAssertEqual(linked.value as? String, "VIDEO", "When primary content is empty, the link-derived cards must render")
+        XCTAssertFalse(app.staticTexts["Post Unavailable"].exists, "A refreshed real attachment replaces the withheld placeholder")
+        let blocked = app.buttons["comment-attachment-Withheld-1"]; reveal(blocked)
+        XCTAssertEqual(blocked.value as? String, "Post unavailable", "A blocked creator is represented without fetching its thumbnail")
+        XCTAssertEqual(draft.value as? String, "Attachment draft")
+        capture("link-derived-cards-and-blocked-creator", app: app)
     }
     func testCommentTapRoleMenusReplyDepthDotsAndDraftRetention() {
         let app = XCUIApplication(); app.launchArguments = ["--ui-tests", "--ui-tests-account", "--ui-tests-comment-options"]; app.launch()
@@ -146,7 +213,6 @@ final class ViewerTests: XCTestCase {
         XCTAssertTrue(app.staticTexts["2 selected"].exists); confirmBulkDelete(app, count: 2)
         XCTAssertTrue(app.staticTexts["0 replies"].waitForExistence(timeout: 5)); XCTAssertTrue(root.exists)
         XCTAssertEqual(app.staticTexts.matching(NSPredicate(format: "label == %@", "Comment was eaten by a black hole")).count, 2)
-        capture("deleted-reply-native-placeholder", app: app)
         XCTAssertFalse(app.descendants(matching: .any)["comment-dots-PreviewReply2"].firstMatch.exists, "Deleted reply positions have no depth strip")
         XCTAssertFalse(app.buttons["comment-smile-PreviewReply2"].exists)
         XCTAssertFalse(app.buttons["comment-avatar-PreviewReply2"].exists)

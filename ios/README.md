@@ -1,39 +1,35 @@
 # oldFunny iOS
 
-**Verified checkpoint: 0.3.0/build 25. Candidate build 27 follows build 26
-with a dedicated deleted-reply placeholder row. Mac/UIKit verification is pending. Full parity is incomplete.**
+**Verified checkpoint: 0.3.0/build 27. Candidate build 28 adds inbound attachment
+cards and complete post/public-picture loading. Its Mac/UIKit verification is
+pending. Full Android behavioral parity is incomplete.**
 
-[Download the build 25 unsigned IPA artifact ZIP](https://github.com/sandrscore/oldFunny-iOS/actions/runs/40010014066/artifacts/12526400847),
+[Download the build 27 unsigned IPA artifact ZIP](https://github.com/sandrscore/oldFunny-iOS/actions/runs/40404742369/artifacts/12691086021),
 extract the IPA and update through Zeus. SHA-256:
-`2466cca5f4c34aaa9fd22d84ad12be6eb5a896190e15a49971c297cd0fce8b43`.
-Bundle `mobi.oldfunny.ios`; minimum iOS 16.0; ARM64, cryptid=0, unsigned.
-Artifact expires October 30, 2026; the independently inspected IPA and exact source
-archive are preserved locally in the original workspace.
+`67488a070a27fb8eb08348663dc281e097620861ba94fbe98334d2cab30798f6`.
+Bundle `mobi.oldfunny.ios`; minimum iOS16.0; ARM64,cryptid0,unsigned,fixture-free.
+Artifact expires November2,2026; independently inspected IPA and exact source are
+preserved locally in the original workspace.
 
-[Build 25 Mac CI](https://github.com/sandrscore/oldFunny-iOS/actions/runs/40010014066)
-for source `a05a335c8ed9fe0eb103f75bace763180e06a165` passed 63 core tests,
-6 packaging checks and all 20 actual UIKit cases with zero failures. Downloaded
-reports/logs confirm every expected test executed. Comments and incoming mention
-screenshots were reviewed on iPhone 16 / iOS 18.5 with offline fixtures.
+[Build 27 Mac CI](https://github.com/sandrscore/oldFunny-iOS/actions/runs/40404742369)
+for source `f205168b98f5c886a26b0e758393b5137b8932e1` passed 67 core tests,
+six packaging checks and all22 actual UIKit cases with zero failures. Downloaded
+reports/logs confirm every expected test executed. Actual comments and dedicated
+deleted-reply screenshot were reviewed on iPhone16/iOS18.5 with offline fixtures.
 
-Tests cover retained panels/drafts/replies/attachments, actual video/GIF decoding,
-profiles/search/tags/pins/subscriptions, mention choice/link/exact send fields,
-partial bulk deletion, reply placeholders, and complete root-delete return/counts.
-The uncertain-write case checks a physical disabled-control tap cannot retry,
-a failed read keeps selection locked and a successful read unlocks it. Mention
-edits check trailing-space identity retention, interior deletion invalidation and
-rapid consecutive deletes without restoring an identity. All social writes use
-fake transports. Server notifications and current-build phone validation remain
-separate, unverified requirements.
+Role-ordered comment options, separate reply-count navigation, guest/author
+routes, root/nested composer focus, depth29/30 eligibility and capped ten-dot
+geometry passed. Deleted nonroot replies use Android's distinct centered caption
+without author/reaction/dot children. The retained root, draft, attachment,
+refresh and count assertions all passed. Previous panels/media/profile/mention/
+bulk-deletion cases passed again. All social writes use fabricated transports;
+current-build phone and live social behavior remain separate unverified work.
 
-Candidate 26 changes ordinary comment taps to the native role-ordered options
-dialog and gives reply counts their own read-only navigation. Reply requires
-sign-in and focuses the appropriate composer; depth 30 removes Reply. Reply dots
-follow depth-1 capped at 10 on phones/15 on tablets. Avatar/date taps open the
-author profile. Two new UI cases check roles, real navigation/focus, capped dot
-geometry, the depth boundary, first outside keyboard tap and draft/recipient
-retention. All 22 cases remain required. Portable contracts total 67; the separate
-inbound multi-attachment/public-picture prototype is excluded from this candidate.
+Candidate28 includes74 portable contracts and23 actual UIKit cases. Its new
+attachment test exercises ImageIO crop pixels, capped card count and badges,
+long-hold selection, public-picture recovery/internal Back, unavailable/failed/
+withheld/blocked/link-derived states, refresh and protected drafts. Native/UI
+verification is pending; no prior green checkpoint certifies these new files.
 
 Remaining work includes ordinary comment tap/options parity, reply-depth/state/
 layout rules, mention-panel physics, large-profile indexing/options, feeds/reads,
@@ -123,3 +119,27 @@ build 27 adopts that structure and exact caption with no live author/reaction/do
 children. The root context uses its existing separate path. Count, draft, attachment
 and refresh assertions remain required; no UIKit case is removed. The inbound
 multi-attachment/public-picture work remains excluded from this focused repair.
+
+Candidate 28 follows Android AttachmentSpec/PictureComments/PreviewCrop: up to four
+cards, primary/link-derived fallback, proportional thumbnail selection, comic-top
+and video-center crop, GIF/VIDEO badges, known-unavailable and failed-preview
+states, withheld text and suppression for abused/deleted comments. Tapping reads
+the complete post before pushing its viewer, preserving comment/draft Back state.
+Only an API404 can use the credential-free public-picture JSON recovery path.
+The thumbnail cache is separate from full-post GIF playback: strict10MiB LRU,
+two workers,64 waiters,8MiB compressed payload and power-of-two sampling to1024.
+Missing original-author data never grants moderation to a republisher.
+
+All74 portable Swift contracts and six packaging checks pass locally. The new
+23rd UIKit case checks actual ImageIO-decoded crop pixels, four-card limit,
+attachment hold-selection, unavailable/failed/withheld/blocked/link-derived states,
+404 recovery, full-post navigation and retained drafts. It has not run on Mac yet.
+Three bounded anonymous GETs additionally confirmed one API200 full-picture read
+and one API404->website200 exact-ID recovery. No account/session or social/read
+write was used. Legacy HTTP-only thumbnails, stream-time download limits,
+external-browser runtime checks and exact notice presentation remain gaps.
+
+The recovery trigger is the actual HTTP404 status. A status404 JSON envelope on
+HTTP200 does not invoke website recovery. The shared request loop returns its raw
+HTTP result before parsing, retaining account fences/read-only refresh/no write
+replay; content and ordinary callers check their captured epoch again.

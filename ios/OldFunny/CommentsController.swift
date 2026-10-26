@@ -18,6 +18,8 @@ final class CommentsController: ClassicScreenController, UITableViewDataSource, 
     private let recipientLabel = UILabel(), recipientRow = UIStackView()
     private var replyThreads = [String: CommentsController](), replyCounts = [String: Int]()
     private var attachmentTask: Task<Void, Never>?
+    private var openingAttachment: Task<Void, Never>?
+    private var attachmentOpenID: UUID?
     private let spinner = UIActivityIndicatorView(style: .medium)
     private var comments: [Comment] = [], nextCursor: String?, usedCursors = Set<String>()
     private var task: Task<Void, Never>?, loading = false
@@ -36,7 +38,7 @@ final class CommentsController: ClassicScreenController, UITableViewDataSource, 
         super.init(nibName: nil, bundle: nil)
     }
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
-    deinit { task?.cancel(); attachmentTask?.cancel() }
+    deinit { task?.cancel(); attachmentTask?.cancel(); openingAttachment?.cancel() }
     override func viewDidLoad() {
         super.viewDidLoad()
         view.accessibilityIdentifier = "comments-screen"; text.accessibilityIdentifier = "comment-draft"
@@ -127,6 +129,7 @@ final class CommentsController: ClassicScreenController, UITableViewDataSource, 
         if uncertainDeletion && !selecting { refresh() }
     }
     override func viewWillDisappear(_ animated: Bool) {
+        openingAttachment?.cancel(); openingAttachment = nil; attachmentOpenID = nil
         mentionComposer?.setActive(false); if selecting { endSelection() }; super.viewWillDisappear(animated)
     }
     @objc private func draftChanged() { if let mentionComposer { mentionComposer.didEdit() } else { draft.edit(text.text ?? "") } }
@@ -197,6 +200,7 @@ final class CommentsController: ClassicScreenController, UITableViewDataSource, 
         else { load(replacing: true) }
     }
     @objc private func accountChanged() {
+        openingAttachment?.cancel(); openingAttachment = nil; attachmentOpenID = nil
         task?.cancel(); generation = UUID(); readGeneration = UUID(); loading = false; hasLoadedReplies = false
         comments = []; nextCursor = nil; usedCursors = []; text.text = nil
         draft = CommentDraft(); pendingRecipient = nil; mentionComposer?.resetAccount(); renderAttachment(); renderRecipient(); replyThreads = [:]; replyCounts = [:]; accountID = nil
@@ -259,10 +263,10 @@ final class CommentsController: ClassicScreenController, UITableViewDataSource, 
             if selecting { toggleSelection(comment); return }
             openReplies(to: comment)
         }
-        cell.onAttachment = { [weak self] in
-            guard let self, !consumeEditingTap(), let post = comment.attachments.first else { return }
+        cell.onAttachment = { [weak self] attachment in
+            guard let self, !consumeEditingTap() else { return }
             if selecting { toggleSelection(comment); return }
-            navigationController?.pushViewController(PostController(app: app, post: post, index: 0, source: "prof"), animated: true)
+            openAttachment(attachment)
         }
         cell.onAuthor = { [weak self] in
             guard let self, !consumeEditingTap(), let id = comment.authorID else { return }
@@ -275,6 +279,37 @@ final class CommentsController: ClassicScreenController, UITableViewDataSource, 
             navigationController?.pushViewController(ProfileController(app: app, userID: mention.userID, nickname: mention.nickname), animated: true)
         }
         return cell
+    }
+    private func openAttachment(_ attachment: CommentAttachment) {
+        guard !writing, openingAttachment == nil else { return }
+        if attachment.unavailable { showSelectionNotice("Post unavailable", message: "This post is no longer available."); return }
+        let owner = generation
+        guard let id = attachment.contentID else {
+            if let url = attachment.previewURL {
+                UIApplication.shared.open(url, options: [:]) { [weak self] opened in
+                    guard !opened else { return }
+                    Task { @MainActor [weak self] in
+                        guard let self, owner == generation else { return }
+                        showSelectionNotice("Couldn't open this post", message: "The preview could not be opened.")
+                    }
+                }
+            } else { showSelectionNotice("Couldn't open this post", message: "No usable post or preview address was supplied.") }
+            return
+        }
+        let attempt = UUID(); attachmentOpenID = attempt
+        openingAttachment = Task { [weak self] in
+            guard let self else { return }
+            defer { if attachmentOpenID == attempt { openingAttachment = nil; attachmentOpenID = nil } }
+            do {
+                let post = try await app.api.content(postID: id)
+                try Task.checkCancellation(); guard owner == generation, view.window != nil else { return }
+                #if CLASSIC_UI_PREVIEW
+                if ProcessInfo.processInfo.arguments.contains("--ui-tests-attachment-cards") { view.accessibilityValue = PreviewFixtures.attachmentReads.joined(separator: ",") }
+                #endif
+                navigationController?.pushViewController(PostController(app: app, post: post, index: 0, source: "prof"), animated: true)
+            } catch is CancellationError { }
+            catch { if owner == generation && !Task.isCancelled { showError(error) } }
+        }
     }
     func tableView(_ tableView: UITableView, willDisplay cell: UITableViewCell, forRowAt indexPath: IndexPath) {
         if showsRoot && indexPath.section == 0 { return }

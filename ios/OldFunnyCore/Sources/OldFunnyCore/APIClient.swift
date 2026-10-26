@@ -68,6 +68,7 @@ public final class URLTransport: NSObject, HTTPTransport, URLSessionTaskDelegate
 public actor APIClient {
     public let installation: String
     private let transport: any HTTPTransport
+    private let publicPictureTransport: any HTTPTransport
     private let store: any CredentialStore
     private let userAgent: String
     private var credential: Credential?
@@ -75,10 +76,11 @@ public actor APIClient {
     private var refreshFlight: (owner: UUID, task: Task<Credential, Error>)?
 
     public init(installation: String, userAgent: String, store: any CredentialStore,
-                transport: any HTTPTransport = URLTransport()) throws {
+                transport: any HTTPTransport = URLTransport(), publicPictureTransport: any HTTPTransport = PublicPictureTransport()) throws {
         _ = try Wire.basic(installation: installation)
         self.installation = installation; self.userAgent = userAgent
         self.store = store; self.transport = transport
+        self.publicPictureTransport = publicPictureTransport
         if let saved = try store.read() {
             credential = try Credential(accessToken: saved.accessToken, refreshToken: saved.refreshToken,
                                         accountID: saved.accountID, nickname: saved.nickname)
@@ -188,6 +190,13 @@ public actor APIClient {
 
     private func call(path: String, query: [(String, String)] = [], method: String = "GET",
                       fields: [(String, String)]? = nil, authenticated: Bool = false) async throws -> JSON {
+        let owner = epoch
+        let response = try await rawResponse(path: path, query: query, method: method, fields: fields, authenticated: authenticated)
+        guard owner == epoch else { throw ClientError.sessionChanged }
+        return try Self.parse(response)
+    }
+    private func rawResponse(path: String, query: [(String, String)] = [], method: String = "GET",
+                             fields: [(String, String)]? = nil, authenticated: Bool = false) async throws -> HTTPResult {
         let owner = epoch, selected = credential
         if authenticated && selected == nil { throw ClientError.signInRequired }
         var response = try await transport.send(request(path: path, query: query, method: method, fields: fields, token: selected?.accessToken))
@@ -199,7 +208,7 @@ public actor APIClient {
             response = try await transport.send(request(path: path, query: query, token: credential?.accessToken))
             guard owner == epoch else { throw ClientError.sessionChanged }
         }
-        return try Self.parse(response)
+        return response
     }
 
     public func feed(_ feed: Feed, next: String? = nil) async throws -> PostPage {
@@ -216,6 +225,30 @@ public actor APIClient {
         var query = [("limit", "30")]
         if let next, next.utf8.count <= 8192 { query.append(("next", next)) }
         return try PostPage(await call(path: "timelines/users/" + Wire.requireID(userID), query: query)["data"])
+    }
+    public func content(postID: String) async throws -> Post {
+        let id = try Wire.requireID(postID), owner = epoch
+        let response = try await rawResponse(path: "content/" + id)
+        guard owner == epoch else { throw ClientError.sessionChanged }
+        if response.status != 404 {
+            let post = try Post(Self.parse(response)["data"])
+            guard post.id == id else { throw ClientError.malformedResponse }; return post
+        } else {
+            // The Android PublicPictures patch recovers only this exact error
+            // for bounded public-picture IDs, never permission/auth failures.
+            guard id.utf8.count <= 40 else { throw ClientError.http(404) }
+            var request = URLRequest(url: URL(string: "https://ifunny.co/picture/" + id)!)
+            request.httpMethod = "GET"; request.timeoutInterval = 8
+            request.setValue("Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36", forHTTPHeaderField: "User-Agent")
+            request.setValue("text/html", forHTTPHeaderField: "Accept")
+            let response: HTTPResult
+            do { response = try await publicPictureTransport.send(request) }
+            catch is CancellationError { throw CancellationError() }
+            catch { guard owner == epoch else { throw ClientError.sessionChanged }; throw ClientError.http(404) }
+            guard owner == epoch else { throw ClientError.sessionChanged }
+            guard response.status == 200, let post = try PublicPicture.parse(response.body, id: id) else { throw ClientError.http(404) }
+            return post
+        }
     }
     public func comments(postID: String, parentID: String? = nil, next: String? = nil) async throws -> CommentPage {
         var path = "content/" + (try Wire.requireID(postID)) + "/comments"

@@ -1,5 +1,20 @@
 import Foundation
 import OldFunnyCore
+#if canImport(FoundationNetworking)
+import FoundationNetworking
+#endif
+
+private actor ContentReadAudit: HTTPTransport {
+    private let base: any HTTPTransport
+    private let host: String, path: String
+    private var statuses = [Int]()
+    init(base: any HTTPTransport, host: String, path: String) { self.base = base; self.host = host; self.path = path }
+    func send(_ request: URLRequest) async throws -> HTTPResult {
+        guard request.httpMethod == "GET", request.url?.host == host, request.url?.path == path, statuses.count < 1 else { throw ClientError.invalidInput }
+        let response = try await base.send(request); statuses.append(response.status); return response
+    }
+    func recorded() -> [Int] { statuses }
+}
 
 private struct NoCredentialStore: CredentialStore {
     func read() throws -> Credential? { nil }
@@ -11,14 +26,31 @@ private struct NoCredentialStore: CredentialStore {
 struct Probe {
     static func main() async {
         let profiles = CommandLine.arguments == [CommandLine.arguments[0], "--anonymous-profile-read-only"]
-        guard profiles || CommandLine.arguments == [CommandLine.arguments[0], "--anonymous-read-only"] else {
-            print("Usage: OldFunnyProbe --anonymous-read-only | --anonymous-profile-read-only")
+        let contentID = CommandLine.arguments.count == 3 && CommandLine.arguments[1] == "--anonymous-content-read-only" ? CommandLine.arguments[2] : nil
+        guard profiles || contentID != nil || CommandLine.arguments == [CommandLine.arguments[0], "--anonymous-read-only"] else {
+            print("Usage: OldFunnyProbe --anonymous-read-only | --anonymous-profile-read-only | --anonymous-content-read-only ID")
             print("Sends one anonymous Featured GET with a new diagnostic installation; no login, account lookup, social writes, or read acknowledgements.")
             print("Profile mode additionally reads one public creator profile, its first timeline/featured pages, and a tag suggestion. Outputs counts/flags only; never authenticates or writes.")
             return
         }
         let id = (UUID().uuidString + UUID().uuidString).replacingOccurrences(of: "-", with: "").lowercased()
         do {
+            if let contentID {
+                guard Wire.validID(contentID), contentID.utf8.count <= 40 else { throw ClientError.invalidInput }
+                let api = ContentReadAudit(base: URLTransport(), host: "api.ifnapp.com", path: "/v4/content/" + contentID)
+                let website = ContentReadAudit(base: PublicPictureTransport(), host: "ifunny.co", path: "/picture/" + contentID)
+                let client = try APIClient(installation: id, userAgent: Wire.apiUserAgent(systemVersion: "27.0.1", model: "iPhone"),
+                                           store: NoCredentialStore(), transport: api, publicPictureTransport: website)
+                var output: [String: Any] = ["authenticated": false, "credentials_persisted": false, "social_writes": false, "runtime_tested": false]
+                do {
+                    let post = try await client.content(postID: contentID)
+                    output["decoded"] = true; output["identity_matches"] = post.id == contentID
+                    output["media_present"] = post.mediaURL != nil; output["poster_present"] = post.posterURL != nil
+                    output["type"] = post.type; output["width"] = post.width; output["height"] = post.height
+                } catch { output["error"] = (error as? ClientError)?.errorDescription ?? "local tool error" }
+                output["api_statuses"] = await api.recorded(); output["website_statuses"] = await website.recorded()
+                print(String(decoding: try JSONSerialization.data(withJSONObject: output, options: [.sortedKeys]), as: UTF8.self)); return
+            }
             let client = try APIClient(installation: id,
                 userAgent: Wire.apiUserAgent(systemVersion: "27.0.1", model: "iPhone"), store: NoCredentialStore())
             let page = try await client.feed(.featured)

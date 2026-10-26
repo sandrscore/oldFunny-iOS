@@ -24,6 +24,8 @@ final class CommentDeletionTests: XCTestCase {
         let republished = try Post(JSON.decode(Data(#"{"id":"Post","creator":{"id":"Republisher","nick":"Republisher"},"source":{"creator":{"id":"Original","nick":"Original"}}}"#.utf8)))
         XCTAssertEqual(original.moderationOwnerID, "Original")
         XCTAssertEqual(republished.authorID, "Republisher"); XCTAssertEqual(republished.moderationOwnerID, "Original")
+        let missingOriginal = try Post(JSON.decode(Data(#"{"id":"Post","creator":{"id":"Republisher"},"source":{}}"#.utf8)))
+        XCTAssertNil(missingOriginal.moderationOwnerID, "An omitted original author must not grant moderation to the republisher")
     }
     func testCapturedEmptyAcknowledgmentAcceptsExactlyTheRequestedUniqueSelection() throws {
         let response = try JSON.decode(Data(#"{"data":{"responses":[]},"status":200}"#.utf8))

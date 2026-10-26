@@ -19,9 +19,25 @@ private actor PreviewTransport: HTTPTransport {
     private var mentionSends = 0
     private var bulkSends = 0, bulkRemovedRoots = Set<String>()
     private var bulkReadFailures = 0
+    private var attachmentPageReads = 0
     private var replyCount: Int { 2 + sentReplies.count - deleted.filter { $0.hasPrefix("PreviewReply") || $0.hasPrefix("FixtureSentReply") }.count }
     func send(_ request: URLRequest) async throws -> HTTPResult {
         let path = request.url?.path ?? "", method = request.httpMethod ?? "GET"
+        if ProcessInfo.processInfo.arguments.contains("--ui-tests-attachment-cards"), method == "GET" {
+            if path == "/v4/content/AttachedPic" {
+                await MainActor.run { PreviewFixtures.attachmentReads.append("api:AttachedPic") }
+                return HTTPResult(status: 404, body: Data())
+            }
+            if request.url?.host == "ifunny.co", path == "/picture/AttachedPic" {
+                guard request.value(forHTTPHeaderField: "Authorization") == nil, request.value(forHTTPHeaderField: "Cookie") == nil else { throw ClientError.invalidInput }
+                await MainActor.run { PreviewFixtures.attachmentReads.append("web:AttachedPic") }
+                return HTTPResult(status: 200, body: Data(PreviewFixtures.publicAttachmentPicture.utf8))
+            }
+            if path == "/v4/content/AttachedVideo" {
+                let data = PreviewFixtures.post.replacingOccurrences(of: "PreviewPost", with: "AttachedVideo")
+                return HTTPResult(status: 200, body: Data(("{\"status\":200,\"data\":" + data + "}").utf8))
+            }
+        }
         if ProcessInfo.processInfo.arguments.contains("--ui-tests-bulk-delete"), method == "POST", path == "/v4/content/PreviewPost/comments",
            URLComponents(url: request.url!, resolvingAgainstBaseURL: false)?.queryItems?.contains(URLQueryItem(name: "method", value: "DELETE")) == true {
             let encoded = String(decoding: request.httpBody ?? Data(), as: UTF8.self).replacingOccurrences(of: "+", with: "%20")
@@ -95,11 +111,18 @@ private actor PreviewTransport: HTTPTransport {
         }
         else if path.contains("comments") {
             if bulkReadFailures > 0 { bulkReadFailures -= 1; return HTTPResult(status: 503, body: Data()) }
+            if ProcessInfo.processInfo.arguments.contains("--ui-tests-attachment-cards") { attachmentPageReads += 1 }
             var root = try JSONSerialization.jsonObject(with: Data(PreviewFixtures.comments.utf8)) as! [String: Any]
             var data = root["data"] as! [String: Any], comments = data["comments"] as! [String: Any]
             comments["items"] = (comments["items"] as! [[String: Any]]).filter { !bulkRemovedRoots.contains($0["id"] as! String) }.map { row -> [String: Any] in
                 var row = row
                 if row["id"] as? String == "PreviewComment1" { row["num"] = ["replies": replyCount] }
+                if ProcessInfo.processInfo.arguments.contains("--ui-tests-attachment-cards"), attachmentPageReads > 1, row["id"] as? String == "Withheld" {
+                    row["attachments"] = ["content": [], "content_from_links": [
+                        ["id": "AttachedVideo", "type": "video_clip", "thumb": ["url": "https://preview.invalid/comment-gif"], "size": ["w": 400, "h": 300]],
+                        ["id": "BlockedCreator", "creator": ["is_blocked": true], "thumb": ["url": "https://preview.invalid/never-load"]]
+                    ]]
+                }
                 if ProcessInfo.processInfo.arguments.contains("--ui-tests-mentions"), row["id"] as? String == "PreviewComment1" {
                     row["text"] = "ReaderTwo says hello."
                     row["attachments"] = ["mention_user": [["user_id": "Reader2", "nick": "ReaderTwo", "start_index": 0, "stop_index": 8]]]
@@ -216,8 +239,10 @@ enum PreviewFixtures {
     @MainActor static var reactionEvents = [String]()
     @MainActor static var mentionRequest = ""
     @MainActor static var bulkRequest = ""
+    @MainActor static var attachmentReads = [String]()
     @MainActor static func makeApp() throws -> AppContext {
-        let api = try APIClient(installation: String(repeating: "a", count: 64), userAgent: "Offline UI preview", store: PreviewStore(), transport: PreviewTransport())
+        let transport = PreviewTransport()
+        let api = try APIClient(installation: String(repeating: "a", count: 64), userAgent: "Offline UI preview", store: PreviewStore(), transport: transport, publicPictureTransport: transport)
         return AppContext(previewAPI: api)
     }
     static let post = #"{"id":"PreviewPost","type":"picture","url":"https://preview.invalid/post","size":{"w":640,"h":760},"creator":{"id":"PreviewUser","nick":"ClassicFan","avatar":{"s":"https://preview.invalid/avatar"}},"num":{"smiles":128,"comments":3}}"#
@@ -238,16 +263,39 @@ enum PreviewFixtures {
         return "{\"status\":200,\"data\":{\"content\":{\"items\":[\(first),\(second)],\"paging\":{\"hasNext\":false}}}}"
     }
     static var comments: String {
-        """
+        if ProcessInfo.processInfo.arguments.contains("--ui-tests-attachment-cards") { return attachmentComments }
+        return """
         {"status":200,"data":{"comments":{"items":[
           {"id":"PreviewComment1","user":{"id":"PreviewUser","nick":"ClassicFan","photo":{"thumb":{"small_url":"https://preview.invalid/avatar"}}},"date":1792418400,"text":"The classic look is coming back.","num":{"replies":2}},
-          {"id":"PreviewComment2","creator":{"id":"AnotherUser","nick":"AnotherUser","avatar":{"s":"https://preview.invalid/avatar2"}},"date":1792418400,"text":"An attached post, right in the thread.","attachments":{"content":[\(post)]}},
+          {"id":"PreviewComment2","creator":{"id":"AnotherUser","nick":"AnotherUser","avatar":{"s":"https://preview.invalid/avatar2"}},"date":1792418400,"text":"An attached post, right in the thread.","attachments":{"content":[\(post.replacingOccurrences(of: "\"type\":\"picture\"", with: "\"type\":\"pic\""))]}},
           {"id":"PreviewComment3","user":{"id":"Reader","nick":"Reader"},"text":"Same feed. Familiar controls.","num":{"replies":0}}
         ],"paging":{"hasNext":false}}}}
         """
     }
+    static let attachmentComments = #"""
+    {"status":200,"data":{"comments":{"items":[
+      {"id":"Cards","user":{"id":"PreviewUser","nick":"ClassicFan"},"text":"","attachments":{"content":[
+        {"id":"AttachedPic","type":"pic","state":"published","thumb":{"proportional_url":"https://preview.invalid/comment-comic","proportional_size":{"w":320,"h":800}}},
+        {"id":"AttachedGIF","type":"gif","thumb":{"url":"https://preview.invalid/comment-gif"},"size":{"w":320,"h":320},"bg_color":"#112233"},
+        {"id":"AttachedGone","state":"deleted","thumb":{"url":"https://preview.invalid/never-load"}},
+        {"id":"AttachedVideo","type":"video_clip","thumb":{"url":"https://preview.invalid/failed-preview"},"size":{"w":400,"h":300}},
+        {"id":"FifthMustNotAppear"}]}},
+      {"id":"Withheld","user":{"id":"Reader1","nick":"ReaderOne"},"text":" ","attachments":{"content":[],"content_from_links":[]}},
+      {"id":"Abused","state":"abused","user":{"id":"Reader2","nick":"ReaderTwo"},"text":"ReaderTwo hidden attachment","attachments":{"content":[{"id":"Suppressed","type":"pic","url":"https://preview.invalid/never-load"}],"mention_user":[{"user_id":"Reader2","nick":"ReaderTwo","start_index":0,"stop_index":8}]}}
+    ],"paging":{"hasNext":false}}}}
+    """#
+    static let publicAttachmentPicture = #"""
+    <script>window.__INITIAL_STATE__={"feed":{"items":[{"id":"AttachedPic","type":"picture","state":"published","url":"https://preview.invalid/recovered-picture","size":{"w":640,"h":760},"creator":{"id":"RecoveredAuthor","nick":"RecoveredAuthor"},"smiles":8,"comments":0}]}};window.unrelated='not executed';</script>
+    """#
     static let replies = #"{"status":200,"data":{"comment":{"replies_count":2},"replies":{"items":[{"id":"PreviewReply1","user":{"id":"Reader1","nick":"ReaderOne"},"text":"Reply number one","root_comm_id":"PreviewComment1","parent_comm_id":"PreviewComment1","depth":1,"num":{"smiles":2}},{"id":"PreviewReply2","user":{"id":"Reader2","nick":"ReaderTwo"},"text":"Reply number two","root_comm_id":"PreviewComment1","parent_comm_id":"PreviewReply1","depth":2}],"paging":{"hasNext":false}}}}"#
     @MainActor static func image(_ url: URL) -> UIImage {
+        if url.lastPathComponent == "comment-comic" {
+            return UIGraphicsImageRenderer(size: CGSize(width: 320, height: 800)).image { _ in
+                UIColor.red.setFill(); UIRectFill(CGRect(x: 0, y: 0, width: 320, height: 240))
+                UIColor.blue.setFill(); UIRectFill(CGRect(x: 0, y: 240, width: 320, height: 320))
+                UIColor.green.setFill(); UIRectFill(CGRect(x: 0, y: 560, width: 320, height: 240))
+            }
+        }
         let isAvatar = url.path.contains("avatar")
         let size = isAvatar ? CGSize(width: 96, height: 96) : CGSize(width: 640, height: 760)
         return UIGraphicsImageRenderer(size: size).image { context in
