@@ -12,7 +12,7 @@ Target: iPhone 16 / user-reported iOS 27.0.1. Bundle: `mobi.oldfunny.ios`.
 | Mentions | Suggestions/paging, links, exact forms, single/rapid edits and identity boundaries passed |
 | Media/profile | Prior decoded video/GIF, retained panels/drafts, search/tags/pins/subscription cases passed again |
 | IPA | Independently ARM64, cryptid=0, unsigned, fixture-free; SHA-256 `2466cca5f4c34aaa9fd22d84ad12be6eb5a896190e15a49971c297cd0fce8b43` |
-| Candidate 26 | Role-ordered tap/hold options, distinct reply-count navigation, composer focus, depth30/dots10/15 and author avatar/date routes; 67 portable contracts and 22 UIKit cases; Mac/UI pending |
+| Candidate 27 | Dedicated deleted nonroot reply row with native caption; build26 compiled 67 Mac core/six Python and ran22 UIKit:21passed/1deleted-dot accessibility assertion failed |
 | Server | Prior bounded anonymous profile/feed/schema reads; no live social writes used for validation |
 | Phone | Earlier 0.1.2 password/CAPTCHA confirmed by user; current-build saved session, codecs, gestures and Photos untested on target |
 
@@ -28,3 +28,8 @@ profile options/indexing, feeds/reads, Explore/Activity/preferences, Chats/group
 and Studio. APNs and alternate OAuth need valid iOS client setup. Authentication
 algorithms, Android sources and the same 16 reviewed bitmaps are preserved; public
 exports/Release IPAs contain no personal sessions, credentials or original apps.
+
+Build26's two new role/navigation/depth cases passed, but it is not a fully green
+checkpoint. Candidate27 follows the actual Android deleted-row adapter/layout,
+removes live child controls structurally and preserves root context/count paths.
+All22 cases remain mandatory. Source repair is pending Mac/UIKit verification.

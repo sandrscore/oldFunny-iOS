@@ -4,7 +4,7 @@
   "product": "oldFunny",
   "bundle_identifier": "mobi.oldfunny.ios",
   "version": "0.3.0",
-  "build": "26",
+  "build": "27",
   "minimum_ios": "16.0",
   "target": {
     "device": "iPhone 16",
@@ -39,7 +39,7 @@
     "captcha_handoff": true,
     "session_survives_relaunch": "unverified"
   },
-  "ui_phase": "Verified25 all20UIKit; candidate26 native comment options/reply navigation/author targets/depth/dots, 67core/22UI pending",
+  "ui_phase": "Verified25 all20UI; focused27 native deleted-reply placeholder after26 ran22UI/21pass",
   "simulator_previews": "Offline fixtures compiled only with CLASSIC_UI_PREVIEW; absent from Release",
   "simulator_ui": {
     "offline_fixtures": true,
@@ -375,6 +375,23 @@
       "executed": 20,
       "passed": 20,
       "failed": 0
+    },
+    "phone_tested": false
+  },
+  "compiled_candidate_build26": {
+    "source_commit": "a4344cb4110e870f2814afa04fc764ec6a7cc893",
+    "run_url": "https://github.com/sandrscore/oldFunny-iOS/actions/runs/40013017468",
+    "sha256": "59df23594b0c52c2b8fa005c6801fd016e9e67e3bd9f0b1bab330e75ce89a6bc",
+    "contains_arm64": true,
+    "main_executable_cryptid": 0,
+    "fixture_code_absent": true,
+    "mac_core_tests": 67,
+    "python_checks": 6,
+    "ui_gesture_tests": {
+      "executed": 22,
+      "passed": 21,
+      "failed": 1,
+      "failure": "Deleted reply positions have no depth strip"
     },
     "phone_tested": false
   }

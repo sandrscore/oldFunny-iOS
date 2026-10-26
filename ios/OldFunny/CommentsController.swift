@@ -47,6 +47,7 @@ final class CommentsController: ClassicScreenController, UITableViewDataSource, 
         renderHeader()
         table.dataSource = self; table.delegate = self; table.backgroundColor = ClassicTheme.background
         table.register(ClassicCommentCell.self, forCellReuseIdentifier: "comment"); table.separatorStyle = .none
+        table.register(DeletedCommentCell.self, forCellReuseIdentifier: "deleted-comment")
         table.rowHeight = UITableView.automaticDimension; table.estimatedRowHeight = 90
         table.keyboardDismissMode = .interactive
         let finishEditing = UITapGestureRecognizer(target: self, action: #selector(dismissKeyboard))
@@ -238,6 +239,10 @@ final class CommentsController: ClassicScreenController, UITableViewDataSource, 
     private func comment(at indexPath: IndexPath) -> Comment { showsRoot && indexPath.section == 0 ? rootComment! : comments[indexPath.row] }
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         let comment = comment(at: indexPath)
+        if parentID != nil, comment.id != parentID, comment.isDeleted {
+            let cell = table.dequeueReusableCell(withIdentifier: "deleted-comment", for: indexPath) as! DeletedCommentCell
+            cell.bind(id: comment.id); return cell
+        }
         let cell = table.dequeueReusableCell(withIdentifier: "comment", for: indexPath) as! ClassicCommentCell
         let dots = parentID == nil ? 0 : CommentBehavior.replyDots(depth: comment.depth, shortestViewportSide: Double(min(view.bounds.width, view.bounds.height)))
         cell.bind(comment, loader: app.media, replyCount: showsRoot && indexPath.section == 0 ? count : replyCounts[comment.id], replyDots: dots, showsReplyControl: parentID == nil)

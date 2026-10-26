@@ -11,8 +11,9 @@ live social writes were used.
 extract the IPA and update through Zeus. The artifact expires October 30, 2026.
 IPA SHA-256: `2466cca5f4c34aaa9fd22d84ad12be6eb5a896190e15a49971c297cd0fce8b43`.
 
-Candidate build 26 adds native comment menus, separate reply navigation, author
-tap targets and depth/dot rules; its 22-case UIKit verification is pending.
+Candidate build 27 follows Android's dedicated deleted-reply placeholder layout.
+Build26 compiled and ran22 UIKit cases:21 passed,1 deleted-depth-strip assertion
+failed. All22 remain mandatory in27; Mac/UIKit verification is pending.
 
 See [build and signing instructions](ios/README.md), the
 [behavioral parity ledger](ios/ANDROID_PARITY.md), and [current status](ios/PORT_STATUS.md).

@@ -1,8 +1,7 @@
 # oldFunny iOS
 
-**Verified checkpoint: 0.3.0/build 25. Candidate build 26 ports Android comment
-options, reply-count navigation, author tap targets and reply depth/dots. Its
-Mac/UIKit verification is pending. Full parity is incomplete.**
+**Verified checkpoint: 0.3.0/build 25. Candidate build 27 follows build 26
+with a dedicated deleted-reply placeholder row. Mac/UIKit verification is pending. Full parity is incomplete.**
 
 [Download the build 25 unsigned IPA artifact ZIP](https://github.com/sandrscore/oldFunny-iOS/actions/runs/40010014066/artifacts/12526400847),
 extract the IPA and update through Zeus. SHA-256:
@@ -114,3 +113,13 @@ part of the native source build. The Android implementation remains unchanged.
 Build 23 stopped during app compilation on a remaining read-refresh call to the
 removed deleted-context helper; no IPA or UI test execution resulted. Build 24
 restores that read helper separately from confirmed root deletion.
+
+Build 26 compiled with 67 Mac core/six packaging checks and executed all 22 UIKit
+cases: 21 passed, including both new role/navigation/depth tests. The deleted-reply
+case failed because a depth-strip accessibility element remained discoverable.
+That assertion alone does not establish whether dots were visibly drawn. Android's
+reply adapter uses a distinct placeholder layout for deleted nonroot replies;
+build 27 adopts that structure and exact caption with no live author/reaction/dot
+children. The root context uses its existing separate path. Count, draft, attachment
+and refresh assertions remain required; no UIKit case is removed. The inbound
+multi-attachment/public-picture work remains excluded from this focused repair.

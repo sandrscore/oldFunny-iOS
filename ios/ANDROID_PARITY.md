@@ -452,3 +452,25 @@ keyboard dismissal and preserved text/recipient. 67 portable contracts pass;
 all22 UIKit cases remain mandatory and Mac/UI pending. The separate multi-card/
 public-picture recovery work is excluded. Full state/attachment/render/lifecycle
 and remaining screen ledger requirements are not implied complete.
+
+### Build 26 results and focused candidate 27
+
+Source `a4344cb4110e870f2814afa04fc764ec6a7cc893`,
+[Mac CI](https://github.com/sandrscore/oldFunny-iOS/actions/runs/40013017468),
+passed 67 Mac core and six Python checks; all22 UIKit cases executed,21 passed.
+Both new role-order/menu, direct author targets, guest reply navigation,
+root/nested composer focus, capped ten-dot geometry, depth29/30 boundary and
+draft-retention cases passed. The bulk-reply test failed on the absence of a
+reachable depth-strip element after deletion. The assertion does not prove its
+visible pixel state. Remaining assertions in that case await a passing execution.
+IPA independently ARM64/cryptid0/fixture-free, SHA-256
+`59df23594b0c52c2b8fa005c6801fd016e9e67e3bd9f0b1bab330e75ce89a6bc`.
+
+Android comments/a.b(Comment) chooses root type1 before deletion type2; type2
+inflates comment_deleted_item with centered 15dp padding, middle truncation and
+caption 'Comment was eaten by a black hole'. It contains no live author, reactions
+or depth strip. Candidate27 uses a separate cell for deleted nonroot replies and
+keeps root context on its existing path. The original zero-dot assertion remains,
+plus author/reaction absence, exact caption, refresh/draft/count checks. All22
+cases are mandatory; Mac/UIpending. Inbound multi-card/public-picture changes
+remain separate. No new phone or live social validation; full parity incomplete.
