@@ -103,6 +103,24 @@ final class PostController: UIViewController, UIGestureRecognizerDelegate {
     }
     func setSelected(_ value: Bool) { selected = value; media.setObscured(!value || obscured || panel != .media) }
     func setObscured(_ value: Bool) { obscured = value; media.setObscured(value || !selected || panel != .media) }
+    func readVisibility(settled: Bool, drawerOpen: Bool) -> ReadVisibility {
+        var unoccluded = selected && !obscured && !transitioning && isViewLoaded
+        var owner: UIViewController? = self
+        let top = navigationController?.topViewController
+        var belongsToTop = top == nil
+        while let controller = owner {
+            if controller.presentedViewController != nil || controller.isBeingDismissed || controller.isMovingFromParent { unoccluded = false }
+            if controller === top { belongsToTop = true }
+            owner = controller.parent
+        }
+        if !belongsToTop { unoccluded = false }
+        let window = viewIfLoaded?.window
+        return ReadVisibility(settled: settled && unoccluded,
+            foreground: UIApplication.shared.applicationState == .active,
+            windowVisible: window?.isKeyWindow == true && window?.isHidden == false,
+            mediaPanel: panel == .media, drawerOpen: drawerOpen,
+            advertisement: ["ad", "advertisement"].contains(post.type.lowercased()), rendered: media.hasRenderedMedia)
+    }
     func returnToMedia() -> Bool {
         guard panel != .media else { return false }; view.endEditing(true); showPanel(.media); return true
     }

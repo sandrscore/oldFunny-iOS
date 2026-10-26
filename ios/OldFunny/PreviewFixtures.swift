@@ -20,9 +20,26 @@ private actor PreviewTransport: HTTPTransport {
     private var bulkSends = 0, bulkRemovedRoots = Set<String>()
     private var bulkReadFailures = 0
     private var attachmentPageReads = 0
+    private var readClearAttempts = 0, readAllCleared = false
     private var replyCount: Int { 2 + sentReplies.count - deleted.filter { $0.hasPrefix("PreviewReply") || $0.hasPrefix("FixtureSentReply") }.count }
     func send(_ request: URLRequest) async throws -> HTTPResult {
         let path = request.url?.path ?? "", method = request.httpMethod ?? "GET"
+        if method == "PUT", path.hasPrefix("/v4/reads/") {
+            let query = URLComponents(url: request.url!, resolvingAgainstBaseURL: false)?.queryItems ?? []
+            let source = query.first { $0.name == "from" }?.value ?? ""
+            let ids = request.url!.lastPathComponent
+            guard query.count == 1, ["feat", "subs"].contains(source), ids == "all" ? source == "subs" : ids.split(separator: ",").allSatisfy({ ReadLedger.validID(String($0)) }) else { throw ClientError.invalidInput }
+            await MainActor.run { PreviewFixtures.readEvents.append("\(source):\(ids)") }
+            if ids == "all" {
+                readClearAttempts += 1
+                if ProcessInfo.processInfo.arguments.contains("--ui-tests-read-clear-failure"), readClearAttempts == 1 { throw ClientError.transport }
+                readAllCleared = true
+            }
+            return HTTPResult(status: 204, body: Data())
+        }
+        if method == "GET", path == "/v4/counters" {
+            return HTTPResult(status: 200, body: Data("{\"status\":200,\"data\":{\"subscriptions\":\(readAllCleared ? 0 : 10)}}".utf8))
+        }
         if ProcessInfo.processInfo.arguments.contains("--ui-tests-attachment-cards"), method == "GET" {
             if path == "/v4/content/AttachedPic" {
                 await MainActor.run { PreviewFixtures.attachmentReads.append("api:AttachedPic") }
@@ -236,6 +253,7 @@ private actor PreviewTransport: HTTPTransport {
 }
 
 enum PreviewFixtures {
+    @MainActor static var readEvents = [String]()
     @MainActor static var reactionEvents = [String]()
     @MainActor static var mentionRequest = ""
     @MainActor static var bulkRequest = ""
@@ -256,6 +274,9 @@ enum PreviewFixtures {
             first = post.replacingOccurrences(of: "\"type\":\"picture\"", with: "\"type\":\"gif\"")
                 .replacingOccurrences(of: "https://preview.invalid/post", with: "https://preview.invalid/fixture-animation.gif")
                 .replacingOccurrences(of: "\"h\":760", with: "\"h\":640")
+        }
+        if ProcessInfo.processInfo.arguments.contains("--ui-tests-read-loading") {
+            first = first.replacingOccurrences(of: "https://preview.invalid/post", with: "https://preview.invalid/delayed-read-picture")
         }
         if ProcessInfo.processInfo.arguments.contains("--ui-tests-comment-other-owner") {
             first = first.replacingOccurrences(of: "PreviewUser", with: "OtherPostOwner")

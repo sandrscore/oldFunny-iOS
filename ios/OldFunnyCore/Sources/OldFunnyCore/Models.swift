@@ -72,6 +72,10 @@ public struct Post: Equatable, Sendable {
 
 public struct Paging: Equatable, Sendable {
     public let next: String?
+    public init(next: String?) throws {
+        guard next == nil || next!.utf8.count <= 8192 else { throw ClientError.malformedResponse }
+        self.next = next.flatMap { $0.isEmpty ? nil : $0 }
+    }
     public init(_ value: JSON) throws {
         let cursor = value["cursors"]["next"].string
         if let cursor, cursor.utf8.count > 8192 { throw ClientError.malformedResponse }
@@ -82,6 +86,7 @@ public struct Paging: Equatable, Sendable {
 public struct PostPage: Sendable {
     public let posts: [Post]
     public let paging: Paging
+    public init(posts: [Post], paging: Paging) { self.posts = posts; self.paging = paging }
     public init(_ data: JSON) throws {
         let content = data["content"]
         guard case .array = content["items"] else { throw ClientError.malformedResponse }

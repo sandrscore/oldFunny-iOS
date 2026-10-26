@@ -64,11 +64,11 @@ post panels. Process-death restoration and every gesture edge case remain checks
 | --- | --- | --- |
 | Sidebar destinations | Featured, Collective, Subscriptions, Explore, Profile, Chats, Activity, Studio, preferences; `main/menu`, `ChatsActivity`, `NewCaptionStudio` | Partial: Featured/Collective/Subs/Profile/Account only; remaining destinations must have real implementations |
 | Drawer gestures | Open/close gestures, scrim, selected row, retained section; `main/IFunnyMenuActivity` | Partial: menu tap, shade and left-swipe close; edge-open and navigation restoration pending |
-| Sidebar counts | Real Featured/Subs/Chats counters, no invented badges; `FeaturedFeed`, `SubscriptionsReads`, `ChatsBadge` | Missing |
-| Mark as viewed | Long-hold Subscriptions only; clear on confirmed success; `SidebarViewed` | Missing; never restore cancelled Featured action |
+| Sidebar counts | Real Featured/Subs/Chats counters, no invented badges; `FeaturedFeed`, `SubscriptionsReads`, `ChatsBadge` | Candidate29 Subs only, unknown remains absent; Featured/Chats missing |
+| Mark as viewed | Long-hold Subscriptions only; clear on confirmed success; `SidebarViewed` | Candidate29 source: choice/cancel/singleflight/session fencing,confirmed progress clear; native verification pending |
 | Featured refresh | Latest page on stale return, retained recent position, no countdown/shuffle; `FeaturedFeed` | Partial: paging/refresh; stale cache policy pending |
-| Featured reads | Foreground selected post only, per-account ledger, retry and skip viewed; `FeaturedReads` | Missing integration; API method alone is insufficient |
-| Subscription reads | Immediate settled selection, local unread credit, server reconciliation, durable queues; `SubscriptionsReads` | Missing |
+| Featured reads | Foreground selected post only, per-account ledger, retry and skip viewed; `FeaturedReads` | Candidate29 source: rendered/settled/foreground/window/panel/drawer gates,1800ms exposure,durable queue/retries/filtering; native verification pending |
+| Subscription reads | Immediate settled selection, local unread credit, server reconciliation, durable queues; `SubscriptionsReads` | Candidate29 source: immediate loading selection, durable credit/counters/queue; native verification pending |
 | Collective | POST form `limit/next` to `/feeds/collective`; `Retrofit$RestInterface.getCollective` in primary smali | Source added; current server and device reads pending |
 | Horizontal viewer | Retain index, edge pagination, page ordering and return position; `gallery/GalleryFragment` | Source, needs new phone regression |
 | Comments entry | Up gesture and comment-button tap share retained panel; native trace above | Build 19 offline UIKit verifies up gesture and comment button share one retained panel; target-phone and remaining scroll-boundary cases pending. |
@@ -531,3 +531,9 @@ The recovery trigger is the actual HTTP404 status. A status404 JSON envelope on
 HTTP200 does not invoke website recovery. The shared request loop returns its raw
 HTTP result before parsing, retaining account fences/read-only refresh/no write
 replay; content and ordinary callers check their captured epoch again.
+
+### Verified checkpoint 28
+
+Source `1fe0428699b6185792f721bac73aad03fc1e929b`, [Mac CI](https://github.com/sandrscore/oldFunny-iOS/actions/runs/40407953474), passed74 Mac Swift, six Python and all23 actual UIKit cases with zero failures. Exact expected names, downloaded logs/preview.json and artifact hashes checked. Attachment screenshot reviewed; the new test completed all crop, selection, recovery/Back, unavailable/failed/withheld/blocked/link-derived and draft assertions. IPA independently ARM64/cryptid0/fixture-free, SHA256 `8af68fb23d0a56e28a86fbdbb7762ed000b651b07d1d437de8ed9c6dcdeedd15`. Protected169/Android-doc137 hashes match. No new target-phone or live social/read-ack validation. Attachment limits and remaining ledger stay open.
+
+Local unpublished read work adds ReadTracking/ReadServices, durable private per-scope JSON, session-fenced serialized acknowledgements/counters/clear/feed filtering and15 tests (89 Linux total). Native visibility, scheduling and sidebar integration are in progress; build28 excludes all read changes.

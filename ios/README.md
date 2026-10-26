@@ -1,35 +1,15 @@
 # oldFunny iOS
 
-**Verified checkpoint: 0.3.0/build 27. Candidate build 28 adds inbound attachment
-cards and complete post/public-picture loading. Its Mac/UIKit verification is
-pending. Full Android behavioral parity is incomplete.**
+**Verified checkpoint: 0.3.0/build 28. Full Android behavioral parity is incomplete.**
 
-[Download the build 27 unsigned IPA artifact ZIP](https://github.com/sandrscore/oldFunny-iOS/actions/runs/40404742369/artifacts/12691086021),
-extract the IPA and update through Zeus. SHA-256:
-`67488a070a27fb8eb08348663dc281e097620861ba94fbe98334d2cab30798f6`.
+[Download the build 28 unsigned IPA artifact ZIP](https://github.com/sandrscore/oldFunny-iOS/actions/runs/40407953474/artifacts/12691629064), extract the IPA and update through Zeus. SHA-256:
+`8af68fb23d0a56e28a86fbdbb7762ed000b651b07d1d437de8ed9c6dcdeedd15`.
 Bundle `mobi.oldfunny.ios`; minimum iOS16.0; ARM64,cryptid0,unsigned,fixture-free.
-Artifact expires November2,2026; independently inspected IPA and exact source are
-preserved locally in the original workspace.
+Artifact expires November2,2026; independently inspected IPA and exact source are preserved locally.
 
-[Build 27 Mac CI](https://github.com/sandrscore/oldFunny-iOS/actions/runs/40404742369)
-for source `f205168b98f5c886a26b0e758393b5137b8932e1` passed 67 core tests,
-six packaging checks and all22 actual UIKit cases with zero failures. Downloaded
-reports/logs confirm every expected test executed. Actual comments and dedicated
-deleted-reply screenshot were reviewed on iPhone16/iOS18.5 with offline fixtures.
+[Build 28 Mac CI](https://github.com/sandrscore/oldFunny-iOS/actions/runs/40407953474), source `1fe0428699b6185792f721bac73aad03fc1e929b`, passed 74 Swift tests, six packaging checks and all23 actual UIKit cases, zero failures. Downloaded reports/logs match every expected method; archive hashes were checked. Attachment screenshot reviewed on iPhone16/iOS18.5 with offline fixtures.
 
-Role-ordered comment options, separate reply-count navigation, guest/author
-routes, root/nested composer focus, depth29/30 eligibility and capped ten-dot
-geometry passed. Deleted nonroot replies use Android's distinct centered caption
-without author/reaction/dot children. The retained root, draft, attachment,
-refresh and count assertions all passed. Previous panels/media/profile/mention/
-bulk-deletion cases passed again. All social writes use fabricated transports;
-current-build phone and live social behavior remain separate unverified work.
-
-Candidate28 includes74 portable contracts and23 actual UIKit cases. Its new
-attachment test exercises ImageIO crop pixels, capped card count and badges,
-long-hold selection, public-picture recovery/internal Back, unavailable/failed/
-withheld/blocked/link-derived states, refresh and protected drafts. Native/UI
-verification is pending; no prior green checkpoint certifies these new files.
+The new attachment case completed actual ImageIO crop-pixel, four-card limit/badge, long-hold selection, API404/public-picture recovery/internal Back, unavailable/failed/withheld/blocked/link-derived and protected-draft checks. Previous role menus/depth/deletion, video/GIF, profiles/search/pins, mention and bulk cases passed again. Fixture transports perform no real account or social action. Current-build phone checks remain separate.
 
 Remaining work includes ordinary comment tap/options parity, reply-depth/state/
 layout rules, mention-panel physics, large-profile indexing/options, feeds/reads,
@@ -143,3 +123,7 @@ The recovery trigger is the actual HTTP404 status. A status404 JSON envelope on
 HTTP200 does not invoke website recovery. The shared request loop returns its raw
 HTTP result before parsing, retaining account fences/read-only refresh/no write
 replay; content and ordinary callers check their captured epoch again.
+
+Candidate29 integrates durable per-account seen/pending history, serialized idempotent acknowledgements, counters and filtered Featured paging. Actual selected/window/foreground/panel/drawer/pager gates use a continuous1800ms rendered-media timer for Featured; Subscriptions04 credits settled loading selections immediately. Active failures retry after10s, successful queued batches continue immediately. Sidebar shows reconciled Subs unread and offers confirmed mark-all only on its long hold. Atomic private files persist IDs/progress, while credentials remain in Keychain.
+
+90 Linux core tests, six packaging checks and Debug/Release syntax parsing pass. Two new offline UIKit cases (25 total) exercise loading/visible exposure, drawer/comments/prefetch exclusion, immediate Subs credit/stale counters and cancelled/failed/confirmed explicit clear/navigation. These native cases await Mac execution; build28 remains the verified IPA. Read fixtures never use a real account or service. Featured stale-cache policy, other sidebar destinations/counters, exhaustive lifecycle/process/device coverage and the full ledger remain open.

@@ -2,6 +2,56 @@ import XCTest
 import UIKit
 
 final class ViewerTests: XCTestCase {
+    func testFeaturedReadWaitsForRenderedMediaAndContinuousUnobscuredSelection() {
+        let app = XCUIApplication()
+        app.launchArguments = ["--ui-tests", "--ui-tests-reads", "--ui-tests-read-loading"]
+        app.launch()
+        let trace = app.staticTexts["offline-read-trace"]
+        XCTAssertTrue(trace.waitForExistence(timeout: 10))
+        XCTAssertTrue(trace.label.contains("rendered=false"))
+        app.buttons["Open menu"].tap()
+        waitUntil("The image should eventually decode behind the open drawer", timeout: 12) { trace.label.contains("rendered=true") }
+        Thread.sleep(forTimeInterval: 2.2)
+        XCTAssertFalse(trace.label.contains("feat:"), "A loaded but obscured post is not a read")
+        app.buttons["Featured"].press(forDuration: 0.8)
+        XCTAssertFalse(app.alerts["Featured"].exists, "Featured has no mark-all popup")
+        if app.buttons["Featured"].exists { app.buttons["Featured"].tap() }
+        app.buttons["3 comments"].tap()
+        XCTAssertTrue(app.textFields["comment-draft"].waitForExistence(timeout: 5))
+        Thread.sleep(forTimeInterval: 2.2)
+        XCTAssertFalse(trace.label.contains("feat:"), "Comments cannot accumulate Featured exposure")
+        app.buttons["Back"].tap()
+        waitUntil("A continuous rendered media interval sends the actual selected ID", timeout: 6) { trace.label.contains("feat:PreviewPost") }
+        XCTAssertFalse(trace.label.contains("NextPost"), "A prefetched neighbor is not read")
+        let image = app.images["post-image"]; image.swipeLeft()
+        waitUntil("Settled next page is independently exposed", timeout: 6) { trace.label.contains("feat:NextPost") }
+        capture("featured-read-visible-selection", app: app)
+    }
+    func testSubscriptionLoadingCreditsBadgeAndOnlyConfirmedExplicitClearRemovesUnread() {
+        let app = XCUIApplication()
+        app.launchArguments = ["--ui-tests", "--ui-tests-account", "--ui-tests-reads", "--ui-tests-read-loading", "--ui-tests-read-clear-failure"]
+        app.launch()
+        let trace = app.staticTexts["offline-read-trace"]
+        XCTAssertTrue(trace.waitForExistence(timeout: 10))
+        app.buttons["Open menu"].tap(); app.buttons["Subscriptions"].tap()
+        waitUntil("Subscriptions credits the selected post before media renders", timeout: 5) { trace.label.contains("subs:PreviewPost") && trace.label.contains("rendered=false") && trace.label.contains("unread=9") }
+        app.buttons["Open menu"].tap()
+        let subscriptions = app.buttons["Subscriptions"]
+        XCTAssertEqual(subscriptions.value as? String, "9 unread")
+        subscriptions.press(forDuration: 0.8)
+        let options = app.alerts["Subscriptions"]; XCTAssertTrue(options.waitForExistence(timeout: 5))
+        options.buttons["Cancel"].tap()
+        XCTAssertFalse(trace.label.contains("subs:all")); XCTAssertEqual(subscriptions.value as? String, "9 unread")
+        subscriptions.press(forDuration: 0.8); app.alerts["Subscriptions"].buttons["Mark as viewed"].tap()
+        let failure = app.alerts["oldFunny"]; XCTAssertTrue(failure.waitForExistence(timeout: 5)); failure.buttons["OK"].tap()
+        XCTAssertEqual(subscriptions.value as? String, "9 unread", "Uncertain explicit clear preserves local credit")
+        subscriptions.press(forDuration: 0.8); app.alerts["Subscriptions"].buttons["Mark as viewed"].tap()
+        waitUntil("Confirmed explicit success clears the badge", timeout: 5) { subscriptions.value as? String == "0 unread" }
+        app.buttons["Collective"].tap()
+        app.buttons["Open menu"].tap()
+        XCTAssertEqual(app.buttons["Subscriptions"].value as? String, "0 unread", "Ordinary section navigation preserves progress")
+        capture("subscriptions-confirmed-unread-clear", app: app)
+    }
     override func setUpWithError() throws { continueAfterFailure = false }
     private func capture(_ name: String, app: XCUIApplication) {
         let picture = XCTAttachment(screenshot: app.screenshot()); picture.name = name; picture.lifetime = .keepAlways; add(picture)

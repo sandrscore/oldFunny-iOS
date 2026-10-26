@@ -14,6 +14,15 @@ final class FeedController: ClassicScreenController, UIPageViewControllerDataSou
     private var task: Task<Void, Never>?
     private var generation = UUID()
     private var retained = [String: PostController]()
+    private var readContext: ReadContext?
+    private var exposure = FeaturedReadExposure()
+    private var settled = true, onScreen = false
+    private var readWatch: Task<Void, Never>?
+    private var readObservers = [NSObjectProtocol]()
+    private var lastReadSample: TimeInterval?
+    #if CLASSIC_UI_PREVIEW
+    private let readTrace = UILabel()
+    #endif
     #if CLASSIC_UI_PREVIEW
     private var previewOpened = false
     #endif
@@ -23,7 +32,7 @@ final class FeedController: ClassicScreenController, UIPageViewControllerDataSou
         super.init(nibName: nil, bundle: nil)
     }
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
-    deinit { task?.cancel() }
+    deinit { task?.cancel(); readWatch?.cancel(); readObservers.forEach { NotificationCenter.default.removeObserver($0) } }
     override func viewDidLoad() {
         super.viewDidLoad(); contentView.backgroundColor = .black
         setClassicBarHidden(true) // Each retained post owns all three panel headers.
@@ -48,21 +57,86 @@ final class FeedController: ClassicScreenController, UIPageViewControllerDataSou
             status.topAnchor.constraint(equalTo: contentView.topAnchor), status.bottomAnchor.constraint(equalTo: contentView.bottomAnchor)
         ])
         status.retry.addTarget(self, action: #selector(retryLoad), for: .touchUpInside)
+        #if CLASSIC_UI_PREVIEW
+        if ProcessInfo.processInfo.arguments.contains("--ui-tests-reads") {
+            readTrace.accessibilityIdentifier = "offline-read-trace"
+            readTrace.font = UIFont.systemFont(ofSize: 8); readTrace.textColor = .white
+            readTrace.backgroundColor = .black; readTrace.numberOfLines = 2
+            readTrace.translatesAutoresizingMaskIntoConstraints = false; view.addSubview(readTrace)
+            NSLayoutConstraint.activate([readTrace.leadingAnchor.constraint(equalTo: view.leadingAnchor), readTrace.trailingAnchor.constraint(equalTo: view.trailingAnchor), readTrace.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor), readTrace.heightAnchor.constraint(equalToConstant: 24)])
+        }
+        #endif
+        readObservers.append(NotificationCenter.default.addObserver(forName: .oldFunnyReadsChanged, object: app.reads, queue: .main) { [weak self] _ in
+            Task { @MainActor [weak self] in self?.updateReadBadge() }
+        })
+        readObservers.append(NotificationCenter.default.addObserver(forName: UIApplication.willResignActiveNotification, object: nil, queue: .main) { [weak self] _ in
+            Task { @MainActor [weak self] in self?.exposure.reset(); self?.lastReadSample = nil }
+        })
         load(replacing: true)
     }
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
+        onScreen = true; app.reads.activate(); startReadWatch()
         #if CLASSIC_UI_PREVIEW
         if !previewOpened && ProcessInfo.processInfo.arguments.contains("--preview-sidebar") {
             previewOpened = true; toggleMenu()
         }
         #endif
     }
+    override func viewWillDisappear(_ animated: Bool) {
+        super.viewWillDisappear(animated); onScreen = false
+        readWatch?.cancel(); readWatch = nil; exposure.reset(); lastReadSample = nil
+    }
+    private func startReadWatch() {
+        guard timelineID == nil, readWatch == nil else { return }
+        readWatch = Task { [weak self] in
+            while !Task.isCancelled {
+                do { try await Task.sleep(nanoseconds: 250_000_000) } catch { break }
+                guard let self, onScreen else { break }
+                await sampleRead()
+            }
+        }
+    }
+    private func sampleRead() async {
+        let now = ProcessInfo.processInfo.systemUptime
+        if let lastReadSample, now - lastReadSample > 0.5 { exposure.reset() }
+        lastReadSample = now
+        #if CLASSIC_UI_PREVIEW
+        if ProcessInfo.processInfo.arguments.contains("--ui-tests-reads") { updateReadTrace() }
+        #endif
+        guard onScreen, timelineID == nil, let context = readContext,
+              let post = pager.viewControllers?.first as? PostController else { exposure.reset(); return }
+        let live = await app.api.readContext()
+        // Token rotation may retain the same account/epoch; an account switch
+        // must never credit the newly selected account for an old viewer.
+        guard live.key == context.key, live.epoch == context.epoch else { exposure.reset(); return }
+        readContext = live
+        let visibility = post.readVisibility(settled: settled, drawerOpen: sidebar != nil)
+        let visible = visibility.qualifies(for: feed)
+        let report: Bool
+        if feed == .featured { report = exposure.sample(postID: post.post.id, scope: live.key + live.epoch.uuidString + live.authorizationMarker, now: Int64(now * 1000), visible: visible) }
+        else { exposure.reset(); report = feed == .subscriptions && live.signedIn && visible }
+        guard report else { return }
+        do { try await app.reads.viewed(post.post.id, feed: feed, context: live) }
+        catch { exposure.reset() } // A failed durable save can be retried after a fresh interval.
+    }
+    private func updateReadBadge() {
+        sidebar?.setSubscriptionsUnread(app.reads.unreadSubscriptions, clearing: app.reads.clearing)
+    }
+    #if CLASSIC_UI_PREVIEW
+    private func updateReadTrace() {
+        let current = pager.viewControllers?.first as? PostController
+        let rendered = current?.readVisibility(settled: settled, drawerOpen: sidebar != nil).rendered == true
+        readTrace.text = "\(PreviewFixtures.readEvents.joined(separator: "|")); unread=\(app.reads.unreadSubscriptions.map(String.init) ?? "unknown"); rendered=\(rendered); post=\(current?.post.id ?? "none")"
+        view.bringSubviewToFront(readTrace)
+    }
+    #endif
     private var currentPost: Post? { pages.posts.indices.contains(selected) ? pages.posts[selected] : nil }
     private func updateHeader() { authorHeader.update(post: currentPost, section: profileName ?? feed.title, loader: app.media) }
     @objc private func retryLoad() { load(replacing: pages.next == nil || !pages.posts.isEmpty) }
     private func refresh() { closeSidebar(); load(replacing: true) }
     private func resetAndLoad() {
+        exposure.reset(); readContext = nil; settled = true
         closeSidebar(); task?.cancel(); generation = UUID(); loading = false
         // A scroll-style page controller requires one displayed controller.
         // Detach its data source before invalidating the old index snapshot.
@@ -75,6 +149,7 @@ final class FeedController: ClassicScreenController, UIPageViewControllerDataSou
     private func toggleMenu() {
         if sidebar != nil { closeSidebar(); return }
         let menu = SidebarView(selected: feed); menu.translatesAutoresizingMaskIntoConstraints = false
+        menu.onSubscriptionsHold = { [weak self] in self?.subscriptionsOptions() }
         menu.onClose = { [weak self] in self?.closeSidebar() }
         menu.onSelect = { [weak self] destination in
             self?.closeSidebar { [weak self] in
@@ -89,10 +164,32 @@ final class FeedController: ClassicScreenController, UIPageViewControllerDataSou
         contentView.addSubview(menu)
         NSLayoutConstraint.activate([menu.leadingAnchor.constraint(equalTo: contentView.leadingAnchor), menu.trailingAnchor.constraint(equalTo: contentView.trailingAnchor), menu.topAnchor.constraint(equalTo: contentView.topAnchor), menu.bottomAnchor.constraint(equalTo: contentView.bottomAnchor)])
         sidebar = menu; menu.alpha = 0
+        exposure.reset(); updateReadBadge(); app.reads.requestSync(refreshCounter: true)
         (pager.viewControllers?.first as? PostController)?.setObscured(true)
         UIView.animate(withDuration: UIAccessibility.isReduceMotionEnabled ? 0 : 0.18) { menu.alpha = 1 }
         classicBar.leading.accessibilityLabel = "Close menu"
         UIAccessibility.post(notification: .screenChanged, argument: menu)
+    }
+    private func subscriptionsOptions() {
+        guard !app.reads.clearing, let context = app.reads.currentContext, context.signedIn else { return }
+        let options = UIAlertController(title: "Subscriptions", message: nil, preferredStyle: .alert)
+        options.addAction(UIAlertAction(title: "Mark as viewed", style: .default) { [weak self] _ in
+            guard let self else { return }
+            Task { [weak self] in
+                guard let self else { return }
+                do { try await app.reads.clearSubscriptions(expected: context) }
+                catch {
+                    // A local/fake failure can arrive before the choice alert
+                    // finishes dismissing. Keep the failure visible for retry.
+                    while presentedViewController?.isBeingDismissed == true {
+                        do { try await Task.sleep(nanoseconds: 25_000_000) } catch { return }
+                    }
+                    showError(error)
+                }
+            }
+        })
+        options.addAction(UIAlertAction(title: "Cancel", style: .cancel))
+        present(options, animated: true)
     }
     private func closeSidebar(then completion: (() -> Void)? = nil) {
         guard let menu = sidebar else { completion?(); return }; sidebar = nil
@@ -122,6 +219,7 @@ final class FeedController: ClassicScreenController, UIPageViewControllerDataSou
     }
     private func load(replacing: Bool) {
         guard !loading, replacing || pages.next != nil else { return }
+        if replacing { exposure.reset() }
         loading = true; classicBar.trailing.isEnabled = false
         if pages.posts.isEmpty { status.loading() }
         let owner = generation, selectedFeed = feed
@@ -129,16 +227,21 @@ final class FeedController: ClassicScreenController, UIPageViewControllerDataSou
             guard let self else { return }
             defer { if owner == generation { loading = false; task = nil; classicBar.trailing.isEnabled = true } }
             do {
-                var replace = replacing, fetched = 0
+                var replace = replacing, fetched = 0, cursors = Set<String>()
                 repeat {
                     let cursor = replace ? nil : pages.next
                     let page: PostPage
                     if let timelineID { page = try await app.api.timeline(userID: timelineID, next: cursor) }
-                    else { page = try await app.api.feed(selectedFeed, next: cursor) }
+                    else {
+                        let result = try await app.reads.page(selectedFeed, next: cursor)
+                        page = result.0; readContext = result.1
+                    }
                     try Task.checkCancellation(); guard owner == generation else { return }
                     pages.apply(page, replacing: replace)
                     if replace { selected = 0 }; replace = false; fetched += 1
-                } while pages.posts.count - selected < 2 && pages.next != nil && fetched < 3
+                    if let next = pages.next, !cursors.insert(next).inserted { break }
+                    await Task.yield()
+                } while pages.posts.count - selected < 2 && pages.next != nil && fetched < (selectedFeed == .featured && timelineID == nil ? 12 : 3)
                 if pages.posts.isEmpty {
                     status.message(pages.next == nil ? "No posts to display." : "No posts in this page. Tap Try again to continue.")
                 } else {
@@ -183,10 +286,14 @@ final class FeedController: ClassicScreenController, UIPageViewControllerDataSou
     }
     func pageViewController(_ pageViewController: UIPageViewController, didFinishAnimating finished: Bool,
                             previousViewControllers: [UIViewController], transitionCompleted completed: Bool) {
+        settled = true; exposure.reset()
         guard completed, let post = pageViewController.viewControllers?.first as? PostController else { return }
         selected = post.index; updateHeader()
         retained.values.forEach { $0.setSelected($0 === post) }
         retained = retained.filter { abs($0.value.index - selected) <= 3 }
         if selected >= pages.posts.count - 5 { load(replacing: false) }
+    }
+    func pageViewController(_ pageViewController: UIPageViewController, willTransitionTo pendingViewControllers: [UIViewController]) {
+        settled = false; exposure.reset()
     }
 }

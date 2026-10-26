@@ -59,6 +59,7 @@ final class SceneDelegate: UIResponder, UIWindowSceneDelegate {
 @MainActor
 final class AppContext {
     let api: APIClient
+    let reads: FeedReadService
     let media = MediaLoader()
     // Android's application-scoped sound flag starts off and is shared by pages.
     var videoSoundOn = false
@@ -70,10 +71,17 @@ final class AppContext {
         api = try APIClient(installation: installation,
             userAgent: Wire.apiUserAgent(systemVersion: UIDevice.current.systemVersion, model: UIDevice.current.model),
             store: KeychainStore())
+        let support = try FileManager.default.url(for: .applicationSupportDirectory, in: .userDomainMask, appropriateFor: nil, create: true)
+        reads = FeedReadService(api: api, directory: support.appendingPathComponent("ReadHistory", isDirectory: true))
         observeSoundLifecycle()
     }
     #if CLASSIC_UI_PREVIEW
-    init(previewAPI: APIClient) { api = previewAPI; observeSoundLifecycle() }
+    init(previewAPI: APIClient) {
+        api = previewAPI
+        // Isolated from real read history, including across UI test launches.
+        reads = FeedReadService(api: api, directory: FileManager.default.temporaryDirectory.appendingPathComponent("PreviewReads-" + UUID().uuidString, isDirectory: true))
+        observeSoundLifecycle()
+    }
     #endif
     deinit { soundObservers.forEach { NotificationCenter.default.removeObserver($0) } }
     private func observeSoundLifecycle() {

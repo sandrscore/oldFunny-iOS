@@ -3,6 +3,9 @@ import UIKit
 final class SidebarView: UIView {
     enum Destination { case feed(Feed), profile, account }
     var onSelect: ((Destination) -> Void)?, onClose: (() -> Void)?
+    var onSubscriptionsHold: (() -> Void)?
+    private weak var subscriptionsRow: UIButton?
+    private let subscriptionsBadge = UILabel()
     private let panel = UIView()
     private let rows = UIStackView()
     init(selected: Feed) {
@@ -47,10 +50,29 @@ final class SidebarView: UIView {
         // Render the existing icon at the classic menu size without changing its resource.
         if let image { configuration.image = UIGraphicsImageRenderer(size: CGSize(width: 24, height: 24)).image { _ in image.draw(in: CGRect(x: 1, y: 1, width: 22, height: 22)) }.withRenderingMode(.alwaysTemplate) }
         row.configuration = configuration
+        if case .feed(.subscriptions) = destination {
+            subscriptionsRow = row
+            subscriptionsBadge.font = ClassicTheme.font(13, bold: true); subscriptionsBadge.textColor = .white
+            subscriptionsBadge.backgroundColor = .systemRed; subscriptionsBadge.textAlignment = .center
+            subscriptionsBadge.layer.cornerRadius = 10; subscriptionsBadge.clipsToBounds = true
+            subscriptionsBadge.isHidden = true; subscriptionsBadge.translatesAutoresizingMaskIntoConstraints = false
+            subscriptionsBadge.isUserInteractionEnabled = false; subscriptionsBadge.isAccessibilityElement = false
+            row.addSubview(subscriptionsBadge)
+            NSLayoutConstraint.activate([subscriptionsBadge.centerYAnchor.constraint(equalTo: row.centerYAnchor), subscriptionsBadge.trailingAnchor.constraint(equalTo: row.trailingAnchor, constant: -12), subscriptionsBadge.widthAnchor.constraint(greaterThanOrEqualToConstant: 30), subscriptionsBadge.heightAnchor.constraint(equalToConstant: 22)])
+            row.addGestureRecognizer(UILongPressGestureRecognizer(target: self, action: #selector(subscriptionsHold(_:))))
+            row.accessibilityCustomActions = [UIAccessibilityCustomAction(name: "Mark as viewed", target: self, selector: #selector(accessibleSubscriptionsHold))]
+        }
         row.heightAnchor.constraint(equalToConstant: 52).isActive = true
         row.accessibilityTraits = selected ? [.button, .selected] : .button
         row.addAction(UIAction { [weak self] _ in self?.onSelect?(destination) }, for: .touchUpInside)
         rows.addArrangedSubview(row)
     }
+    func setSubscriptionsUnread(_ count: Int?, clearing: Bool) {
+        subscriptionsBadge.isHidden = count == nil || count == 0
+        subscriptionsBadge.text = count.map { " \($0) " }
+        subscriptionsRow?.accessibilityValue = clearing ? "Marking as viewed" : count.map { "\($0) unread" }
+    }
+    @objc private func subscriptionsHold(_ gesture: UILongPressGestureRecognizer) { if gesture.state == .began { onSubscriptionsHold?() } }
+    @objc private func accessibleSubscriptionsHold() -> Bool { onSubscriptionsHold?(); return true }
     @objc private func close() { onClose?() }
 }

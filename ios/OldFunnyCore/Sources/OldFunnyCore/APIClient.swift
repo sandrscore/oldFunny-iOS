@@ -88,6 +88,14 @@ public actor APIClient {
     }
     public func account() -> Credential? { credential }
     public func sessionEpoch() -> UUID { epoch }
+    public func readContext() -> ReadContext {
+        // An iOS-specific opaque storage namespace. Only its hash reaches disk;
+        // the transient authorization marker never becomes part of saved state.
+        let owner = credential.map { "user:" + $0.accountID } ?? "installation:" + installation
+        let key = SHA1.hex(Data((Wire.base.absoluteString + "\niFunny\n" + owner).utf8))
+        let marker = SHA1.hex(Data((credential?.accessToken ?? "anonymous").utf8))
+        return ReadContext(key: key, epoch: epoch, signedIn: credential != nil, authorizationMarker: marker)
+    }
 
     public func forgetSession() throws {
         try store.erase()
@@ -286,9 +294,29 @@ public actor APIClient {
         _ = try await call(path: "content/" + Wire.requireID(postID) + "/smiles", query: [("from", source)],
                            method: enabled ? "PUT" : "DELETE", authenticated: true)
     }
-    public func markRead(ids: [String], feed: Feed) async throws {
-        guard !ids.isEmpty, ids.count <= 30, ids.allSatisfy(Wire.validID) else { throw ClientError.invalidInput }
-        _ = try await call(path: "reads/" + ids.joined(separator: ","), query: [("from", feed.source)], method: "PUT", authenticated: true)
+    public func markRead(ids: [String], feed: Feed, session: UUID? = nil) async throws {
+        try validateWriteSession(session)
+        guard feed != .collective, !ids.isEmpty, ids.count <= 30, Set(ids).count == ids.count, ids.allSatisfy(ReadLedger.validID) else { throw ClientError.invalidInput }
+        _ = try await call(path: "reads/" + ids.joined(separator: ","), query: [("from", feed.source)], method: "PUT", authenticated: feed == .subscriptions)
+    }
+    public func subscriptionUnread(session: ReadContext) async throws -> Int {
+        guard readContext() == session else { throw ClientError.sessionChanged }
+        let data = try await call(path: "counters", authenticated: true)["data"]
+        guard readContext() == session else { throw ClientError.sessionChanged }
+        let value = data["subscriptions"]
+        let count: Int?
+        if let string = value.string {
+            let digits = string.utf8
+            count = !digits.isEmpty && digits.count <= 10 && (string == "0" || digits.first != 48) && digits.allSatisfy({ (48...57).contains($0) }) ? Int(string) : nil
+        } else if case .number(let number) = value { count = Int(exactly: number) }
+        else { count = nil }
+        guard let count, count >= 0, count <= Int32.max else { throw ClientError.malformedResponse }
+        return count
+    }
+    public func markSubscriptionsViewed(session: ReadContext) async throws {
+        guard readContext() == session else { throw ClientError.sessionChanged }
+        _ = try await call(path: "reads/all", query: [("from", "subs")], method: "PUT", authenticated: true)
+        guard readContext() == session else { throw ClientError.sessionChanged }
     }
 
     // Native Android Retrofit contracts. All writes use the existing account

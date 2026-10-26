@@ -68,6 +68,7 @@ actor MediaLoader {
     func playableImage(_ url: URL) async throws -> PlayableImage {
         #if CLASSIC_UI_PREVIEW
         if url.host == "preview.invalid" {
+            if url.lastPathComponent == "delayed-read-picture" { try await Task.sleep(nanoseconds: 8_000_000_000) }
             if url.lastPathComponent == "fixture-animation.gif" {
                 guard let file = Bundle.main.url(forResource: "fixture-animation", withExtension: "gif") else { throw ClientError.unsupportedMedia }
                 return .gif(try GIFFrames(data: Data(contentsOf: file)))

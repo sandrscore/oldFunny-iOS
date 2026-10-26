@@ -117,6 +117,11 @@ final class PostMediaController: UIViewController, UIScrollViewDelegate, UIGestu
         let hold = UILongPressGestureRecognizer(target: self, action: #selector(postOptions(_:))); hold.delegate = self; outer.addGestureRecognizer(hold)
     }
     func setCommentCount(_ count: Int) { comments.count = count; comments.accessibilityLabel = "\(count) comments" }
+    var hasRenderedMedia: Bool {
+        guard isViewLoaded, status.isHidden, !media.isHidden else { return false }
+        if let video { return video.surface.videoLayer.isReadyForDisplay }
+        return image.image != nil && !image.isHidden
+    }
     private func addText(_ text: String, to panel: UIView, bold: Bool) {
         panel.isHidden = text.isEmpty
         guard !text.isEmpty else { return }

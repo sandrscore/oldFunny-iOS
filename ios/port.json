@@ -4,7 +4,7 @@
   "product": "oldFunny",
   "bundle_identifier": "mobi.oldfunny.ios",
   "version": "0.3.0",
-  "build": "28",
+  "build": "29",
   "minimum_ios": "16.0",
   "target": {
     "device": "iPhone 16",
@@ -39,7 +39,7 @@
     "captcha_handoff": true,
     "session_survives_relaunch": "unverified"
   },
-  "ui_phase": "Verified27 all22UI; candidate28 inbound attachment/full-post recovery,74core/23UI pending",
+  "ui_phase": "Verified28 all23UI/74Mac Swift; candidate29 native reads,90 core/25 UI pending Mac",
   "simulator_previews": "Offline fixtures compiled only with CLASSIC_UI_PREVIEW; absent from Release",
   "simulator_ui": {
     "offline_fixtures": true,
@@ -53,7 +53,8 @@
       "information.png",
       "profile.png",
       "profile-search.png",
-      "mentions.png"
+      "mentions.png",
+      "attachments.png"
     ],
     "generated_video_fixture": {
       "duration_ms": 12400,
@@ -82,6 +83,7 @@
       "testConfirmedReplyAndRootDeletionCloseThreadAndRemoveRepliesFromPostTotalOnce",
       "testGuestCommentOptionsProfileAndSignedInOtherPostRole",
       "testHorizontalPagingAndZoomTakePriorityOverPanelNavigation",
+      "testInboundAttachmentCardsCropsUnavailableAndPublicRecoveryPreserveDraftAndBack",
       "testLongGIFUsesDecodedPixelsUnevenTimingLoopAndRetainedPhase",
       "testMentionSelectionLinkAndUnconfirmedSendPreserveIdentityAndAttachment",
       "testOwnProfilePinReadbackAndGridBadge",
@@ -98,11 +100,10 @@
     "ui_gesture_tests_passed": true,
     "success": true,
     "version": "0.3.0",
-    "build": "27",
+    "build": "28",
     "current_candidate_verified": false,
     "screens_reviewed": [
-      "comments",
-      "deleted-reply-native-placeholder"
+      "attachments"
     ]
   },
   "known_ui_polish": [],
@@ -184,9 +185,9 @@
     },
     "phone_tested": false
   },
-  "verified_build_source_commit": "4c990a36420f8f9e2d5dfbb6c55ee603cdace6e1",
-  "verified_build_url": "https://github.com/sandrscore/oldFunny-iOS/actions/runs/39539381754",
-  "ipa_sha256": "e6f1731005e4f8660bebc288f1c11b3e15f7ff6c21c14b915b51f79b0c661aff",
+  "verified_build_source_commit": "1fe0428699b6185792f721bac73aad03fc1e929b",
+  "verified_build_url": "https://github.com/sandrscore/oldFunny-iOS/actions/runs/40407953474",
+  "ipa_sha256": "8af68fb23d0a56e28a86fbdbb7762ed000b651b07d1d437de8ed9c6dcdeedd15",
   "target_phone_tested": false,
   "previous_verified_build10": {
     "verified_build_source_commit": "5cca16ac45ac9c208269c6737ef1e36ef582b2a6",
@@ -399,11 +400,11 @@
   },
   "candidate28": {
     "published": true,
-    "mac_compiled": false,
+    "mac_compiled": true,
     "linux_core_tests": 74,
     "python_checks": 6,
     "ui_test_cases": 23,
-    "ui_tests_executed": false,
+    "ui_tests_executed": true,
     "anonymous_content_read_routes": {
       "observed_date": "2026-10-26",
       "GET_requests": 3,
@@ -420,7 +421,10 @@
       "payload checks after download, not midstream",
       "external browser runtime",
       "toast versus alert presentation"
-    ]
+    ],
+    "ui_tests_passed": 23,
+    "source_commit": "1fe0428699b6185792f721bac73aad03fc1e929b",
+    "run_url": "https://github.com/sandrscore/oldFunny-iOS/actions/runs/40407953474"
   },
   "compiled_candidate_build27": {
     "source_commit": "f205168b98f5c886a26b0e758393b5137b8932e1",
@@ -438,5 +442,40 @@
       "failed": 0
     },
     "phone_tested": false
+  },
+  "compiled_candidate_build28": {
+    "source_commit": "1fe0428699b6185792f721bac73aad03fc1e929b",
+    "run_url": "https://github.com/sandrscore/oldFunny-iOS/actions/runs/40407953474",
+    "sha256": "8af68fb23d0a56e28a86fbdbb7762ed000b651b07d1d437de8ed9c6dcdeedd15",
+    "independent_inspection": true,
+    "contains_arm64": true,
+    "main_executable_cryptid": 0,
+    "fixture_code_absent": true,
+    "mac_core_tests": 74,
+    "python_checks": 6,
+    "ui_gesture_tests": {
+      "executed": 23,
+      "passed": 23,
+      "failed": 0
+    },
+    "phone_tested": false
+  },
+  "candidate29": {
+    "published": true,
+    "mac_compiled": false,
+    "linux_core_tests": 90,
+    "python_checks": 6,
+    "ui_test_cases": 25,
+    "ui_tests_executed": false,
+    "phone_tested": false,
+    "real_read_acknowledgements_for_validation": false,
+    "scope": "Durable per-account read coordinator, visible Featured timer, immediate Subscriptions loading credit, active retries, filtered Featured paging, sidebar unread/confirmed Subscriptions-only clear",
+    "known_gaps": [
+      "Featured stale cache restoration policy",
+      "Featured and Chats sidebar counters",
+      "Native process-relaunch/account-switch UI coverage",
+      "Full Android badge/notice styling",
+      "Current target-phone behavior"
+    ]
   }
 }
