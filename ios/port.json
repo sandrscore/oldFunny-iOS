@@ -4,7 +4,7 @@
   "product": "oldFunny",
   "bundle_identifier": "mobi.oldfunny.ios",
   "version": "0.3.0",
-  "build": "31",
+  "build": "32",
   "minimum_ios": "16.0",
   "target": {
     "device": "iPhone 16",
@@ -39,7 +39,7 @@
     "captcha_handoff": true,
     "session_survives_relaunch": "unverified"
   },
-  "ui_phase": "Verified30 93Mac/25UI; candidate31 Explore 99core/26UI pending",
+  "ui_phase": "Verified30 93Mac/25UI; build31 core99 passed but UIKit compile failed; focused32 identifiers renamed, 26UI pending",
   "simulator_previews": "Offline fixtures compiled only with CLASSIC_UI_PREVIEW; absent from Release",
   "simulator_ui": {
     "offline_fixtures": true,
@@ -535,6 +535,21 @@
       "Explore channel destinations and exact layout/colors",
       "process restoration and device checks",
       "full Android parity"
-    ]
+    ],
+    "mac_core_tests": 99,
+    "release_compilation_failed": true,
+    "release_compilation_failure": "ExploreController names next/hash/tag conflict with UIKit properties",
+    "source_commit": "5862dbae71f7739f178bb90b24a0c4c4014f2d34",
+    "run_url": "https://github.com/sandrscore/oldFunny-iOS/actions/runs/40438785287"
+  },
+  "candidate32": {
+    "published": true,
+    "mac_compiled": false,
+    "linux_core_tests": 99,
+    "python_checks": 6,
+    "ui_test_cases": 26,
+    "ui_tests_executed": false,
+    "phone_tested": false,
+    "scope": "Focused build31 UIKit property-name collision repair; all 26 cases retained"
   }
 }

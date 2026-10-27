@@ -8,7 +8,7 @@ final class ExploreController: ClassicScreenController, UITableViewDataSource, U
     private let table = UITableView(frame: .zero, style: .plain), status = StatusView(), footer = UIButton(type: .system)
     private var tabHeight: NSLayoutConstraint!
     private var mode: Mode = .explore, rows = [Row](), tiles = [ExploreTile]()
-    private var users = [UserProfile](), next: String?, cursors = Set<String>()
+    private var users = [UserProfile](), nextCursor: String?, cursors = Set<String>()
     private var generation = UUID(), task: Task<Void, Never>?, loading = false, failed = false
     private var observer: NSObjectProtocol?, active = false
     init(app: AppContext) { self.app = app; super.init(nibName: nil, bundle: nil) }
@@ -50,12 +50,12 @@ final class ExploreController: ClassicScreenController, UITableViewDataSource, U
         super.viewDidAppear(animated); active = true
         if mode == .recent { showRecent() }
         else if rows.isEmpty && !failed { load(replacing: true) }
-        else if mode == .users && next != nil && (table.indexPathsForVisibleRows ?? []).contains(where: { $0.row >= rows.count - 5 }) { load(replacing: false) }
+        else if mode == .users && nextCursor != nil && (table.indexPathsForVisibleRows ?? []).contains(where: { $0.row >= rows.count - 5 }) { load(replacing: false) }
     }
     override func viewWillDisappear(_ animated: Bool) { super.viewWillDisappear(animated); active = false; invalidate() }
     private func invalidate(resetPages: Bool = false) {
         task?.cancel(); task = nil; generation = UUID(); loading = false; failed = false
-        if resetPages { next = nil; cursors = [] }
+        if resetPages { nextCursor = nil; cursors = [] }
     }
     func textFieldDidBeginEditing(_ textField: UITextField) { if (query.text ?? "").isEmpty { invalidate(resetPages: true); showRecent() } }
     func textFieldShouldReturn(_ textField: UITextField) -> Bool { query.resignFirstResponder(); return true }
@@ -92,11 +92,11 @@ final class ExploreController: ClassicScreenController, UITableViewDataSource, U
         else { status.message(mode == .recent ? "No recent searches." : "No results.", canRetry: false) }
     }
     private func load(replacing: Bool, explicit: Bool = false) {
-        guard active, !loading, explicit || !failed, mode != .recent, replacing || next != nil else { return }
+        guard active, !loading, explicit || !failed, mode != .recent, replacing || nextCursor != nil else { return }
         let text = query.text ?? ""
         if mode != .explore && text.utf16.count < 2 { return }
         loading = true; failed = false; if rows.isEmpty { status.loading() }; table.tableFooterView = nil
-        let owner = generation, requestMode = mode, cursor = replacing ? nil : next
+        let owner = generation, requestMode = mode, cursor = replacing ? nil : nextCursor
         task = Task { [weak self] in
             guard let self else { return }; defer { if owner == generation { loading = false; task = nil } }
             do {
@@ -116,7 +116,7 @@ final class ExploreController: ClassicScreenController, UITableViewDataSource, U
                     if let value = page.paging.next, !replacing && cursors.contains(value) { throw ProfileActionError.cursorLoop }
                     if replacing { users = []; cursors = [] }
                     var ids = Set(users.map(\.id)); users += page.users.filter { ids.insert($0.id).inserted }
-                    next = page.paging.next; if let next { cursors.insert(next) }; rows = users.map(Row.user)
+                    nextCursor = page.paging.next; if let nextCursor { cursors.insert(nextCursor) }; rows = users.map(Row.user)
                 case .recent: return
                 }
                 loading = false; render()
@@ -165,30 +165,30 @@ final class ExploreController: ClassicScreenController, UITableViewDataSource, U
 }
 
 private final class ExploreTagCell: UITableViewCell {
-    private let tagName = UILabel(), count = UILabel(), thumbnail = UIImageView(), hash = UILabel()
-    private var task: Task<Void, Never>?, tag: String?
+    private let tagName = UILabel(), count = UILabel(), thumbnail = UIImageView(), hashLabel = UILabel()
+    private var task: Task<Void, Never>?, boundTag: String?
     override init(style: UITableViewCell.CellStyle, reuseIdentifier: String?) {
         super.init(style: style, reuseIdentifier: reuseIdentifier); backgroundColor = ClassicTheme.background
-        hash.text = "#"; hash.font = ClassicTheme.font(36, bold: true); hash.textColor = ClassicTheme.yellow
+        hashLabel.text = "#"; hashLabel.font = ClassicTheme.font(36, bold: true); hashLabel.textColor = ClassicTheme.yellow
         tagName.font = ClassicTheme.font(18, bold: true); tagName.textColor = ClassicTheme.yellow
         count.font = ClassicTheme.font(12); count.textColor = ClassicTheme.muted
         thumbnail.contentMode = .scaleAspectFill; thumbnail.clipsToBounds = true; thumbnail.layer.cornerRadius = 3
         let text = UIStackView(arrangedSubviews: [tagName, count]); text.axis = .vertical; text.spacing = 3
-        for item in [hash, text, thumbnail] { item.translatesAutoresizingMaskIntoConstraints = false; contentView.addSubview(item) }
+        for item in [hashLabel, text, thumbnail] { item.translatesAutoresizingMaskIntoConstraints = false; contentView.addSubview(item) }
         NSLayoutConstraint.activate([
-            hash.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 16), hash.widthAnchor.constraint(equalToConstant: 36), hash.centerYAnchor.constraint(equalTo: contentView.centerYAnchor),
-            text.leadingAnchor.constraint(equalTo: hash.trailingAnchor, constant: 12), text.centerYAnchor.constraint(equalTo: contentView.centerYAnchor), text.trailingAnchor.constraint(lessThanOrEqualTo: thumbnail.leadingAnchor, constant: -8),
+            hashLabel.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 16), hashLabel.widthAnchor.constraint(equalToConstant: 36), hashLabel.centerYAnchor.constraint(equalTo: contentView.centerYAnchor),
+            text.leadingAnchor.constraint(equalTo: hashLabel.trailingAnchor, constant: 12), text.centerYAnchor.constraint(equalTo: contentView.centerYAnchor), text.trailingAnchor.constraint(lessThanOrEqualTo: thumbnail.leadingAnchor, constant: -8),
             thumbnail.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -12), thumbnail.centerYAnchor.constraint(equalTo: contentView.centerYAnchor), thumbnail.heightAnchor.constraint(equalToConstant: 54), thumbnail.widthAnchor.constraint(equalToConstant: 54)
         ])
         isAccessibilityElement = true; accessibilityTraits = .button
     }
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
     deinit { task?.cancel() }
-    override func prepareForReuse() { super.prepareForReuse(); task?.cancel(); tag = nil; thumbnail.image = nil }
+    override func prepareForReuse() { super.prepareForReuse(); task?.cancel(); boundTag = nil; thumbnail.image = nil }
     func bind(tag: String, uses: Int, url: URL?, loader: MediaLoader) {
-        task?.cancel(); self.tag = tag; thumbnail.image = nil; tagName.text = tag; count.text = uses > 0 ? "\(uses) posts" : nil
+        task?.cancel(); boundTag = tag; thumbnail.image = nil; tagName.text = tag; count.text = uses > 0 ? "\(uses) posts" : nil
         accessibilityLabel = "#" + tag; accessibilityIdentifier = "explore-tag-" + tag
         guard let url else { return }
-        task = Task { [weak self] in guard let bitmap = try? await loader.image(url), !Task.isCancelled, self?.tag == tag else { return }; self?.thumbnail.image = bitmap }
+        task = Task { [weak self] in guard let bitmap = try? await loader.image(url), !Task.isCancelled, self?.boundTag == tag else { return }; self?.thumbnail.image = bitmap }
     }
 }
