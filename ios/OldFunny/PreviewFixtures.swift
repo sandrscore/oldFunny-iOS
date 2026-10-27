@@ -24,9 +24,43 @@ private actor PreviewTransport: HTTPTransport {
     private var attachmentPageReads = 0
     private var readClearAttempts = 0, readAllCleared = false
     private var readTokenRefreshed = false
+    private var tagPageAttempts = 0
+    private var tagHeadLoads = 0
     private var replyCount: Int { 2 + sentReplies.count - deleted.filter { $0.hasPrefix("PreviewReply") || $0.hasPrefix("FixtureSentReply") }.count }
     func send(_ request: URLRequest) async throws -> HTTPResult {
         let path = request.url?.path ?? "", method = request.httpMethod ?? "GET"
+        if ProcessInfo.processInfo.arguments.contains("--ui-tests-explore") {
+            let fields = URLComponents(url: request.url!, resolvingAgainstBaseURL: false)?.queryItems ?? []
+            if ["/v4/tags/explore", "/v4/tags/suggested", "/v4/search/users", "/v4/search/content", "/v4/channels"].contains(path) {
+                await MainActor.run { PreviewFixtures.exploreRequests.append(path + "?" + (request.url?.query ?? "") + "&") }
+            }
+            func response(_ data: [String: Any]) throws -> HTTPResult { HTTPResult(status: 200, body: try JSONSerialization.data(withJSONObject: ["status": 200, "data": data])) }
+            if method == "GET", path == "/v4/tags/explore" {
+                let post = try JSONSerialization.jsonObject(with: Data(PreviewFixtures.post.utf8))
+                return try response(["tags": ["items": [["tag": "cats", "uses": 26, "content": post], ["tag": "dogs", "uses": 4]]]])
+            }
+            if method == "GET", path == "/v4/search/content" {
+                guard fields.first(where: { $0.name == "tag" })?.value == "cats", fields.first(where: { $0.name == "limit" })?.value == "30" else { throw ClientError.invalidInput }
+                let next = fields.first { $0.name == "next" }?.value
+                guard next == nil || next == "tag-next" else { throw ClientError.invalidInput }
+                if next == nil { tagHeadLoads += 1 }
+                if next != nil { tagPageAttempts += 1; if tagPageAttempts == 1 { return HTTPResult(status: 503, body: Data()) } }
+                let indexes = next == nil ? Array(0..<12) : [11] + Array(12..<26)
+                let rows = indexes.map { index -> [String: Any] in
+                    ["id": "TagPost\(index)", "type": "pic", "state": "published", "url": "https://preview.invalid/post", "thumb": ["large_url": "https://preview.invalid/thumb/TagPost\(index)"], "size": ["w": 640, "h": 760], "creator": ["id": "TagAuthor", "nick": "TagAuthor"], "num": ["smiles": index + 1, "comments": 0]]
+                }
+                return try response(["content": ["items": rows, "paging": ["hasNext": next == nil, "cursors": next == nil ? ["next": "tag-next"] : [:]]]])
+            }
+            if method == "GET", path == "/v4/search/users", fields.first(where: { $0.name == "q" })?.value?.lowercased() == "re" {
+                let more = fields.contains { $0.name == "next" }
+                let users: [[String: Any]] = more ? [["id": "Reader1", "nick": "ReaderOne"], ["id": "Reader2", "nick": "ReaderTwo"]] : [["id": "Reader1", "nick": "ReaderOne"]]
+                return try response(["users": ["items": users, "paging": ["hasNext": !more, "cursors": more ? [:] : ["next": "explore-users-next"]]]])
+            }
+            if method == "PUT", path.hasPrefix("/v4/content/TagPost"), path.hasSuffix("/smiles") || path.hasSuffix("/unsmiles") {
+                guard fields == [URLQueryItem(name: "from", value: tagHeadLoads == 1 ? "trending:cats" : "tag:cats")] else { throw ClientError.invalidInput }
+                return HTTPResult(status: 204, body: Data())
+            }
+        }
         if ProcessInfo.processInfo.arguments.contains("--ui-tests-read-refresh") {
             if method == "POST", path == "/v4/oauth2/token" {
                 guard String(decoding: request.httpBody ?? Data(), as: UTF8.self).contains("refresh_token=offline-refresh-not-a-session") else { throw ClientError.invalidInput }
@@ -266,6 +300,7 @@ private actor PreviewTransport: HTTPTransport {
 }
 
 enum PreviewFixtures {
+    @MainActor static var exploreRequests = [String]()
     @MainActor static var readEvents = [String]()
     @MainActor static var reactionEvents = [String]()
     @MainActor static var mentionRequest = ""

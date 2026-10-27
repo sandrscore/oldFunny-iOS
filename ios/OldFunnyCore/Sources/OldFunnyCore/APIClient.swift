@@ -290,7 +290,7 @@ public actor APIClient {
     }
     public func smile(postID: String, enabled: Bool, source: String, session: UUID? = nil) async throws {
         try validateWriteSession(session)
-        guard ["feat", "coll", "subs", "prof"].contains(source) else { throw ClientError.invalidInput }
+        guard ["feat", "coll", "subs", "prof"].contains(source) || TagFeed.validSource(source) else { throw ClientError.invalidInput }
         _ = try await call(path: "content/" + Wire.requireID(postID) + "/smiles", query: [("from", source)],
                            method: enabled ? "PUT" : "DELETE", authenticated: true)
     }
@@ -323,12 +323,12 @@ public actor APIClient {
     // fence and single-attempt transport; none are automatically replayed.
     public func unsmile(postID: String, enabled: Bool, source: String, session: UUID? = nil) async throws {
         try validateWriteSession(session)
-        guard ["feat", "coll", "subs", "prof"].contains(source) else { throw ClientError.invalidInput }
+        guard ["feat", "coll", "subs", "prof"].contains(source) || TagFeed.validSource(source) else { throw ClientError.invalidInput }
         _ = try await call(path: "content/" + Wire.requireID(postID) + "/unsmiles", query: [("from", source)], method: enabled ? "PUT" : "DELETE", authenticated: true)
     }
     public func republish(postID: String, enabled: Bool, source: String, session: UUID? = nil) async throws {
         try validateWriteSession(session)
-        guard ["feat", "coll", "subs", "prof"].contains(source) else { throw ClientError.invalidInput }
+        guard ["feat", "coll", "subs", "prof"].contains(source) || TagFeed.validSource(source) else { throw ClientError.invalidInput }
         _ = try await call(path: "content/" + Wire.requireID(postID) + "/republished", query: [("from", source)], method: enabled ? "POST" : "DELETE", authenticated: true)
     }
     public func reactToComment(postID: String, commentID: String, unsmile: Bool, enabled: Bool, session: UUID? = nil) async throws {
@@ -376,6 +376,17 @@ public actor APIClient {
         guard text.utf8.count <= 1024, next == nil || next!.utf8.count <= 8192 else { throw ClientError.invalidInput }
         var query = [("q", text), ("limit", "30")]; if let next { query.append(("next", next)) }
         return try UserPage(await call(path: "search/users", query: query)["data"])
+    }
+    public func explore() async throws -> ExplorePage { try ExplorePage(await call(path: "tags/explore")["data"]) }
+    public func tagFeed(_ feed: TagFeed, next: String? = nil) async throws -> PostPage {
+        guard next == nil || next!.utf8.count <= 8192 else { throw ClientError.invalidInput }
+        var query = [("tag", feed.tag), ("limit", "30")]
+        if let next { query.append(("next", next)) }
+        return try PostPage(await call(path: feed.path, query: query)["data"])
+    }
+    public func exploreTags(_ query: String) async throws -> ExplorePage {
+        guard (2...100).contains(query.utf16.count) else { throw ClientError.invalidInput }
+        return try ExplorePage(await call(path: "tags/suggested", query: [("q", query)])["data"])
     }
     public func setSubscribed(userID: String, enabled: Bool, session: UUID) async throws -> UserProfile {
         guard session == epoch else { throw ClientError.sessionChanged }

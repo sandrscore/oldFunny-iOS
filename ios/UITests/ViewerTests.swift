@@ -2,6 +2,63 @@ import XCTest
 import UIKit
 
 final class ViewerTests: XCTestCase {
+    func testExploreTagPagingViewerBackAndMixedRecentUserSearchUseActualRoutes() {
+        let app = XCUIApplication()
+        app.launchArguments = ["--ui-tests", "--ui-tests-account", "--ui-tests-profile", "--ui-tests-explore"]
+        app.launch(); XCTAssertTrue(app.buttons["Open menu"].waitForExistence(timeout: 10)); app.buttons["Open menu"].tap(); app.buttons["Explore"].tap()
+        let screen = app.otherElements["explore-screen"], query = app.textFields["explore-query"]
+        XCTAssertTrue(screen.waitForExistence(timeout: 5))
+        let cats = app.tables.cells["explore-tag-cats"]; XCTAssertTrue(cats.waitForExistence(timeout: 5)); cats.tap()
+        let grid = app.collectionViews["tag-grid"]
+        XCTAssertTrue(grid.waitForExistence(timeout: 5))
+        let retry = app.buttons["Could not load more. Tap to retry."]
+        XCTAssertTrue(retry.waitForExistence(timeout: 5)); XCTAssertEqual(grid.value as? String, "12 posts", "A failed continuation retains the first page")
+        retry.tap()
+        waitUntil("Both server pages must merge without the duplicate TagPost11") { grid.value as? String == "26 posts" }
+        let last = grid.cells["grid-post-TagPost25"]
+        for _ in 0..<5 { if last.isHittable { break }; grid.swipeUp() }
+        XCTAssertTrue(last.isHittable); last.tap()
+        XCTAssertTrue(app.otherElements["tag-gallery"].waitForExistence(timeout: 5))
+        let smile = app.buttons["26 smiles, smile"]
+        XCTAssertTrue(smile.waitForExistence(timeout: 5)); smile.tap()
+        XCTAssertTrue(app.buttons["27 smiles, smile"].waitForExistence(timeout: 5), "The exact trending:cats source must reach the fixture API")
+        XCTAssertTrue(app.buttons["Unsmile"].exists); app.buttons["Unsmile"].tap()
+        XCTAssertTrue(app.buttons["26 smiles, smile"].waitForExistence(timeout: 5))
+        app.buttons["Back"].tap(); XCTAssertTrue(last.waitForExistence(timeout: 5)); XCTAssertTrue(last.isHittable, "Viewer Back retains the selected grid's scroll")
+        app.buttons["Back"].tap(); XCTAssertTrue(query.waitForExistence(timeout: 5))
+        query.tap(); query.typeText("r")
+        app.segmentedControls["explore-tabs"].buttons["iFunnyers"].tap()
+        Thread.sleep(forTimeInterval: 0.4)
+        XCTAssertFalse((screen.value as? String ?? "").contains("q=r&"), "One UTF16 character cannot trigger user search")
+        query.tap(); query.typeText("e")
+        let reader = app.tables.cells["user-row-Reader1"]
+        XCTAssertTrue(reader.waitForExistence(timeout: 5))
+        XCTAssertTrue(app.tables.cells["user-row-Reader2"].waitForExistence(timeout: 5))
+        XCTAssertEqual(app.tables["explore-results"].cells.count, 2, "Repeated Reader1 across pages appears once")
+        reader.tap(); XCTAssertTrue(app.otherElements["user-profile"].waitForExistence(timeout: 5))
+        app.buttons["Back"].tap(); XCTAssertEqual(query.value as? String, "re"); XCTAssertTrue(reader.exists)
+        query.tap(); query.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: 2))
+        XCTAssertTrue(cats.waitForExistence(timeout: 5)); XCTAssertTrue(reader.exists, "Ordinary Explore keeps tags and users in the same history")
+        XCTAssertLessThan(reader.frame.minY, cats.frame.minY, "Most recently selected user is above the earlier tag")
+        capture("explore-mixed-recents-and-tag-return", app: app)
+        reader.tap(); XCTAssertTrue(app.buttons["Advanced Search"].waitForExistence(timeout: 5))
+        app.buttons["Advanced Search"].tap(); app.buttons["profile-author-filter"].tap()
+        XCTAssertTrue(app.buttons["Clear recent users"].waitForExistence(timeout: 5)); app.buttons["Clear recent users"].tap()
+        app.buttons["Back"].tap(); app.buttons["Back"].tap(); app.buttons["Back"].tap()
+        XCTAssertTrue(cats.waitForExistence(timeout: 5)); XCTAssertFalse(reader.exists, "Clearing author-only recents preserves Explore tag history")
+        app.buttons["Clear recent searches"].tap()
+        XCTAssertFalse(cats.exists); XCTAssertFalse(reader.exists)
+        query.tap(); query.typeText("ca")
+        app.segmentedControls["explore-tabs"].buttons["Tags"].tap()
+        let suggestion = app.tables.cells["explore-tag-cat_pictures"]
+        XCTAssertTrue(suggestion.waitForExistence(timeout: 5), "Typed tags use the suggestions endpoint")
+        app.tables.cells["explore-tag-cats"].tap()
+        let first = app.collectionViews["tag-grid"].cells["grid-post-TagPost0"]
+        XCTAssertTrue(first.waitForExistence(timeout: 5)); first.tap()
+        XCTAssertTrue(app.buttons["1 smiles, smile"].waitForExistence(timeout: 5)); app.buttons["1 smiles, smile"].tap()
+        XCTAssertTrue(app.buttons["2 smiles, smile"].waitForExistence(timeout: 5), "A typed tag must send tag:cats, not trending:cats")
+        capture("explore-typed-tag-source", app: app)
+    }
     func testFeaturedReadWaitsForRenderedMediaAndContinuousUnobscuredSelection() {
         let app = XCUIApplication()
         app.launchArguments = ["--ui-tests", "--ui-tests-reads", "--ui-tests-read-loading"]

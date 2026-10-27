@@ -11,7 +11,6 @@ final class UserListController: ClassicScreenController, UITableViewDataSource, 
     private var generation = UUID(), loading = false, failed = false
     private var task: Task<Void, Never>?, debounce: Task<Void, Never>?
     private var observer: NSObjectProtocol?, needsReload = false
-    private let recentKey = "oldFunny.profileAuthorRecents.v1"
     init(app: AppContext, title: String, userID: String? = nil, kind: UserListKind? = nil, choose: ((UserProfile) -> Void)? = nil) {
         self.app = app; heading = title; self.userID = userID; self.kind = kind; self.choose = choose
         super.init(nibName: nil, bundle: nil)
@@ -22,7 +21,7 @@ final class UserListController: ClassicScreenController, UITableViewDataSource, 
         super.viewDidLoad(); classicBar.setTitle(heading)
         classicBar.onTrailing = { [weak self] in
             guard let self else { return }
-            if kind == nil && (query.text ?? "").isEmpty { UserDefaults.standard.removeObject(forKey: recentKey); showRecent() }
+            if kind == nil && (query.text ?? "").isEmpty { app.searchHistory.clear(.user); showRecent() }
             else { load(replacing: true, explicit: true) }
         }
         table.dataSource = self; table.delegate = self; table.backgroundColor = ClassicTheme.background
@@ -55,11 +54,7 @@ final class UserListController: ClassicScreenController, UITableViewDataSource, 
     override func viewDidAppear(_ animated: Bool) { super.viewDidAppear(animated); if needsReload { reloadAfterAccountChange() } }
     private func reloadAfterAccountChange() { needsReload = false; if kind == nil { queryChanged() } else { load(replacing: true, explicit: true) } }
     private func showRecent() {
-        let saved = UserDefaults.standard.array(forKey: recentKey) as? [[String: String]] ?? []
-        users = saved.compactMap { value in
-            let raw = JSON.object(["id": .string(value["id"] ?? ""), "nick": .string(value["nick"] ?? ""), "avatar": .object(["s": .string(value["avatar"] ?? "")])])
-            return try? UserProfile(raw)
-        }
+        users = app.searchHistory.history.entries.compactMap(\.user)
         nextCursor = nil; table.reloadData()
         if users.isEmpty { status.message("Search for a user.", canRetry: false) } else { status.isHidden = true }
         classicBar.trailing.setImage(UIImage(systemName: "trash"), for: .normal); classicBar.trailing.accessibilityLabel = "Clear recent users"
@@ -113,14 +108,12 @@ final class UserListController: ClassicScreenController, UITableViewDataSource, 
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         table.deselectRow(at: indexPath, animated: true); let user = users[indexPath.row]
         if let choose {
-            var recent = UserDefaults.standard.array(forKey: recentKey) as? [[String: String]] ?? []
-            recent.removeAll { $0["id"] == user.id }; recent.insert(["id": user.id, "nick": user.nickname, "avatar": user.avatarURL?.absoluteString ?? ""], at: 0)
-            UserDefaults.standard.set(Array(recent.prefix(20)), forKey: recentKey)
+            app.searchHistory.record(RecentSearchEntry(user: user))
             choose(user); navigationController?.popViewController(animated: true)
         } else { navigationController?.pushViewController(ProfileController(app: app, userID: user.id, nickname: user.nickname), animated: true) }
     }
 }
-private final class ProfileUserCell: UITableViewCell {
+final class ProfileUserCell: UITableViewCell {
     private let avatar = RemoteAvatarView(), name = UILabel(), detail = UILabel()
     override init(style: UITableViewCell.CellStyle, reuseIdentifier: String?) {
         super.init(style: style, reuseIdentifier: reuseIdentifier); backgroundColor = ClassicTheme.background

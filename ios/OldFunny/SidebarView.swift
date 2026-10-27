@@ -1,7 +1,7 @@
 import UIKit
 
 final class SidebarView: UIView {
-    enum Destination { case feed(Feed), profile, account }
+    enum Destination { case feed(Feed), explore, profile, account }
     var onSelect: ((Destination) -> Void)?, onClose: (() -> Void)?
     var onSubscriptionsHold: (() -> Void)?
     private weak var subscriptionsRow: UIButton?
@@ -29,6 +29,7 @@ final class SidebarView: UIView {
         addRow("Featured", image: ClassicTheme.image("featured", fallback: "sparkles"), selected: selected == .featured, destination: .feed(.featured))
         addRow("Collective", image: UIImage(systemName: "square.stack.fill"), selected: selected == .collective, destination: .feed(.collective))
         addRow("Subscriptions", image: ClassicTheme.image("subscribe", fallback: "checkmark.circle.fill"), selected: selected == .subscriptions, destination: .feed(.subscriptions))
+        addRow("Explore", image: UIImage(systemName: "magnifyingglass"), selected: false, destination: .explore)
         addRow("Profile", image: ClassicGlyph.profile.image, selected: false, destination: .profile)
         let separator = UIView(); separator.backgroundColor = UIColor.white.withAlphaComponent(0.08)
         separator.heightAnchor.constraint(equalToConstant: 1).isActive = true; rows.addArrangedSubview(separator)

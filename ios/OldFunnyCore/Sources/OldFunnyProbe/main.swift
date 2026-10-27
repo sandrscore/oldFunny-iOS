@@ -22,19 +22,47 @@ private struct NoCredentialStore: CredentialStore {
     func erase() throws {}
 }
 
+private actor ExploreReadAudit: HTTPTransport {
+    private let base = URLTransport()
+    private var paths = Set<String>(), statuses = [String: Int]()
+    func send(_ request: URLRequest) async throws -> HTTPResult {
+        let path = request.url?.path ?? ""
+        guard request.httpMethod == "GET", request.url?.host == "api.ifnapp.com",
+              ["/v4/tags/explore", "/v4/tags/suggested", "/v4/search/content"].contains(path),
+              request.value(forHTTPHeaderField: "Authorization")?.hasPrefix("Basic ") == true,
+              paths.insert(path).inserted else { throw ClientError.invalidInput }
+        let result = try await base.send(request); statuses[path] = result.status; return result
+    }
+    func recorded() -> [String: Int] { statuses }
+}
+
 @main
 struct Probe {
     static func main() async {
         let profiles = CommandLine.arguments == [CommandLine.arguments[0], "--anonymous-profile-read-only"]
+        let explore = CommandLine.arguments == [CommandLine.arguments[0], "--anonymous-explore-read-only"]
         let contentID = CommandLine.arguments.count == 3 && CommandLine.arguments[1] == "--anonymous-content-read-only" ? CommandLine.arguments[2] : nil
-        guard profiles || contentID != nil || CommandLine.arguments == [CommandLine.arguments[0], "--anonymous-read-only"] else {
-            print("Usage: OldFunnyProbe --anonymous-read-only | --anonymous-profile-read-only | --anonymous-content-read-only ID")
+        guard profiles || explore || contentID != nil || CommandLine.arguments == [CommandLine.arguments[0], "--anonymous-read-only"] else {
+            print("Usage: OldFunnyProbe --anonymous-read-only | --anonymous-profile-read-only | --anonymous-content-read-only ID | --anonymous-explore-read-only")
             print("Sends one anonymous Featured GET with a new diagnostic installation; no login, account lookup, social writes, or read acknowledgements.")
             print("Profile mode additionally reads one public creator profile, its first timeline/featured pages, and a tag suggestion. Outputs counts/flags only; never authenticates or writes.")
             return
         }
         let id = (UUID().uuidString + UUID().uuidString).replacingOccurrences(of: "-", with: "").lowercased()
         do {
+            if explore {
+                let audit = ExploreReadAudit()
+                let client = try APIClient(installation: id, userAgent: Wire.apiUserAgent(systemVersion: "27.0.1", model: "iPhone"), store: NoCredentialStore(), transport: audit)
+                var output: [String: Any] = ["authenticated": false, "credentials_persisted": false, "social_writes": false, "read_acknowledgements": false, "runtime_tested": false]
+                do { let page = try await client.explore(); output["explore"] = ["tags": page.tiles.count, "previews": page.tiles.filter { $0.previewURL != nil }.count] }
+                catch { output["explore_error"] = (error as? ClientError)?.errorDescription ?? "local tool error" }
+                do { let page = try await client.exploreTags("ca"); output["suggestions"] = ["tags": page.tiles.count] }
+                catch { output["suggestions_error"] = (error as? ClientError)?.errorDescription ?? "local tool error" }
+                do { let page = try await client.tagFeed(TagFeed(tag: "cats")); output["tag_feed"] = ["posts": page.posts.count, "continuation": page.paging.next != nil] }
+                catch { output["tag_feed_error"] = (error as? ClientError)?.errorDescription ?? "local tool error" }
+                output["statuses"] = await audit.recorded()
+                print(String(decoding: try JSONSerialization.data(withJSONObject: output, options: [.sortedKeys]), as: UTF8.self)); return
+            }
             if let contentID {
                 guard Wire.validID(contentID), contentID.utf8.count <= 40 else { throw ClientError.invalidInput }
                 let api = ContentReadAudit(base: URLTransport(), host: "api.ifnapp.com", path: "/v4/content/" + contentID)

@@ -157,6 +157,7 @@ final class FeedController: ClassicScreenController, UIPageViewControllerDataSou
                 guard let self else { return }
                 switch destination {
                 case .feed(let item): if feed != item { feed = item; resetAndLoad() }
+                case .explore: navigationController?.pushViewController(ExploreController(app: app), animated: true)
                 case .profile: openProfile()
                 case .account: accountMenu()
                 }

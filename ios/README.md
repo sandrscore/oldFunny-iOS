@@ -1,15 +1,12 @@
 # oldFunny iOS
 
-**Verified checkpoint: 0.3.0/build 28. Full Android behavioral parity is incomplete.**
+**Verified checkpoint: 0.3.0/build 30. Full Android behavioral parity is incomplete.**
 
-[Download the build 28 unsigned IPA artifact ZIP](https://github.com/sandrscore/oldFunny-iOS/actions/runs/40407953474/artifacts/12691629064), extract the IPA and update through Zeus. SHA-256:
-`8af68fb23d0a56e28a86fbdbb7762ed000b651b07d1d437de8ed9c6dcdeedd15`.
-Bundle `mobi.oldfunny.ios`; minimum iOS16.0; ARM64,cryptid0,unsigned,fixture-free.
-Artifact expires November2,2026; independently inspected IPA and exact source are preserved locally.
+[Download the build 30 unsigned IPA artifact ZIP](https://github.com/sandrscore/oldFunny-iOS/actions/runs/40413896528/artifacts/12695150733), extract the IPA and update through Zeus. SHA-256:
+`2742eacbc8252e8daf8a575383e2dc7ed9d9f0dcff48780fcb917da77ef7bfab`.
+Bundle `mobi.oldfunny.ios`; minimum iOS 16; ARM64, cryptid0, unsigned and fixture-free. Artifact expires November 2, 2026. The independently inspected IPA and exact source are preserved locally.
 
-[Build 28 Mac CI](https://github.com/sandrscore/oldFunny-iOS/actions/runs/40407953474), source `1fe0428699b6185792f721bac73aad03fc1e929b`, passed 74 Swift tests, six packaging checks and all23 actual UIKit cases, zero failures. Downloaded reports/logs match every expected method; archive hashes were checked. Attachment screenshot reviewed on iPhone16/iOS18.5 with offline fixtures.
-
-The new attachment case completed actual ImageIO crop-pixel, four-card limit/badge, long-hold selection, API404/public-picture recovery/internal Back, unavailable/failed/withheld/blocked/link-derived and protected-draft checks. Previous role menus/depth/deletion, video/GIF, profiles/search/pins, mention and bulk cases passed again. Fixture transports perform no real account or social action. Current-build phone checks remain separate.
+[Build 30 Mac CI](https://github.com/sandrscore/oldFunny-iOS/actions/runs/40413896528), source `b526db3d7745dcd68754edd49547eb4932d3279e`, passed 93 Swift tests, six packaging checks and all 25 actual UIKit cases. Downloaded reports/logs match every expected test; artifact hashes and two actual read-tracking screenshots were checked. Fake HTTP exercised same-account token refresh, failed Featured ACK without blocking Subs, delayed media/visibility, immediate Subs credit, failed/cancelled/confirmed clear and disabled pending choice. Current-build target-phone behavior remains unverified.
 
 Remaining work includes ordinary comment tap/options parity, reply-depth/state/
 layout rules, mention-panel physics, large-profile indexing/options, feeds/reads,

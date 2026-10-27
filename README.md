@@ -2,10 +2,10 @@
 
 Native iOS client targeting current oldFunny Android behavior. Full behavioral parity is incomplete.
 
-Build29 source `98e048e8c8e6f5f8e77c6d256eede91e2e6b83a1` passed90 Mac Swift tests, six packaging checks and all25 offline UIKit cases. Exact reports, archive hashes and actual read-tracking captures were checked. Separate regressions reproduced read-wrapper token-refresh rejection and cross-feed queue starvation; focused30 corrects both.
+Verified build30 passed93 Mac Swift tests, six packaging checks and all25 offline UIKit cases. Exact reports and artifact hashes were checked; actual selected-read and confirmed-clear screenshots were reviewed.
 
-Candidate30 passes93 Linux Swift tests/six packaging checks. All25 native cases remain mandatory, with expanded fake token-refresh/pending-clear/duplicate prevention assertions. Authentication algorithms, Android and reviewed16 bitmaps are preserved. No real read acknowledgment or social write was used for validation; current target-phone checks remain separate.
+[Download build30 unsigned IPA artifact ZIP](https://github.com/sandrscore/oldFunny-iOS/actions/runs/40413896528/artifacts/12695150733), extract and update through Zeus. Expires November 2, 2026. IPA SHA256 `2742eacbc8252e8daf8a575383e2dc7ed9d9f0dcff48780fcb917da77ef7bfab`.
 
-The earlier build28 IPA is retained as the preceding checkpoint while30 verifies: [download unsigned artifact ZIP](https://github.com/sandrscore/oldFunny-iOS/actions/runs/40407953474/artifacts/12691629064), extract and update through Zeus. Expires November2,2026. SHA256 `8af68fb23d0a56e28a86fbdbb7762ed000b651b07d1d437de8ed9c6dcdeedd15`.
+Candidate31 adds Explore tag tiles, user/tag search, shared mixed recent history, paged tag grids and retained viewers with exact tag-source reactions. 99 portable Swift contracts and six packaging checks pass; all26 UIKit cases require Mac verification. Three bounded anonymous GETs confirmed Explore/suggestions/tag-feed responses; no real social writes or read acknowledgements. Current target-phone checks remain separate.
 
 See [build/signing instructions](ios/README.md), [behavior ledger](ios/ANDROID_PARITY.md) and [status](ios/PORT_STATUS.md).

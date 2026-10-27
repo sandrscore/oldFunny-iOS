@@ -5,18 +5,18 @@ Target: iPhone16 / user-reported iOS27.0.1. Bundle: `mobi.oldfunny.ios`.
 
 | Evidence | Current state |
 | --- | --- |
-| Verified source | 0.3.0/build28, `1fe0428699b6185792f721bac73aad03fc1e929b` |
-| Mac contracts | 74 Swift and six Python checks passed |
-| Actual UIKit | All23 offline cases executed/passed, zero failures |
+| Verified source | 0.3.0/build30, `b526db3d7745dcd68754edd49547eb4932d3279e` |
+| Mac contracts | 93 Swift and six Python checks passed |
+| Actual UIKit | All25 offline cases executed/passed, zero failures |
 | Comment menus/depth | Role menus, separate reply-count read navigation, author targets, composer focus, capped dots/depth30 passed |
 | Deleted replies | Native separate placeholder, root retention, no live controls, refresh/draft/attachment/count checks passed; screenshot reviewed |
 | Previous flows | Video/GIF, retained panels, profile/search/pins/subscriptions, mentions and bulk deletion passed again |
-| IPA | Independently ARM64/cryptid0/unsigned/fixture-free; SHA256 `8af68fb23d0a56e28a86fbdbb7762ed000b651b07d1d437de8ed9c6dcdeedd15` |
+| IPA | Independently ARM64/cryptid0/unsigned/fixture-free; SHA256 `2742eacbc8252e8daf8a575383e2dc7ed9d9f0dcff48780fcb917da77ef7bfab` |
 | Attachments | Actual crop pixels, four-card cap/badges, hold selection, API404 recovery/Back, unavailable/failed/withheld/linked/blocked states and draft retention passed |
 | Server | Three anonymous GETs verified candidate28 directAPI200 and API404->publicwebsite200 exact picture recovery; no social/read writes |
 | Phone | Earlier0.1.2 login/CAPTCHA confirmed by user; current-build sessions/gestures/media/Photos untested on target |
 
-[Build28 CI/artifacts](https://github.com/sandrscore/oldFunny-iOS/actions/runs/40407953474).
+[Build30 CI/artifacts](https://github.com/sandrscore/oldFunny-iOS/actions/runs/40413896528).
 Reports/logs/complete xcresult and original screenshots were downloaded and checked.
 HTTP-only thumbnail
 loads, stream-time payload limits, external browser runtime, exact notice style,

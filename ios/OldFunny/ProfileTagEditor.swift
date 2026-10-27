@@ -62,7 +62,6 @@ final class ProfileTagEditor: ClassicScreenController, UITextFieldDelegate, UITa
     private let table = UITableView(frame: .zero, style: .plain), status = StatusView()
     private var suggestions = [String](), pendingRecents = [String](), generation = UUID()
     private var task: Task<Void, Never>?, committed = false, observer: NSObjectProtocol?
-    private let recentKey = "oldFunny.profileTagRecents.v1"
     init(app: AppContext, tags: [String], completion: @escaping ([String]) -> Void) {
         self.app = app; selection = ProfileTagSelection(tags); self.completion = completion
         super.init(nibName: nil, bundle: nil)
@@ -74,7 +73,7 @@ final class ProfileTagEditor: ClassicScreenController, UITextFieldDelegate, UITa
         classicBar.onLeading = { [weak self] in self?.finish() }
         classicBar.trailing.setImage(UIImage(systemName: "trash"), for: .normal); classicBar.trailing.accessibilityLabel = "Clear recent tags"
         classicBar.onTrailing = { [weak self] in
-            guard let self else { return }; UserDefaults.standard.removeObject(forKey: recentKey); pendingRecents = []; queryChanged()
+            guard let self else { return }; app.searchHistory.clear(.tag); pendingRecents = []; queryChanged()
         }
         chips.onRemove = { [weak self] tag in self?.selection.remove(tag); self?.renderSelection() }
         input.textColor = ClassicTheme.text; input.backgroundColor = ClassicTheme.drawer; input.font = ClassicTheme.font(16)
@@ -115,7 +114,7 @@ final class ProfileTagEditor: ClassicScreenController, UITextFieldDelegate, UITa
         task?.cancel(); generation = UUID(); suggestions = []
         let text = ProfileSearchCriteria.normalized(input.text ?? "")
         if text.isEmpty {
-            suggestions = (UserDefaults.standard.stringArray(forKey: recentKey) ?? []).filter { ProfileTagSelection.valid($0) != nil }
+            suggestions = app.searchHistory.history.entries.filter { $0.kind == .tag }.map(\.query).filter { ProfileTagSelection.valid($0) != nil }
             table.reloadData(); status.isHidden = true; return
         }
         guard text.utf16.count > 1 else { table.reloadData(); status.isHidden = true; return }
@@ -150,10 +149,10 @@ final class ProfileTagEditor: ClassicScreenController, UITextFieldDelegate, UITa
     private func commit() {
         guard !committed else { return }; committed = true; task?.cancel(); generation = UUID()
         let pending = input.text ?? ""; if !pending.isEmpty { _ = selection.add(pending) }
-        var recent = pendingRecents + (UserDefaults.standard.stringArray(forKey: recentKey) ?? [])
+        var recent = pendingRecents
         if let value = ProfileTagSelection.valid(pending), selection.tags.contains(value) { recent.insert(value, at: 0) }
         var seen = Set<String>(); recent = recent.filter { seen.insert($0).inserted }
-        UserDefaults.standard.set(Array(recent.prefix(10)), forKey: recentKey)
+        for tag in recent.reversed() { if let entry = try? RecentSearchEntry(tag: tag) { app.searchHistory.record(entry) } }
         completion(selection.tags)
     }
     private func finish() { commit(); view.endEditing(true); navigationController?.popViewController(animated: true) }

@@ -1,14 +1,15 @@
 import UIKit
 
 final class ProfileGalleryController: ClassicScreenController, UIPageViewControllerDataSource, UIPageViewControllerDelegate {
-    private let browser: ProfileBrowser
+    private let browser: any PostGallerySource
     private let pager = UIPageViewController(transitionStyle: .scroll, navigationOrientation: .horizontal)
     private let status = StatusView()
+    private let pageError = UIButton(type: .system)
     private var selected: Int, retained = [String: PostController]()
-    init(browser: ProfileBrowser, selected: Int) { self.browser = browser; self.selected = selected; super.init(nibName: nil, bundle: nil) }
+    init(browser: any PostGallerySource, selected: Int) { self.browser = browser; self.selected = selected; super.init(nibName: nil, bundle: nil) }
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
     override func viewDidLoad() {
-        super.viewDidLoad(); setClassicBarHidden(true); view.accessibilityIdentifier = "profile-gallery"
+        super.viewDidLoad(); setClassicBarHidden(true); view.accessibilityIdentifier = browser.galleryIdentifier
         addChild(pager); contentView.addSubview(pager.view); pager.didMove(toParent: self)
         for item in [pager.view!, status] { item.translatesAutoresizingMaskIntoConstraints = false
             if item === status { contentView.addSubview(item) }
@@ -18,18 +19,24 @@ final class ProfileGalleryController: ClassicScreenController, UIPageViewControl
         if browser.posts.indices.contains(selected) { pager.setViewControllers([controller(at: selected)], direction: .forward, animated: false) }
         status.retry.addTarget(self, action: #selector(retry), for: .touchUpInside)
         browser.onViewerUpdate = { [weak self] in self?.update() }; update()
+        pageError.setTitle("Could not load more. Tap to retry.", for: .normal); pageError.tintColor = ClassicTheme.yellow; pageError.backgroundColor = ClassicTheme.bar
+        pageError.translatesAutoresizingMaskIntoConstraints = false; contentView.addSubview(pageError)
+        NSLayoutConstraint.activate([pageError.leadingAnchor.constraint(equalTo: contentView.leadingAnchor), pageError.trailingAnchor.constraint(equalTo: contentView.trailingAnchor), pageError.topAnchor.constraint(equalTo: contentView.topAnchor), pageError.heightAnchor.constraint(equalToConstant: 44)])
+        pageError.addTarget(self, action: #selector(retry), for: .touchUpInside); update()
     }
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated); browser.setActive(true, consumeRefresh: false)
         retained.values.forEach { $0.setObscured(false); $0.setSelected($0.index == selected) }
+        if selected >= browser.posts.count - 5 { browser.loadNext() }
     }
     override func viewWillDisappear(_ animated: Bool) {
-        super.viewWillDisappear(animated); browser.setActive(false)
+        super.viewWillDisappear(animated); browser.setActive(false, consumeRefresh: true)
         retained.values.forEach { $0.setObscured(true) }
     }
     @objc private func retry() { browser.retry() }
     private func update() {
         guard isViewLoaded else { return }
+        pageError.isHidden = browser.error == nil || browser.posts.isEmpty
         if browser.posts.isEmpty {
             retained.values.forEach { $0.setObscured(true) }; retained = [:]; pager.dataSource = nil
             pager.setViewControllers([UIViewController()], direction: .forward, animated: false)
@@ -46,8 +53,8 @@ final class ProfileGalleryController: ClassicScreenController, UIPageViewControl
     private func controller(at index: Int) -> PostController {
         let post = browser.posts[index]
         if let cached = retained[post.id] { return cached }
-        let controller = PostController(app: browser.app, post: post, index: index, source: "prof", section: browser.nickname, selected: index == selected, profileOwnerID: browser.userID)
-        controller.onProfilePinsChanged = { [weak browser] in browser?.needsRefresh = true }
+        let controller = PostController(app: browser.app, post: post, index: index, source: browser.postSource, section: browser.nickname, selected: index == selected, profileOwnerID: browser.profileOwnerID)
+        controller.onProfilePinsChanged = { [weak browser] in browser?.pinsChanged() }
         retained[post.id] = controller; return controller
     }
     func pageViewController(_ pageViewController: UIPageViewController, viewControllerBefore viewController: UIViewController) -> UIViewController? {

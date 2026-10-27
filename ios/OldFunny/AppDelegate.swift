@@ -60,6 +60,7 @@ final class SceneDelegate: UIResponder, UIWindowSceneDelegate {
 final class AppContext {
     let api: APIClient
     let reads: FeedReadService
+    let searchHistory: SearchHistoryStore
     let media = MediaLoader()
     // Android's application-scoped sound flag starts off and is shared by pages.
     var videoSoundOn = false
@@ -73,6 +74,7 @@ final class AppContext {
             store: KeychainStore())
         let support = try FileManager.default.url(for: .applicationSupportDirectory, in: .userDomainMask, appropriateFor: nil, create: true)
         reads = FeedReadService(api: api, directory: support.appendingPathComponent("ReadHistory", isDirectory: true))
+        searchHistory = SearchHistoryStore()
         observeSoundLifecycle()
     }
     #if CLASSIC_UI_PREVIEW
@@ -80,6 +82,7 @@ final class AppContext {
         api = previewAPI
         // Isolated from real read history, including across UI test launches.
         reads = FeedReadService(api: api, directory: FileManager.default.temporaryDirectory.appendingPathComponent("PreviewReads-" + UUID().uuidString, isDirectory: true))
+        searchHistory = SearchHistoryStore(defaults: UserDefaults(suiteName: "PreviewSearch-" + UUID().uuidString)!)
         observeSoundLifecycle()
     }
     #endif

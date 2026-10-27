@@ -4,7 +4,7 @@
   "product": "oldFunny",
   "bundle_identifier": "mobi.oldfunny.ios",
   "version": "0.3.0",
-  "build": "30",
+  "build": "31",
   "minimum_ios": "16.0",
   "target": {
     "device": "iPhone 16",
@@ -39,7 +39,7 @@
     "captcha_handoff": true,
     "session_survives_relaunch": "unverified"
   },
-  "ui_phase": "Build29 passed90Mac/sixPython/all25UI with separately reproduced refresh/queue gaps; focused30 fixes tested locally93core/25UI pending Mac",
+  "ui_phase": "Verified30 93Mac/25UI; candidate31 Explore 99core/26UI pending",
   "simulator_previews": "Offline fixtures compiled only with CLASSIC_UI_PREVIEW; absent from Release",
   "simulator_ui": {
     "offline_fixtures": true,
@@ -81,6 +81,7 @@
       "testCommentTapRoleMenusReplyDepthDotsAndDraftRetention",
       "testConfirmedMentionReplyUsesSelectedRecipientAndClearsOnlySubmittedDraft",
       "testConfirmedReplyAndRootDeletionCloseThreadAndRemoveRepliesFromPostTotalOnce",
+      "testFeaturedReadWaitsForRenderedMediaAndContinuousUnobscuredSelection",
       "testGuestCommentOptionsProfileAndSignedInOtherPostRole",
       "testHorizontalPagingAndZoomTakePriorityOverPanelNavigation",
       "testInboundAttachmentCardsCropsUnavailableAndPublicRecoveryPreserveDraftAndBack",
@@ -92,6 +93,7 @@
       "testProfileSubscriberListAndConfirmedSubscribeToggle",
       "testProfileTagSuggestionsLimitRemovalAndPendingBackCommit",
       "testReplyThreadRetainsRootRecipientAndDraftThroughBack",
+      "testSubscriptionLoadingCreditsBadgeAndOnlyConfirmedExplicitClearRemovesUnread",
       "testUnconfirmedInlineReactionKeepsThreadAndDraft",
       "testUnsmileContextAndTripleTapClassification",
       "testVerticalPanelsRetainPostAndDraftWithoutPushingComments",
@@ -100,10 +102,11 @@
     "ui_gesture_tests_passed": true,
     "success": true,
     "version": "0.3.0",
-    "build": "28",
+    "build": "30",
     "current_candidate_verified": false,
     "screens_reviewed": [
-      "attachments"
+      "featured-read-visible-selection",
+      "subscriptions-confirmed-unread-clear"
     ]
   },
   "known_ui_polish": [],
@@ -185,9 +188,9 @@
     },
     "phone_tested": false
   },
-  "verified_build_source_commit": "1fe0428699b6185792f721bac73aad03fc1e929b",
-  "verified_build_url": "https://github.com/sandrscore/oldFunny-iOS/actions/runs/40407953474",
-  "ipa_sha256": "8af68fb23d0a56e28a86fbdbb7762ed000b651b07d1d437de8ed9c6dcdeedd15",
+  "verified_build_source_commit": "b526db3d7745dcd68754edd49547eb4932d3279e",
+  "verified_build_url": "https://github.com/sandrscore/oldFunny-iOS/actions/runs/40413896528",
+  "ipa_sha256": "2742eacbc8252e8daf8a575383e2dc7ed9d9f0dcff48780fcb917da77ef7bfab",
   "target_phone_tested": false,
   "previous_verified_build10": {
     "verified_build_source_commit": "5cca16ac45ac9c208269c6737ef1e36ef582b2a6",
@@ -505,14 +508,33 @@
   },
   "candidate30": {
     "published": true,
-    "mac_compiled": false,
+    "mac_compiled": true,
     "linux_core_tests": 93,
     "python_checks": 6,
     "ui_test_cases": 25,
-    "ui_tests_executed": false,
+    "ui_tests_executed": true,
     "phone_tested": false,
     "scope": "Accept existing read-only token refresh within same account/epoch, independent queue progress, synchronous panel exposure reset and disabled pending Subs clear",
     "auth_algorithms_modified": false,
-    "real_service_used_for_validation": false
+    "real_service_used_for_validation": false,
+    "ui_tests_passed": 25,
+    "source_commit": "b526db3d7745dcd68754edd49547eb4932d3279e",
+    "run_url": "https://github.com/sandrscore/oldFunny-iOS/actions/runs/40413896528"
+  },
+  "candidate31": {
+    "published": true,
+    "mac_compiled": false,
+    "linux_core_tests": 99,
+    "python_checks": 6,
+    "ui_test_cases": 26,
+    "ui_tests_executed": false,
+    "phone_tested": false,
+    "real_social_writes_or_read_acknowledgements": false,
+    "scope": "Explore/search/mixed recents and shared paged tag grid/viewer",
+    "known_gaps": [
+      "Explore channel destinations and exact layout/colors",
+      "process restoration and device checks",
+      "full Android parity"
+    ]
   }
 }
