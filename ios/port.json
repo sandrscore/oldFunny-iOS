@@ -4,7 +4,7 @@
   "product": "oldFunny",
   "bundle_identifier": "mobi.oldfunny.ios",
   "version": "0.3.0",
-  "build": "32",
+  "build": "33",
   "minimum_ios": "16.0",
   "target": {
     "device": "iPhone 16",
@@ -39,7 +39,7 @@
     "captcha_handoff": true,
     "session_survives_relaunch": "unverified"
   },
-  "ui_phase": "Verified30 93Mac/25UI; build31 core99 passed but UIKit compile failed; focused32 identifiers renamed, 26UI pending",
+  "ui_phase": "Build32: 25/26 UIKit pass; focused33 corrects selected smile accessibility-label assertions; 26 UI cases pending",
   "simulator_previews": "Offline fixtures compiled only with CLASSIC_UI_PREVIEW; absent from Release",
   "simulator_ui": {
     "offline_fixtures": true,
@@ -544,12 +544,25 @@
   },
   "candidate32": {
     "published": true,
-    "mac_compiled": false,
+    "mac_compiled": true,
     "linux_core_tests": 99,
     "python_checks": 6,
     "ui_test_cases": 26,
-    "ui_tests_executed": false,
+    "ui_tests_executed": true,
     "phone_tested": false,
-    "scope": "Focused build31 UIKit property-name collision repair; all 26 cases retained"
+    "scope": "Focused build31 UIKit property-name collision repair; all 26 cases retained",
+    "ui_tests_passed": 25,
+    "ui_tests_failed": 1,
+    "source_commit": "56ff42135404aa01c89c12d6b029c94da1d191c7",
+    "run_url": "https://github.com/sandrscore/oldFunny-iOS/actions/runs/40439060560",
+    "failure": "Explore test expected smile rather than remove smile after successful reaction"
+  },
+  "candidate33": {
+    "published": false,
+    "mac_compiled": false,
+    "ui_tests_executed": false,
+    "ui_test_cases": 26,
+    "phone_tested": false,
+    "scope": "Correct two selected smile accessibility-label assertions; retain all build32 cases"
   }
 }

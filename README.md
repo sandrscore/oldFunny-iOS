@@ -9,3 +9,5 @@ Verified build30 passed93 Mac Swift tests, six packaging checks and all25 offlin
 Candidate31 adds Explore tag tiles, user/tag search, shared mixed history and paged tag grids with retained viewers. Its99 Mac core and six packaging tests passed, but Release compilation stopped on three UIKit property-name collisions; zero UIKit cases ran and no IPA was produced. Focused32 renames those properties, preserving all26 UI cases and behavior. Mac and simulator verification is pending. Three anonymous GETs verified Explore/suggestions/tag-feed responses; no real social writes or read acknowledgements. Target-phone checks remain separate.
 
 See [build/signing instructions](ios/README.md), [behavior ledger](ios/ANDROID_PARITY.md) and [status](ios/PORT_STATUS.md).
+
+Build32 CI ran 26 UIKit tests with 25 passing; the Explore case stopped at an incorrect selected-smile accessibility-label assertion. Build33 corrects both selected-state expectations while retaining all cases; its CI and phone checks remain pending. Build30 remains the verified checkpoint.

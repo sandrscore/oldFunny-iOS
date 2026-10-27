@@ -42,3 +42,7 @@ Separate regression tests reproduced two29 issues: an existing GET401->token ref
 ### Build31 results and focused32 compile correction
 
 Build31 source `5862dbae71f7739f178bb90b24a0c4c4014f2d34`, [Mac CI](https://github.com/sandrscore/oldFunny-iOS/actions/runs/40438785287), passed all99 Mac Swift tests and six packaging checks. Release compilation then failed because ExploreController introduced `next`, `hash` and `tag` properties that collide with inherited UIKit/NSObject properties. No IPA was produced and zero of 26 UIKit cases ran. Focused32 renames those stored properties and retains the exact same behavior and all26 cases; Mac compilation/UI verification remain pending. Build30 remains the verified IPA.
+# Build32 simulator result and build33 candidate
+
+Build32 [Mac CI](https://github.com/sandrscore/oldFunny-iOS/actions/runs/40439060560) compiled the unsigned IPA, passed 99 core and six packaging checks, and ran 26 UIKit tests with 25 passing. Explore stopped because the test expected `27 smiles, smile` after the button correctly changed to `27 smiles, remove smile`; the simulator hierarchy confirms the fixture accepted the trending reaction. Build33 corrects both selected-label expectations and retains all 26 tests. Its simulator run and current iPhone testing remain pending; build30 is still the verified checkpoint.
+

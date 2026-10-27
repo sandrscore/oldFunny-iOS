@@ -21,7 +21,7 @@ final class ViewerTests: XCTestCase {
         XCTAssertTrue(app.otherElements["tag-gallery"].waitForExistence(timeout: 5))
         let smile = app.buttons["26 smiles, smile"]
         XCTAssertTrue(smile.waitForExistence(timeout: 5)); smile.tap()
-        XCTAssertTrue(app.buttons["27 smiles, smile"].waitForExistence(timeout: 5), "The exact trending:cats source must reach the fixture API")
+        XCTAssertTrue(app.buttons["27 smiles, remove smile"].waitForExistence(timeout: 5), "The exact trending:cats source must reach the fixture API")
         XCTAssertTrue(app.buttons["Unsmile"].exists); app.buttons["Unsmile"].tap()
         XCTAssertTrue(app.buttons["26 smiles, smile"].waitForExistence(timeout: 5))
         app.buttons["Back"].tap(); XCTAssertTrue(last.waitForExistence(timeout: 5)); XCTAssertTrue(last.isHittable, "Viewer Back retains the selected grid's scroll")
@@ -56,7 +56,7 @@ final class ViewerTests: XCTestCase {
         let first = app.collectionViews["tag-grid"].cells["grid-post-TagPost0"]
         XCTAssertTrue(first.waitForExistence(timeout: 5)); first.tap()
         XCTAssertTrue(app.buttons["1 smiles, smile"].waitForExistence(timeout: 5)); app.buttons["1 smiles, smile"].tap()
-        XCTAssertTrue(app.buttons["2 smiles, smile"].waitForExistence(timeout: 5), "A typed tag must send tag:cats, not trending:cats")
+        XCTAssertTrue(app.buttons["2 smiles, remove smile"].waitForExistence(timeout: 5), "A typed tag must send tag:cats, not trending:cats")
         capture("explore-typed-tag-source", app: app)
     }
     func testFeaturedReadWaitsForRenderedMediaAndContinuousUnobscuredSelection() {
