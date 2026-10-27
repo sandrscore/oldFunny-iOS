@@ -4,7 +4,7 @@
   "product": "oldFunny",
   "bundle_identifier": "mobi.oldfunny.ios",
   "version": "0.3.0",
-  "build": "33",
+  "build": "34",
   "minimum_ios": "16.0",
   "target": {
     "device": "iPhone 16",
@@ -39,7 +39,7 @@
     "captcha_handoff": true,
     "session_survives_relaunch": "unverified"
   },
-  "ui_phase": "Build32: 25/26 UIKit pass; focused33 corrects selected smile accessibility-label assertions; 26 UI cases pending",
+  "ui_phase": "Build33: 25/26 UIKit pass; focused34 hides stale accessibility cells in empty Explore; all 26 cases pending",
   "simulator_previews": "Offline fixtures compiled only with CLASSIC_UI_PREVIEW; absent from Release",
   "simulator_ui": {
     "offline_fixtures": true,
@@ -558,11 +558,24 @@
     "failure": "Explore test expected smile rather than remove smile after successful reaction"
   },
   "candidate33": {
-    "published": false,
+    "published": true,
+    "mac_compiled": true,
+    "ui_tests_executed": true,
+    "ui_test_cases": 26,
+    "phone_tested": false,
+    "scope": "Correct two selected smile accessibility-label assertions; retain all build32 cases",
+    "ui_tests_passed": 25,
+    "ui_tests_failed": 1,
+    "source_commit": "68916fea61bf3d1a8a649324f97f3d70453f90e7",
+    "run_url": "https://github.com/sandrscore/oldFunny-iOS/actions/runs/40441128123",
+    "failure": "Empty recents had zero results but UIKit still exposed recycled table cells to accessibility"
+  },
+  "candidate34": {
+    "published": true,
     "mac_compiled": false,
     "ui_tests_executed": false,
     "ui_test_cases": 26,
     "phone_tested": false,
-    "scope": "Correct two selected smile accessibility-label assertions; retain all build32 cases"
+    "scope": "Hide empty Explore table from accessibility and retain all 26 tests"
   }
 }

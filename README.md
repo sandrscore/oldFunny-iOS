@@ -11,3 +11,5 @@ Candidate31 adds Explore tag tiles, user/tag search, shared mixed history and pa
 See [build/signing instructions](ios/README.md), [behavior ledger](ios/ANDROID_PARITY.md) and [status](ios/PORT_STATUS.md).
 
 Build32 CI ran 26 UIKit tests with 25 passing; the Explore case stopped at an incorrect selected-smile accessibility-label assertion. Build33 corrects both selected-state expectations while retaining all cases; its CI and phone checks remain pending. Build30 remains the verified checkpoint.
+
+Build33 CI ran 26 UIKit tests with 25 passing. Empty Explore recents still exposed recycled cells to accessibility. Build34 hides the empty table and retains all tests; CI and current phone checks remain pending. Build30 remains the verified checkpoint.

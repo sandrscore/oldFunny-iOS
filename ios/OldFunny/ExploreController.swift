@@ -84,6 +84,9 @@ final class ExploreController: ClassicScreenController, UITableViewDataSource, U
         classicBar.trailing.setImage(mode == .recent ? UIImage(systemName: "trash") : ClassicGlyph.refresh.image, for: .normal)
         classicBar.trailing.accessibilityLabel = mode == .recent ? "Clear recent searches" : "Refresh"
         table.reloadData(); table.accessibilityValue = "\(rows.count) results"
+        // UIKit may keep recycled cells in the accessibility hierarchy after
+        // reloadData. The empty-state overlay must not expose stale results.
+        table.isHidden = rows.isEmpty
         #if CLASSIC_UI_PREVIEW
         if ProcessInfo.processInfo.arguments.contains("--ui-tests-explore") { view.accessibilityValue = PreviewFixtures.exploreRequests.joined(separator: "|") + "|" }
         #endif

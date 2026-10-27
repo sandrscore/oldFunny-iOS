@@ -140,3 +140,7 @@ Build31 source `5862dbae71f7739f178bb90b24a0c4c4014f2d34`, [Mac CI](https://gith
 
 Build32 [Mac CI](https://github.com/sandrscore/oldFunny-iOS/actions/runs/40439060560) compiled the unsigned IPA and ran 26 UIKit tests with 25 passing. The Explore test expected the wrong selected-state accessibility label after the fixture accepted the trending reaction. Build33 corrects the two selected-label expectations and retains all 26 cases. Further Explore assertions, build33 CI and current iPhone testing remain pending; build30 remains the verified checkpoint.
 
+# Build33 result and focused build34 candidate
+
+Build33 [Mac CI](https://github.com/sandrscore/oldFunny-iOS/actions/runs/40441128123) compiled the unsigned IPA and ran 26 UIKit cases with 25 passing. After clearing Explore recents, the screen showed zero results but UIKit still exposed recycled cells to accessibility. Build34 hides the empty table and verifies both the empty message and absence of stale cells. All 26 cases remain required; its Mac run and current iPhone testing remain pending. Build30 remains the verified checkpoint.
+

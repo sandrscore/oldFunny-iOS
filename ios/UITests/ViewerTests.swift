@@ -47,6 +47,7 @@ final class ViewerTests: XCTestCase {
         app.buttons["Back"].tap(); app.buttons["Back"].tap(); app.buttons["Back"].tap()
         XCTAssertTrue(cats.waitForExistence(timeout: 5)); XCTAssertFalse(reader.exists, "Clearing author-only recents preserves Explore tag history")
         app.buttons["Clear recent searches"].tap()
+        XCTAssertTrue(app.staticTexts["No recent searches."].waitForExistence(timeout: 5))
         XCTAssertFalse(cats.exists); XCTAssertFalse(reader.exists)
         query.tap(); query.typeText("ca")
         app.segmentedControls["explore-tabs"].buttons["Tags"].tap()

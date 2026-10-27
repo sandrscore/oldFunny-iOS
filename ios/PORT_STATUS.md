@@ -46,3 +46,7 @@ Build31 source `5862dbae71f7739f178bb90b24a0c4c4014f2d34`, [Mac CI](https://gith
 
 Build32 [Mac CI](https://github.com/sandrscore/oldFunny-iOS/actions/runs/40439060560) compiled the unsigned IPA, passed 99 core and six packaging checks, and ran 26 UIKit tests with 25 passing. Explore stopped because the test expected `27 smiles, smile` after the button correctly changed to `27 smiles, remove smile`; the simulator hierarchy confirms the fixture accepted the trending reaction. Build33 corrects both selected-label expectations and retains all 26 tests. Its simulator run and current iPhone testing remain pending; build30 is still the verified checkpoint.
 
+# Build33 result and focused build34 candidate
+
+Build33 [Mac CI](https://github.com/sandrscore/oldFunny-iOS/actions/runs/40441128123) passed 99 core and six packaging checks, compiled the unsigned IPA, and ran 26 UIKit cases with 25 passing. Explore progressed through its earlier reaction and mixed-history checks, then exposed recycled cells still present in UIKit's accessibility hierarchy after clearing all recents. Build34 hides the empty table and checks the empty message as well as the absence of stale cells. All 26 cases remain required; its Mac run and current iPhone testing remain pending. Build30 remains the verified checkpoint.
+
